@@ -252,7 +252,6 @@ void vka::context::create_swap_chain()
         }
     }
     //================= Choose the appropriate format==================
-    m_swapchain_format = chooseSwapSurfaceFormat(m_swapchain_available_formats);
     if( m_swapchain_available_formats.size()==1 && m_swapchain_available_formats.front().format == vk::Format::eUndefined)
     {
         m_swapchain_format.format     = vk::Format::eR8G8B8A8Unorm;
@@ -263,11 +262,12 @@ void vka::context::create_swap_chain()
         {
             if (availableFormat.format == vk::Format::eR8G8B8A8Unorm && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
             {
-                LOG << "Format Selected: " << vk::to_string(availableFormat.format) << std::endl;
                 m_swapchain_format = availableFormat;
             }
         }
     }
+    LOG << "Format     Selected: " << vk::to_string(m_swapchain_format.format) << ENDL;
+    LOG << "Color SpaceSelected: " << vk::to_string(m_swapchain_format.colorSpace) << ENDL;
 
     //================== Choose the appropriate extent ====================
     vk::Extent2D   extent  = {640, 480};;//chooseSwapExtent(swapChainSupport.capabilities);
@@ -280,34 +280,113 @@ void vka::context::create_swap_chain()
         extent.width  = std::max(m_swapchain_capabilities.minImageExtent.width , std::min(m_swapchain_capabilities.maxImageExtent.width,  extent.width));
         extent.height = std::max(m_swapchain_capabilities.minImageExtent.height, std::min(m_swapchain_capabilities.maxImageExtent.height, extent.height));
     }
+    //=========================================================
+    uint32_t imageCount = m_swapchain_capabilities.minImageCount+1;
+    if ( m_swapchain_capabilities.maxImageCount > 0 && imageCount > m_swapchain_capabilities.maxImageCount)
+    {
+        imageCount = m_swapchain_capabilities.maxImageCount;
+    }
+    LOG << "Image count: " << imageCount << ENDL;
+    vk::SwapchainCreateInfoKHR createInfo;
+
+    createInfo.setSurface( m_surface )
+              .setMinImageCount(imageCount)
+              .setImageFormat      (m_swapchain_format.format           )
+              .setImageColorSpace  (m_swapchain_format.colorSpace       )
+              .setImageExtent      (extent                              )
+              .setImageArrayLayers (1                                   )
+              .setImageUsage       (vk::ImageUsageFlagBits::eColorAttachment );
+
+    uint32_t QFamilyIndices[] = {(uint32_t)m_queue_family.graphics, (uint32_t)m_queue_family.present };
+
+    if (m_queue_family.graphics != m_queue_family.present)
+    {
+        createInfo.setImageSharingMode      (vk::SharingMode::eConcurrent)
+                .setQueueFamilyIndexCount (2)
+                .setPQueueFamilyIndices   (QFamilyIndices);
+    } else {
+        createInfo.setImageSharingMode      ( vk::SharingMode::eExclusive)
+                .setQueueFamilyIndexCount ( 0 ) // Optional
+                .setPQueueFamilyIndices   ( nullptr) ; // Optional
+    }
+    createInfo.setPreTransform( m_swapchain_capabilities.currentTransform)
+            .setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
+            .setPresentMode( m_swapchain_present_mode )
+            .setClipped(true);
+
+
+    //========== Create the actual swap chain =============================
+    m_swapchain = m_device.createSwapchainKHR(createInfo);
+    if( !m_swapchain)
+    {
+        ERROR << "Failed to create swapchain" << ENDL;
+        throw std::runtime_error("Failed to create swapchain");
+    }
+
+
+    m_images       = m_device.getSwapchainImagesKHR(m_swapchain);
+    m_image_format = createInfo.imageFormat;
+    m_extent       = createInfo.imageExtent;
+
+    m_image_views = create_image_views(m_images, m_image_format);
+    LOG << "Image Views created" << ENDL;
 }
 
-vk::SurfaceFormatKHR vka::context::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats)
+std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Image> const & images, vk::Format image_format)
 {
-    // if this condition is set, this means that the surface has no
-    // preferred format
-    if (availableFormats.size() == 1 && availableFormats[0].format == vk::Format::eUndefined)
+    std::vector<vk::ImageView>   m_ImageViews;
+
+    m_ImageViews.reserve( images.size() );
+    auto size = images.size();
+
+    for (uint32_t i = 0; i < size; i++)
     {
-        std::cout << "Format Selected: " << vk::to_string(vk::Format::eR8G8B8A8Unorm) << std::endl;
-        return {vk::Format::eR8G8B8A8Unorm, vk::ColorSpaceKHR::eSrgbNonlinear};
-    }
+        vk::ImageViewCreateInfo createInfo;
+
+        createInfo.setImage      ( images[i] )
+                .setViewType     ( vk::ImageViewType::e2D )
+                .setFormat       ( image_format )
+                .setComponents(
+                    vk::ComponentMapping(
+                        vk::ComponentSwizzle::eIdentity,
+                        vk::ComponentSwizzle::eIdentity,
+                        vk::ComponentSwizzle::eIdentity,
+                        vk::ComponentSwizzle::eIdentity)
+                    );
+
+        createInfo.subresourceRange.aspectMask     = vk::ImageAspectFlagBits::eColor;
+        createInfo.subresourceRange.baseMipLevel   = 0;
+        createInfo.subresourceRange.levelCount     = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount     = 1;
 
 
-    for (const auto& availableFormat : availableFormats)
-    {
-        if (availableFormat.format == vk::Format::eR8G8B8A8Unorm && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
+        auto IV = m_device.createImageView( createInfo );
+        if(!IV)
         {
-            std::cout << "Format Selected: " << vk::to_string(availableFormat.format) << std::endl;
-            return availableFormat;
+            throw std::runtime_error("failed to create image view!");
         }
+        m_ImageViews.push_back(IV);
+
     }
 
-    std::cout << "Format Selected: " << vk::to_string(availableFormats[0].format) << std::endl;
-    return availableFormats[0];
+    return m_ImageViews;
 }
 
 void vka::context::clean()
 {
+
+    for(auto & image_view : m_image_views)
+    {
+        m_device.destroyImageView(image_view);
+    }
+    m_image_views.clear();
+
+
+    if( m_swapchain)
+        m_device.destroySwapchainKHR(m_swapchain);
+    m_images.clear();
+
     if( m_device)
     {
         LOG << "Destroying logical device: " << m_device << ENDL;

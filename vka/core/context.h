@@ -38,12 +38,23 @@ private:
 
     vk::Device         m_device;
 
+
+    //=========== Swap Chain stuff=============
     vk::SwapchainKHR                  m_swapchain;
-    vk::SurfaceCapabilitiesKHR        m_swapchain_capabilities;
     std::vector<vk::SurfaceFormatKHR> m_swapchain_available_formats;
-    vk::SurfaceFormatKHR              m_swapchain_format;
     std::vector<vk::PresentModeKHR>   m_swapchain_available_present_modes;
+
+    vk::SurfaceCapabilitiesKHR        m_swapchain_capabilities;
+    vk::SurfaceFormatKHR              m_swapchain_format;
     vk::PresentModeKHR                m_swapchain_present_mode;
+
+    vk::Extent2D                      m_extent;
+    vk::Format                        m_image_format;
+    std::vector<vk::Image>            m_images;
+    std::vector<vk::ImageView>        m_image_views;
+    std::vector<vk::Framebuffer>      m_framebuffers;
+    //==========================================
+
 
     vk::Queue                  m_graphics_queue;
     vk::Queue                  m_present_queue;
@@ -122,6 +133,8 @@ public:
     void create_logical_device(vk::PhysicalDevice &p_physical_device, const vka::queue_family_index_t &p_Qfamily);
 
     void create_swap_chain();
+
+    std::vector<vk::ImageView> create_image_views(const std::vector<vk::Image> &images, vk::Format image_format);
 private:
 
 
@@ -170,6 +183,7 @@ private:
      */
     VkResult CreateDebugReportCallbackEXT(vk::Instance &instance, const vk::DebugReportCallbackCreateInfoEXT &pCreateInfo, const VkAllocationCallbacks *pAllocator, vk::DebugReportCallbackEXT &pCallback);
     void     DestroyDebugReportCallbackEXT(vk::Instance const & instance,vk::DebugReportCallbackEXT & callback,const VkAllocationCallbacks* pAllocator);
+
 
 
 };
