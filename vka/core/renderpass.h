@@ -2,6 +2,7 @@
 #define VKA_RENDERPASS_H
 
 #include <vulkan/vulkan.hpp>
+#include "deleter.h"
 
 namespace vka
 {
@@ -19,6 +20,7 @@ class renderpass
 
     context * m_parent_context = nullptr;
 
+    ~renderpass();
     public:
 
     renderpass()
@@ -27,7 +29,6 @@ class renderpass
         m_ColorRef.attachment =  std::numeric_limits< decltype(m_ColorRef.attachment) >::max();
     }
 
-    ~renderpass();
 
     void attach_color(vk::Format f = vk::Format::eR8G8B8A8Unorm);
 
@@ -38,6 +39,7 @@ class renderpass
     private:
 
     friend class context;
+    friend class deleter<renderpass>;
 };
 
 }

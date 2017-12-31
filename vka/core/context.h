@@ -13,7 +13,7 @@ namespace vka
 
 class renderpass;
 class command_pool;
-
+class buffer;
 
 template<typename T>
 class registry_t
@@ -77,7 +77,8 @@ struct queue_family_index_t
 
 
 class context : public registry_t<vka::renderpass>,
-                public registry_t<vka::command_pool>
+                public registry_t<vka::command_pool>,
+                public registry_t<vka::buffer>
 {
 private:
     vk::Instance       m_instance;
@@ -117,6 +118,7 @@ private:
 
 public:
     vk::Device get_device() { return m_device; }
+    vk::PhysicalDevice get_physical_device() { return m_physical_device; }
 
 
     context() // default constructor
@@ -201,6 +203,8 @@ public:
     vka::renderpass* new_renderpass(const std::string &name);
 
     vka::command_pool* new_command_pool(const std::string & name);
+
+    vka::buffer*   new_buffer(const std::string & name);
     //============================================================
 
 private:

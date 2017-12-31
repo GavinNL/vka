@@ -22,8 +22,6 @@ int main(int argc, char ** argv)
 
     vka::context C;
 
-  //  vka::renderpass R;
-
     C.init();
     C.create_window_surface(window);
     C.create_device();
@@ -34,11 +32,19 @@ int main(int argc, char ** argv)
     R->attach_color(vk::Format::eB8G8R8A8Unorm);
     R->create(C);
 
+    auto B = C.new_buffer("main_buffer");
+    B->set_memory_properties(vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    B->set_size(1024);
+    B->set_usage(vk::BufferUsageFlagBits::eUniformBuffer| vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer);
+    B->create();
+
+
+
 
 
     auto cp = C.new_command_pool("main_command_pool");
 
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(window) )
     {
       glfwPollEvents();
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );

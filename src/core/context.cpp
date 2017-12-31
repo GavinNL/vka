@@ -1,6 +1,7 @@
 #include <vka/core/context.h>
 #include <vka/core/renderpass.h>
 #include <vka/core/command_pool.h>
+#include <vka/core/buffer.h>
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 #include <set>
@@ -334,11 +335,27 @@ void vka::context::create_swap_chain(vk::Extent2D extents)
     LOG << "Image Views created" << ENDL;
 }
 
+
+vka::buffer* vka::context::new_buffer(const std::string & name)
+{
+    if( registry_t<buffer>::get_object(name) == nullptr)
+    {
+        std::shared_ptr<vka::buffer> R(new vka::buffer, vka::deleter<vka::buffer>() );
+
+        R->m_parent_context = this;
+        registry_t<buffer>::insert_object(name, R);
+
+        return R.get();
+    }
+
+    return nullptr;
+}
+
 vka::renderpass* vka::context::new_renderpass(const std::string & name)
 {
     if( registry_t<renderpass>::get_object(name) == nullptr)
     {
-        auto R = std::make_shared< vka::renderpass >( );
+        std::shared_ptr<vka::renderpass> R( new vka::renderpass, vka::deleter<vka::renderpass>() );
         R->m_parent_context = this;
         registry_t<renderpass>::insert_object(name, R);
 
@@ -350,10 +367,10 @@ vka::renderpass* vka::context::new_renderpass(const std::string & name)
 
 vka::command_pool* vka::context::new_command_pool(const std::string & name)
 {
-    vka::command_pool* new_command_pool(const std::string & name);
+    //vka::command_pool* new_command_pool(const std::string & name);
     if( registry_t<command_pool>::get_object(name) == nullptr)
     {
-        auto R = std::make_shared< vka::command_pool >( );
+        std::shared_ptr<vka::command_pool> R( new vka::command_pool, vka::deleter<vka::command_pool>() );
         R->m_parent_context = this;
 
         //====
@@ -423,6 +440,7 @@ std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Im
 
 void vka::context::clean()
 {
+    registry_t<vka::buffer>::clear();
     registry_t<vka::command_pool>::clear();
     registry_t<vka::renderpass>::clear();
 
