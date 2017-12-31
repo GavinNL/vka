@@ -12,6 +12,7 @@ namespace vka
 
 
 class renderpass;
+class command_pool;
 
 
 template<typename T>
@@ -75,7 +76,8 @@ struct queue_family_index_t
 };
 
 
-class context : public registry_t<vka::renderpass>
+class context : public registry_t<vka::renderpass>,
+                public registry_t<vka::command_pool>
 {
 private:
     vk::Instance       m_instance;
@@ -197,6 +199,8 @@ public:
     //   context is destroyed.
     //============================================================
     vka::renderpass* new_renderpass(const std::string &name);
+
+    vka::command_pool* new_command_pool(const std::string & name);
     //============================================================
 
 private:

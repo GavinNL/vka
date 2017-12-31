@@ -34,6 +34,10 @@ int main(int argc, char ** argv)
     R->attach_color(vk::Format::eB8G8R8A8Unorm);
     R->create(C);
 
+
+
+    auto cp = C.new_command_pool("main_command_pool");
+
     while (!glfwWindowShouldClose(window))
     {
       glfwPollEvents();

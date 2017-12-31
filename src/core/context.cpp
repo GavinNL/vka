@@ -1,5 +1,6 @@
 #include <vka/core/context.h>
 #include <vka/core/renderpass.h>
+#include <vka/core/command_pool.h>
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 #include <set>
@@ -335,17 +336,49 @@ void vka::context::create_swap_chain(vk::Extent2D extents)
 
 vka::renderpass* vka::context::new_renderpass(const std::string & name)
 {
-    if( get_object(name) == nullptr)
+    if( registry_t<renderpass>::get_object(name) == nullptr)
     {
         auto R = std::make_shared< vka::renderpass >( );
         R->m_parent_context = this;
-        insert_object(name, R);
+        registry_t<renderpass>::insert_object(name, R);
 
         return R.get();
     }
 
     return nullptr;
 }
+
+vka::command_pool* vka::context::new_command_pool(const std::string & name)
+{
+    vka::command_pool* new_command_pool(const std::string & name);
+    if( registry_t<command_pool>::get_object(name) == nullptr)
+    {
+        auto R = std::make_shared< vka::command_pool >( );
+        R->m_parent_context = this;
+
+        //====
+        vk::CommandPoolCreateInfo poolInfo;
+
+        poolInfo.queueFamilyIndex = m_queue_family.graphics;
+        poolInfo.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer; // Optional
+
+        R->m_command_pool = get_device().createCommandPool(poolInfo);
+
+        if( !R->m_command_pool )
+        {
+            throw std::runtime_error("Failed to create command pool!");
+        }
+        LOG << "Command Pool created" << ENDL;
+                //=====
+        registry_t<command_pool>::insert_object(name, R);
+
+        return R.get();
+    }
+
+    return nullptr;
+}
+
+
 
 std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Image> const & images, vk::Format image_format)
 {
@@ -390,7 +423,7 @@ std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Im
 
 void vka::context::clean()
 {
-
+    registry_t<vka::command_pool>::clear();
     registry_t<vka::renderpass>::clear();
 
     for(auto & image_view : m_image_views)
