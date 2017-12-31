@@ -1,4 +1,5 @@
 #include <vka/core/context.h>
+#include <vka/core/renderpass.h>
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 #include <set>
@@ -213,7 +214,7 @@ void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device,
 }
 
 
-void vka::context::create_swap_chain()
+void vka::context::create_swap_chain(vk::Extent2D extents)
 {
 
     //
@@ -270,7 +271,7 @@ void vka::context::create_swap_chain()
     LOG << "Color SpaceSelected: " << vk::to_string(m_swapchain_format.colorSpace) << ENDL;
 
     //================== Choose the appropriate extent ====================
-    vk::Extent2D   extent  = {640, 480};;//chooseSwapExtent(swapChainSupport.capabilities);
+    vk::Extent2D   extent  = extents;//chooseSwapExtent(swapChainSupport.capabilities);
     if (m_swapchain_capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
     {
         extent = m_swapchain_capabilities.currentExtent;
@@ -332,6 +333,20 @@ void vka::context::create_swap_chain()
     LOG << "Image Views created" << ENDL;
 }
 
+vka::renderpass* vka::context::new_renderpass(const std::string & name)
+{
+    if( get_object(name) == nullptr)
+    {
+        auto R = std::make_shared< vka::renderpass >( );
+        R->m_parent_context = this;
+        insert_object(name, R);
+
+        return R.get();
+    }
+
+    return nullptr;
+}
+
 std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Image> const & images, vk::Format image_format)
 {
     std::vector<vk::ImageView>   m_ImageViews;
@@ -375,6 +390,8 @@ std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Im
 
 void vka::context::clean()
 {
+
+    registry_t<vka::renderpass>::clear();
 
     for(auto & image_view : m_image_views)
     {

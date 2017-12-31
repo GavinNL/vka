@@ -22,17 +22,24 @@ int main(int argc, char ** argv)
 
     vka::context C;
 
+  //  vka::renderpass R;
+
     C.init();
     C.create_window_surface(window);
     C.create_device();
 
-    C.create_swap_chain();
+    C.create_swap_chain( {WIDTH,HEIGHT});
+
+    auto R = C.new_renderpass("main_renderpass");
+    R->attach_color(vk::Format::eB8G8R8A8Unorm);
+    R->create(C);
 
     while (!glfwWindowShouldClose(window))
     {
       glfwPollEvents();
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );
     }
+
     //std::cout << "Test" << std::endl;
     return 0;
 }

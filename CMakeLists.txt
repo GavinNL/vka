@@ -6,8 +6,8 @@ find_package(Vulkan)
 find_package(glfw3 3.2 REQUIRED)
 
 FILE(GLOB_RECURSE SourceFiles
-                                #"vka/*.h"
-                                #"vka/*.hpp"
+                                "vka/*.h"
+                                "vka/*.hpp"
                                 "examples/*"
                                 "*.inl"
                                 )

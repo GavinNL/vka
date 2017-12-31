@@ -3,11 +3,60 @@
 
 #include <vulkan/vulkan.hpp>
 #include <vka/core/log.h>
+#include <map>
 
 struct GLFWwindow;
 
 namespace vka
 {
+
+
+class renderpass;
+
+
+template<typename T>
+class registry_t
+{
+public:
+    virtual ~registry_t()
+    {
+        LOG << "Destroying registr"    <<ENDL;
+        clear();
+    }
+
+    void clear()
+    {
+        LOG << "Registry cleared" << ENDL;
+        m_registry.clear();
+    }
+protected:
+    bool insert_object(std::string const & name, std::shared_ptr<T> obj)
+    {
+        auto i = m_registry.find( name );
+
+        if(i == m_registry.end() )
+        {
+            m_registry[name] = obj;
+            LOG << "Object[" << name << "] registered" << ENDL;
+            return true;
+        }
+
+        return false;
+    }
+
+    T* get_object( std::string const & name)
+    {
+        auto i = m_registry.find( name );
+
+        if(i != m_registry.end() )
+        {
+            return i->second.get();
+        }
+
+        return nullptr;
+    }
+    std::map<std::string, std::shared_ptr<T> > m_registry;
+};
 
 
 struct queue_family_index_t
@@ -26,7 +75,7 @@ struct queue_family_index_t
 };
 
 
-class context
+class context : public registry_t<vka::renderpass>
 {
 private:
     vk::Instance       m_instance;
@@ -65,6 +114,9 @@ private:
     vk::SurfaceKHR     m_surface;
 
 public:
+    vk::Device get_device() { return m_device; }
+
+
     context() // default constructor
     {
 
@@ -132,10 +184,25 @@ public:
 
     void create_logical_device(vk::PhysicalDevice &p_physical_device, const vka::queue_family_index_t &p_Qfamily);
 
-    void create_swap_chain();
+    void create_swap_chain(vk::Extent2D extents);
 
     std::vector<vk::ImageView> create_image_views(const std::vector<vk::Image> &images, vk::Format image_format);
+
+    //============================================================
+    // Object creation
+    //   All objects created with teh following funtions are stored
+    //   in an internal registry and can be retrived using the
+    //   get< > method.
+    //   Objects in here are automatically destroyed when the
+    //   context is destroyed.
+    //============================================================
+    vka::renderpass* new_renderpass(const std::string &name);
+    //============================================================
+
 private:
+
+
+    std::map< std::string, std::shared_ptr<vka::renderpass> > m_renderpasses;
 
 
     bool m_enable_validation_layers = true;
