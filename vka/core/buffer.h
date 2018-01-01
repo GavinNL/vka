@@ -2,6 +2,7 @@
 #define VKA_BUFFER_H
 
 #include <vulkan/vulkan.hpp>
+#include "array_view.h"
 #include "deleter.h"
 
 namespace vka
@@ -37,8 +38,25 @@ public:
     void create();
 
 
+    //==========================================================================
+    size_t size() const
+    {
+        return m_create_info.size;
+    }
+    //==========================================================================
+
+    template<typename T>
+    array_view<T> map(size_t alignment=sizeof(T))
+    {
+        return array_view<T>(size(), map_memory(), alignment );
+    }
+
+    void * map_memory();
+    void   unmap_memory();
+
 protected:
     context * m_parent_context;
+
 
     vk::Buffer              m_buffer;
     vk::BufferCreateInfo    m_create_info;
@@ -46,6 +64,7 @@ protected:
     vk::DeviceMemory        m_device_memory;
 
 
+    void * m_mapped;
     uint32_t findMemoryType(uint32_t typeFilter,
                             vk::MemoryPropertyFlags properties,
                             vk::Device device,

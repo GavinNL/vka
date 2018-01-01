@@ -1,11 +1,18 @@
 #include <vka/core/buffer.h>
 #include <vka/core/device_memory.h>
 #include <vka/core/context.h>
+#include <vka/core/array_view.h>
+
 
 vka::buffer::~buffer()
 {
     if( m_parent_context )
     {
+        if(m_mapped)
+        {
+            unmap_memory();
+        }
+
         if(m_device_memory)
         {
             LOG << "Memory freed"             << ENDL;
@@ -56,7 +63,9 @@ void vka::buffer::create()
         throw std::runtime_error("Failed to allocate memory for buffer");
     }
 
-    device.bindBufferMemory(m_buffer , m_device_memory, 0);
+    m_create_info.size = memRequirements.size;
+
+    device.bindBufferMemory(m_buffer, m_device_memory, 0);
     LOG << "Buffer Memory Allocated: " << m_create_info.size << " bytes" << ENDL;
 
 }
@@ -77,3 +86,20 @@ uint32_t vka::buffer::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlag
 }
 
 
+void * vka::buffer::map_memory()
+{
+
+    if( m_memory_type & vk::MemoryPropertyFlagBits::eHostVisible )
+    {
+        void * data = m_parent_context->get_device().mapMemory( m_device_memory, 0, m_create_info.size, vk::MemoryMapFlags());
+        m_mapped = data;
+        return m_mapped;
+    }
+    return nullptr;
+}
+
+void   vka::buffer::unmap_memory()
+{
+    m_parent_context->get_device().unmapMemory(m_device_memory);
+    m_mapped = nullptr;
+}

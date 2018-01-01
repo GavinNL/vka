@@ -34,13 +34,13 @@ int main(int argc, char ** argv)
 
     auto B = C.new_buffer("main_buffer");
     B->set_memory_properties(vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-    B->set_size(1024);
+    B->set_size(1000);
     B->set_usage(vk::BufferUsageFlagBits::eUniformBuffer| vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer);
     B->create();
 
 
-
-
+    auto a = B->map<int>();
+    a[0] = 10;
 
     auto cp = C.new_command_pool("main_command_pool");
 
