@@ -32,11 +32,11 @@ int main(int argc, char ** argv)
     R->attach_color(vk::Format::eB8G8R8A8Unorm);
     R->create(C);
 
-    auto B = C.new_buffer("main_buffer");
-    B->set_memory_properties(vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-    B->set_size(1000);
-    B->set_usage(vk::BufferUsageFlagBits::eUniformBuffer| vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer);
-    B->create();
+    auto B = C.new_buffer("main_buffer",
+                          1024,
+                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                          vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer);
+
 
 
     auto a = B->map<int>();

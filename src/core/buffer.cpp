@@ -27,7 +27,7 @@ vka::buffer::~buffer()
     }
 }
 
-void vka::buffer::create()
+bool vka::buffer::create()
 {
     auto device = m_parent_context->get_device();
     auto physical_device = m_parent_context->get_physical_device();
@@ -67,7 +67,7 @@ void vka::buffer::create()
 
     device.bindBufferMemory(m_buffer, m_device_memory, 0);
     LOG << "Buffer Memory Allocated: " << m_create_info.size << " bytes" << ENDL;
-
+    return true;
 }
 
 

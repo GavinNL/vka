@@ -204,7 +204,29 @@ public:
 
     vka::command_pool* new_command_pool(const std::string & name);
 
+    /**
+     * @brief new_buffer
+     * @param name
+     * @return
+     *
+     * Create an unconfigured,unallocated buffer
+     */
     vka::buffer*   new_buffer(const std::string & name);
+
+    /**
+     * @brief new_buffer
+     * @param name - name of the buffer
+     * @param size - size of the buffer in bytes
+     * @param memory_properties - memory property
+     * @param usage - buffer usage
+     * @return
+     *
+     * Create a configured and allocated buffer.
+     */
+    vka::buffer*   new_buffer(const std::string & name,
+                              size_t size,
+                              vk::MemoryPropertyFlags memory_properties,
+                              vk::BufferUsageFlags usage);
     //============================================================
 
 private:

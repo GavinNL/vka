@@ -336,6 +336,23 @@ void vka::context::create_swap_chain(vk::Extent2D extents)
 }
 
 
+vka::buffer*   vka::context::new_buffer(const std::string & name,
+                          size_t size,
+                          vk::MemoryPropertyFlags memory_properties,
+                          vk::BufferUsageFlags usage)
+{
+    auto * b = new_buffer(name);
+    if( b )
+    {
+        b->set_memory_properties(memory_properties);
+        b->set_size(size);
+        b->set_usage(usage);
+        b->create();
+        return b;
+    }
+    return nullptr;
+}
+
 vka::buffer* vka::context::new_buffer(const std::string & name)
 {
     if( registry_t<buffer>::get_object(name) == nullptr)
