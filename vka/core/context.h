@@ -227,6 +227,85 @@ public:
                               size_t size,
                               vk::MemoryPropertyFlags memory_properties,
                               vk::BufferUsageFlags usage);
+
+    /**
+     * @brief new_vertex_buffer
+     * @param name
+     * @param size
+     * @return
+     *
+     * Create a device local buffer used for vertices
+     */
+    vka::buffer* new_vertex_buffer(const std::string & name, size_t size)
+    {
+        return new_buffer(name , size,
+                          vk::MemoryPropertyFlagBits::eDeviceLocal,
+                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
+    }
+
+    /**
+     * @brief new_index_buffer
+     * @param name
+     * @param size
+     * @return
+     *
+     * Create a device local buffer used for index values
+     */
+    vka::buffer* new_index_buffer(const std::string & name, size_t size)
+    {
+        return new_buffer(name , size,
+                          vk::MemoryPropertyFlagBits::eDeviceLocal,
+                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
+    }
+
+    /**
+     * @brief new_uniform_buffer
+     * @param name
+     * @param size
+     * @return
+     *
+     * Crete a device local buffer used for uniform values
+     */
+    vka::buffer* new_uniform_buffer(const std::string & name, size_t size)
+    {
+        return new_buffer(name , size,
+                          vk::MemoryPropertyFlagBits::eDeviceLocal,
+                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer);
+    }
+
+    /**
+     * @brief new_multi_buffer
+     * @param name
+     * @param size
+     * @return
+     *
+     * Create a device local buffer used vertices,indices and uniform
+     */
+    vka::buffer* new_multi_buffer(const std::string & name, size_t size)
+    {
+        return new_buffer(name , size,
+                          vk::MemoryPropertyFlagBits::eDeviceLocal,
+                          vk::BufferUsageFlagBits::eTransferDst
+                          | vk::BufferUsageFlagBits::eUniformBuffer
+                          | vk::BufferUsageFlagBits::eIndexBuffer
+                          | vk::BufferUsageFlagBits::eVertexBuffer);
+    }
+
+    /**
+     * @brief new_staging_buffer
+     * @param name
+     * @param size
+     * @return
+     *
+     * Create a staging buffer used for staging data and transfering to
+     * device local buffers
+     */
+    vka::buffer* new_staging_buffer(const std::string & name, size_t size)
+    {
+        return new_buffer(name , size,
+                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                          vk::BufferUsageFlagBits::eTransferSrc);
+    }
     //============================================================
 
 private:
