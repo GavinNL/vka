@@ -64,7 +64,7 @@ protected:
     vk::DeviceMemory        m_device_memory;
 
 
-    void * m_mapped;
+    void * m_mapped = nullptr;
     uint32_t findMemoryType(uint32_t typeFilter,
                             vk::MemoryPropertyFlags properties,
                             vk::Device device,

@@ -3,9 +3,12 @@
 
 #include <vulkan/vulkan.hpp>
 #include "log.h"
+#include "deleter.h"
 
 namespace vka
 {
+
+class context;
 
 class framebuffer
 {
@@ -14,53 +17,23 @@ class framebuffer
         vk::Image       m_image;
         vk::ImageView   m_image_view;
 
+        context * m_parent_context;
         framebuffer()
         {
 
         }
 
-        framebuffer(const framebuffer & other) = delete;
 
 
-        framebuffer(framebuffer && other )
-        {
-            if(&other!=this)
-            {
-                m_framebuffer = other.m_framebuffer;
-                m_image       = other.m_image;
-                m_image_view  = other.m_image_view;
-
-                other.m_framebuffer = nullptr;
-                other.m_image       = nullptr;
-                other.m_image_view  = nullptr;
-            }
-        }
-
-        framebuffer& operator=(framebuffer && other )
-        {
-            if(&other!=this)
-            {
-                m_framebuffer = other.m_framebuffer;
-                m_image       = other.m_image;
-                m_image_view  = other.m_image_view;
-
-                other.m_framebuffer = nullptr;
-                other.m_image       = nullptr;
-                other.m_image_view  = nullptr;
-            }
-            return *this;
-        }
-
-
-
-
-        void create( vk::Device device,
-                     vk::RenderPass render_pass,
+        void create(vk::RenderPass render_pass,
                      vk::Extent2D   extents,
                      vk::ImageView  image_view,
                      vk::ImageView  depth_image=vk::ImageView() );
     private:
 
+        ~framebuffer();
+
+        friend class deleter<framebuffer>;
 };
 
 }

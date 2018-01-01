@@ -38,11 +38,18 @@ int main(int argc, char ** argv)
                           vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer);
 
 
-
-    auto a = B->map<int>();
-    a[0] = 10;
-
     auto cp = C.new_command_pool("main_command_pool");
+
+
+    std::vector<vka::framebuffer*> framebuffers;
+    auto & iv = C.get_swapchain_imageviews();
+    int i=0;
+    for(auto & view : iv)
+    {
+        framebuffers.push_back(  C.new_framebuffer( std::string("fb_") + std::to_string(i++) ) );
+        framebuffers.back()->create( *R, vk::Extent2D{WIDTH,HEIGHT}, view, vk::ImageView());
+    }
+
 
     while (!glfwWindowShouldClose(window) )
     {

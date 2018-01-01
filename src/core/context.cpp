@@ -2,6 +2,7 @@
 #include <vka/core/renderpass.h>
 #include <vka/core/command_pool.h>
 #include <vka/core/buffer.h>
+#include <vka/core/framebuffer.h>
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 #include <set>
@@ -336,6 +337,22 @@ void vka::context::create_swap_chain(vk::Extent2D extents)
 }
 
 
+vka::framebuffer* vka::context::new_framebuffer(const std::string & name)
+{
+    if( registry_t<framebuffer>::get_object(name) == nullptr)
+    {
+        std::shared_ptr<vka::framebuffer> R(new vka::framebuffer, vka::deleter<vka::framebuffer>() );
+
+        R->m_parent_context = this;
+        registry_t<framebuffer>::insert_object(name, R);
+
+        return R.get();
+    }
+
+    return nullptr;
+}
+
+
 vka::buffer*   vka::context::new_buffer(const std::string & name,
                           size_t size,
                           vk::MemoryPropertyFlags memory_properties,
@@ -460,6 +477,7 @@ void vka::context::clean()
     registry_t<vka::buffer>::clear();
     registry_t<vka::command_pool>::clear();
     registry_t<vka::renderpass>::clear();
+    registry_t<vka::framebuffer>::clear();
 
     for(auto & image_view : m_image_views)
     {

@@ -100,6 +100,9 @@ void * vka::buffer::map_memory()
 
 void   vka::buffer::unmap_memory()
 {
-    m_parent_context->get_device().unmapMemory(m_device_memory);
-    m_mapped = nullptr;
+    if(m_mapped)
+    {
+        m_parent_context->get_device().unmapMemory(m_device_memory);
+        m_mapped = nullptr;
+    }
 }

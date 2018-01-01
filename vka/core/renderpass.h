@@ -30,6 +30,11 @@ class renderpass
     }
 
 
+    operator vk::RenderPass()
+    {
+        return m_RenderPass;
+    }
+
     void attach_color(vk::Format f = vk::Format::eR8G8B8A8Unorm);
 
     void attach(vk::AttachmentDescription a);

@@ -14,6 +14,7 @@ namespace vka
 class renderpass;
 class command_pool;
 class buffer;
+class framebuffer;
 
 template<typename T>
 class registry_t
@@ -78,7 +79,8 @@ struct queue_family_index_t
 
 class context : public registry_t<vka::renderpass>,
                 public registry_t<vka::command_pool>,
-                public registry_t<vka::buffer>
+                public registry_t<vka::buffer>,
+                public registry_t<vka::framebuffer>
 {
 private:
     vk::Instance       m_instance;
@@ -192,6 +194,13 @@ public:
 
     std::vector<vk::ImageView> create_image_views(const std::vector<vk::Image> &images, vk::Format image_format);
 
+
+    //============================================================
+    // Get Methods
+    //============================================================
+    std::vector<vk::ImageView>& get_swapchain_imageviews() {
+        return m_image_views;
+    }
     //============================================================
     // Object creation
     //   All objects created with teh following funtions are stored
@@ -201,6 +210,8 @@ public:
     //   context is destroyed.
     //============================================================
     vka::renderpass* new_renderpass(const std::string &name);
+
+    vka::framebuffer* new_framebuffer(const std::string & name);
 
     vka::command_pool* new_command_pool(const std::string & name);
 
