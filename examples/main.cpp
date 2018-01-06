@@ -84,14 +84,45 @@ int main(int argc, char ** argv)
               ->create();
 
 
+#define USE_STAGING
 
-    auto * vb = C.new_buffer("vb", 1024, vk::MemoryPropertyFlagBits::eHostVisible| vk::MemoryPropertyFlagBits::eHostCoherent, vk::BufferUsageFlagBits::eVertexBuffer );
-    auto * ib = C.new_buffer("ib", 1024, vk::MemoryPropertyFlagBits::eHostVisible| vk::MemoryPropertyFlagBits::eHostCoherent, vk::BufferUsageFlagBits::eIndexBuffer);
+#if !defined USE_STAGING
+      auto * vb = C.new_buffer("vb", 1024, vk::MemoryPropertyFlagBits::eHostVisible| vk::MemoryPropertyFlagBits::eHostCoherent, vk::BufferUsageFlagBits::eVertexBuffer );
+      auto * ib = C.new_buffer("ib", 1024, vk::MemoryPropertyFlagBits::eHostVisible| vk::MemoryPropertyFlagBits::eHostCoherent, vk::BufferUsageFlagBits::eIndexBuffer);
 
-    if(1){
+      if(1)
+      {
 
 
-        auto vertex =  vb->map<glm::vec3>();
+          auto vertex =  vb->map<glm::vec3>();
+          vertex[0] = glm::vec3(0, -1.0, 0.0);
+          vertex[1] = glm::vec3(1, 0   ,0);
+
+          vertex[2] = glm::vec3(-1.0, 0.0,0.0);
+          vertex[3] = glm::vec3(0,1,0);
+
+          vertex[4] = glm::vec3( 1.0, 1.0   ,0.0);
+          vertex[5] = glm::vec3(0,1,0);
+
+          auto index =  ib->map<glm::uint16>();
+          index[0] = 0;
+          index[1] = 1;
+          index[2] = 2;
+
+          vb->unmap_memory();
+          ib->unmap_memory();
+      }
+#else
+
+    auto * vb = C.new_vertex_buffer("vb", 1024 );
+    auto * ib = C.new_index_buffer( "ib", 1024 );
+    auto * sb = C.new_staging_buffer( "sb", 1024 );
+
+    if(1)
+    {
+
+
+        auto vertex =  sb->map<glm::vec3>();
         vertex[0] = glm::vec3(0, -1.0, 0.0);
         vertex[1] = glm::vec3(1, 0   ,0);
 
@@ -101,28 +132,29 @@ int main(int argc, char ** argv)
         vertex[4] = glm::vec3( 1.0, 1.0   ,0.0);
         vertex[5] = glm::vec3(0,1,0);
 
-        auto index =  ib->map<glm::uint16>();
+        auto index =  sb->map<glm::uint16>( 6*sizeof(glm::vec3));
         index[0] = 0;
         index[1] = 1;
         index[2] = 2;
 
 
         ////===============
-        //auto copy_cmd = cp->AllocateCommandBuffer();
-        //copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-        //
-        //copy_cmd.copyBuffer( sb->get(), vb->get(), vk::BufferCopy(0,0,3*sizeof(glm::vec3)) );
-        //copy_cmd.copyBuffer( sb->get(), ib->get(), vk::BufferCopy(0,0,3*sizeof(uint16_t)) );
-        //
-        //copy_cmd.end();
-        //C.submit_cmd_buffer(copy_cmd);
+        auto copy_cmd = cp->AllocateCommandBuffer();
+        copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+
+        copy_cmd.copyBuffer( sb->get(), vb->get(), vk::BufferCopy(0,0,6*sizeof(glm::vec3)) );
+        copy_cmd.copyBuffer( sb->get(), ib->get(), vk::BufferCopy(6*sizeof(glm::vec3),0,3*sizeof(uint16_t)) );
+
+        copy_cmd.end();
+        C.submit_cmd_buffer(copy_cmd);
         ////===============
         //
-        //cp->FreeCommandBuffer(copy_cmd);
+     //   cp->FreeCommandBuffer(copy_cmd);
 
         vb->unmap_memory();
         ib->unmap_memory();
     }
+#endif
 
     auto cb = cp->AllocateCommandBuffer();
 
