@@ -15,6 +15,9 @@ class renderpass;
 class command_pool;
 class buffer;
 class framebuffer;
+class shader;
+class pipeline;
+class semaphore;
 
 template<typename T>
 class registry_t
@@ -80,7 +83,10 @@ struct queue_family_index_t
 class context : public registry_t<vka::renderpass>,
                 public registry_t<vka::command_pool>,
                 public registry_t<vka::buffer>,
-                public registry_t<vka::framebuffer>
+                public registry_t<vka::framebuffer>,
+                public registry_t<vka::shader>,
+                public registry_t<vka::semaphore>,
+                public registry_t<vka::pipeline>
 {
 private:
     vk::Instance       m_instance;
@@ -112,6 +118,11 @@ private:
 
     vk::Queue                  m_graphics_queue;
     vk::Queue                  m_present_queue;
+
+
+    vk::Fence     m_render_fence;
+    //vk::Semaphore m_image_available_smaphore;
+    //vk::Semaphore m_render_finished_smaphore;
 
     vk::DebugReportCallbackEXT  m_callback;
 
@@ -215,6 +226,11 @@ public:
 
     vka::command_pool* new_command_pool(const std::string & name);
 
+
+    uint32_t get_next_image_index( vka::semaphore * signal_semaphore);
+
+
+    void present_image(uint32_t image_index, semaphore *wait_semaphore);
     /**
      * @brief new_buffer
      * @param name
@@ -302,6 +318,7 @@ public:
                           | vk::BufferUsageFlagBits::eVertexBuffer);
     }
 
+
     /**
      * @brief new_staging_buffer
      * @param name
@@ -311,13 +328,45 @@ public:
      * Create a staging buffer used for staging data and transfering to
      * device local buffers
      */
-    vka::buffer* new_staging_buffer(const std::string & name, size_t size)
+    vka::buffer* new_staging_buffer(const std::string & name, size_t size, vk::MemoryPropertyFlags extraFlags = vk::MemoryPropertyFlagBits::eHostCoherent)
     {
         return new_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
+                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible | extraFlags,
                           vk::BufferUsageFlagBits::eTransferSrc);
     }
+
+
+    vka::shader* new_shader_module(const std::string &name);
+
+
+    vka::pipeline* new_pipeline(const std::string & name);
+
+
+    vka::semaphore* new_semaphore(const std::string & name);
     //============================================================
+
+
+
+    void submit_cmd_buffer(vk::CommandBuffer b)
+    {
+        vk::SubmitInfo submitInfo;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers    = &b;
+
+        //===========
+        if( m_graphics_queue.submit(1, &submitInfo, vk::Fence() ) != vk::Result::eSuccess)
+        {
+            throw std::runtime_error("Failed to submit Copy Buffer command");
+        }
+
+        m_graphics_queue.waitIdle();
+    }
+
+    void submit_command_buffer(vk::CommandBuffer const & p_CmdBuffer ,
+                                const vka::semaphore *wait_semaphore,
+                                const vka::semaphore *signal_semaphore,
+                                vk::PipelineStageFlags wait_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput );
+
 
 private:
 

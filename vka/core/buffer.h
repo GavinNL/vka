@@ -5,6 +5,7 @@
 #include "array_view.h"
 #include "deleter.h"
 
+
 namespace vka
 {
 
@@ -13,6 +14,7 @@ class context;
 class buffer
 {
 private:
+    buffer(){};
     ~buffer();
 public:
 
@@ -37,7 +39,15 @@ public:
 
     bool create();
 
+    operator vk::Buffer ()
+    {
+        return m_buffer;
+    }
 
+    vk::Buffer get()
+    {
+        return m_buffer;
+    }
     //==========================================================================
     size_t size() const
     {
@@ -46,9 +56,10 @@ public:
     //==========================================================================
 
     template<typename T>
-    array_view<T> map(size_t alignment=sizeof(T))
+    array_view<T> map(size_t byte_offset=0, size_t alignment=sizeof(T))
     {
-        return array_view<T>(size(), map_memory(), alignment );
+        unsigned char * v = reinterpret_cast<unsigned char*>(map_memory());
+        return array_view<T>(size(), v+byte_offset, alignment );
     }
 
     void * map_memory();

@@ -3,6 +3,9 @@
 #include <vka/core/command_pool.h>
 #include <vka/core/buffer.h>
 #include <vka/core/framebuffer.h>
+#include <vka/core/shader.h>
+#include <vka/core/pipeline.h>
+#include <vka/core/semaphore.h>
 #include <vulkan/vulkan.hpp>
 #include <GLFW/glfw3.h>
 #include <set>
@@ -61,6 +64,7 @@ void vka::context::create_window_surface( GLFWwindow * window )
         ERROR << "Failed to create window surface!" << ENDL;
         throw std::runtime_error("failed to create window surface!");
     }
+
 }
 
 void vka::context::create_device()
@@ -108,11 +112,26 @@ void vka::context::create_device()
 
                     create_logical_device(m_physical_device, m_queue_family);
 
+
+                    //m_image_available_smaphore  = m_device.createSemaphore( vk::SemaphoreCreateInfo() );
+                    //m_render_finished_smaphore  = m_device.createSemaphore( vk::SemaphoreCreateInfo() );
+                    //
+                    //if( !m_image_available_smaphore)
+                    //    throw std::runtime_error("Error creating image available semaphore");
+                    //if( !m_render_finished_smaphore)
+                    //    throw std::runtime_error("Error creating render finished semaphore");
+                    m_render_fence = m_device.createFence(vk::FenceCreateInfo());
+                    if(!m_render_fence)
+                    {
+                        throw std::runtime_error("Error creating fence");
+                    }
+
                     return;
                 }
             }
         }
     }
+
 }
 
 void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device, const vka::queue_family_index_t & p_Qfamily)
@@ -381,8 +400,93 @@ vka::buffer* vka::context::new_buffer(const std::string & name)
 
         return R.get();
     }
+    throw std::runtime_error("Object with name: " + name + " already exists");
+    return nullptr;
+}
+
+
+vka::shader* vka::context::new_shader_module(const std::string &name)
+{
+    if( registry_t<shader>::get_object(name) == nullptr)
+    {
+        std::shared_ptr<vka::shader> R( new vka::shader, vka::deleter<vka::shader>() );
+        R->m_parent_context = this;
+        registry_t<shader>::insert_object(name, R);
+
+        return R.get();
+    }
 
     return nullptr;
+}
+
+
+vka::pipeline* vka::context::new_pipeline(const std::string &name)
+{
+    if( registry_t<pipeline>::get_object(name) == nullptr)
+    {
+        std::shared_ptr<vka::pipeline> R( new vka::pipeline, vka::deleter<vka::pipeline>() );
+        R->m_parent_context = this;
+
+        registry_t<pipeline>::insert_object(name, R);
+
+        R->set_scissor( vk::Rect2D({0,0}, m_extent) );
+        R->set_viewport( vk::Viewport(0,0, m_extent.width,m_extent.height,0,1));
+
+        return R.get();
+    }
+
+    return nullptr;
+}
+
+vka::semaphore *vka::context::new_semaphore(const std::string &name)
+{
+    if( registry_t<semaphore>::get_object(name) == nullptr)
+    {
+        std::shared_ptr<vka::semaphore> R( new vka::semaphore(this), vka::deleter<vka::semaphore>() );
+        //R->m_parent_context = this;
+
+        registry_t<semaphore>::insert_object(name, R);
+
+        return R.get();
+    }
+
+    return nullptr;
+}
+
+
+void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
+                                         const vka::semaphore * wait_semaphore,
+                                         const vka::semaphore * signal_semaphore,
+                                         vk::PipelineStageFlags wait_stage)
+{
+    vk::SubmitInfo submitInfo;
+
+    submitInfo.waitSemaphoreCount   = 1;
+    submitInfo.pWaitSemaphores      = &wait_semaphore->m_semaphore;
+    submitInfo.pWaitDstStageMask    = &wait_stage;
+
+
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores    = &signal_semaphore->m_semaphore;
+
+
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers    = &p_CmdBuffer;
+
+
+    if( m_graphics_queue.submit( 1, &submitInfo,  m_render_fence ) != vk::Result::eSuccess)
+    {
+        throw std::runtime_error("Failed to submit draw command buffer");
+    }
+
+
+    vk::Result r;
+    do
+    {
+        r = m_device.waitForFences( m_render_fence, true, 100000000);
+    } while(  r == vk::Result::eTimeout);
+
+    m_device.resetFences( m_render_fence );
 }
 
 vka::renderpass* vka::context::new_renderpass(const std::string & name)
@@ -427,6 +531,34 @@ vka::command_pool* vka::context::new_command_pool(const std::string & name)
     }
 
     return nullptr;
+}
+
+uint32_t vka::context::get_next_image_index(vka::semaphore *signal_semaphore)
+{
+    return  m_device.acquireNextImageKHR( m_swapchain,
+                                          std::numeric_limits<uint64_t>::max(),
+                                          *signal_semaphore,
+                                          vk::Fence()).value;
+}
+
+void vka::context::present_image(uint32_t image_index,  vka::semaphore * wait_semaphore)
+{
+    ///vk::Semaphore signalSemaphores[] = { m_render_finished_smaphore};
+
+    // uint32_t nextIndex = GetNextImageIndex();
+    //std::cout << "Next Image index: " << image_index << std::endl;
+    //=== finally present the image ====
+    vk::PresentInfoKHR presentInfo;
+    presentInfo.waitSemaphoreCount  = 1;
+    presentInfo.pWaitSemaphores     = &wait_semaphore->get();
+
+    vk::SwapchainKHR swapChains[] = { m_swapchain };
+    presentInfo.swapchainCount    = 1;
+    presentInfo.pSwapchains       = swapChains;
+    presentInfo.pImageIndices     = &image_index;
+    presentInfo.pResults = nullptr;
+
+    m_present_queue.presentKHR( presentInfo );
 }
 
 
@@ -475,9 +607,12 @@ std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Im
 void vka::context::clean()
 {
     registry_t<vka::buffer>::clear();
+    registry_t<vka::semaphore>::clear();
     registry_t<vka::command_pool>::clear();
     registry_t<vka::renderpass>::clear();
     registry_t<vka::framebuffer>::clear();
+    registry_t<vka::shader>::clear();
+    registry_t<vka::pipeline>::clear();
 
     for(auto & image_view : m_image_views)
     {
@@ -489,6 +624,17 @@ void vka::context::clean()
     if( m_swapchain)
         m_device.destroySwapchainKHR(m_swapchain);
     m_images.clear();
+
+    //if( m_image_available_smaphore)
+    //    m_device.destroySemaphore( m_image_available_smaphore );
+    //
+    //if( m_render_finished_smaphore)
+    //    m_device.destroySemaphore( m_render_finished_smaphore );
+
+    if( m_render_fence )
+    {
+        m_device.destroyFence(m_render_fence);
+    }
 
     if( m_device)
     {
@@ -708,3 +854,4 @@ void vka::context::setup_debug_callback()
     }
     LOG << "Debug Callback created" << ENDL;
 }
+

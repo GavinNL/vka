@@ -7,6 +7,7 @@
 namespace vka
 {
 class context;
+class pipeline;
 
 class renderpass
 {
@@ -20,14 +21,14 @@ class renderpass
 
     context * m_parent_context = nullptr;
 
-    ~renderpass();
-    public:
-
     renderpass()
     {
         m_DepthRef.attachment =  std::numeric_limits< decltype(m_DepthRef.attachment) >::max();
         m_ColorRef.attachment =  std::numeric_limits< decltype(m_ColorRef.attachment) >::max();
     }
+    ~renderpass();
+    public:
+
 
 
     operator vk::RenderPass()
@@ -45,6 +46,7 @@ class renderpass
 
     friend class context;
     friend class deleter<renderpass>;
+    friend class pipeline;
 };
 
 }

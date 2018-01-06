@@ -88,10 +88,12 @@ uint32_t vka::buffer::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlag
 
 void * vka::buffer::map_memory()
 {
-
     if( m_memory_type & vk::MemoryPropertyFlagBits::eHostVisible )
     {
+        if(m_mapped) return m_mapped;
+
         void * data = m_parent_context->get_device().mapMemory( m_device_memory, 0, m_create_info.size, vk::MemoryMapFlags());
+
         m_mapped = data;
         return m_mapped;
     }

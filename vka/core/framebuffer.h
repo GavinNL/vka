@@ -18,12 +18,12 @@ class framebuffer
         vk::ImageView   m_image_view;
 
         context * m_parent_context;
-        framebuffer()
+
+
+        operator vk::Framebuffer()
         {
-
+            return m_framebuffer;
         }
-
-
 
         void create(vk::RenderPass render_pass,
                      vk::Extent2D   extents,
@@ -31,8 +31,12 @@ class framebuffer
                      vk::ImageView  depth_image=vk::ImageView() );
     private:
 
+        framebuffer()
+        {
+        }
         ~framebuffer();
 
+        friend class context;
         friend class deleter<framebuffer>;
 };
 

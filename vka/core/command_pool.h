@@ -13,6 +13,9 @@ class command_pool
 public:
     ~command_pool();
 
+    vk::CommandBuffer AllocateCommandBuffer(vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary);
+
+    void FreeCommandBuffer(vk::CommandBuffer cmd);
 private:
 
     vk::CommandPool m_command_pool;
