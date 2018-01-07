@@ -4,6 +4,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <vka/core/image.h>
 #include <vka/vka.h>
 
 
@@ -34,11 +35,6 @@ int main(int argc, char ** argv)
     auto R = C.new_renderpass("main_renderpass");
     R->attach_color(vk::Format::eB8G8R8A8Unorm);
     R->create(C);
-
-    auto B = C.new_buffer("main_buffer",
-                          1024,
-                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible,
-                          vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer);
 
 
     auto cp = C.new_command_pool("main_command_pool");
@@ -71,10 +67,10 @@ int main(int argc, char ** argv)
 
               // tell the pipeline that attribute 0 contains 3 floats
               // and the data starts at offset 0
-              ->set_vertex_attribute(0 ,  0,  vk::Format::eR32G32B32Sfloat,  sizeof(glm::vec3) )
+              ->set_vertex_attribute(0 ,  0,  vk::Format::eR32G32B32Sfloat,  2*sizeof(glm::vec3) )
               // tell the pipeline that attribute 1 contains 3 floats
               // and the data starts at offset 12
-              ->set_vertex_attribute(1 , 12,  vk::Format::eR32G32B32Sfloat,  sizeof(glm::vec3) )
+              ->set_vertex_attribute(1 , 12,  vk::Format::eR32G32B32Sfloat,  2*sizeof(glm::vec3) )
 
               // Don't cull the
               ->set_cull_mode(vk::CullModeFlagBits::eNone)

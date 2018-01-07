@@ -15,7 +15,7 @@ vka::pipeline::~pipeline()
     }
 }
 
-vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t index, uint32_t offset, vk::Format format , uint32_t size)
+vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t index, uint32_t offset, vk::Format format , uint32_t stride)
 {
     auto & ad = m_VertexAttributeDescription;
     //decltype(get().m_VertexAttributeDescription)::value_type AD;
@@ -29,7 +29,7 @@ vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t index, uint32_t offs
 
     ad.push_back(AD);
 
-    uint32_t s = size;
+  //  uint32_t s = size;
 
     LOG  << "Adding vertex attribute: "  <<
             "index: " << index  << ", " <<
@@ -38,8 +38,8 @@ vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t index, uint32_t offs
 
 
 
-    m_VertexBindDescription.binding    = 0;
-    m_VertexBindDescription.stride    += s;
+    m_VertexBindDescription.binding   = 0;
+    m_VertexBindDescription.stride    = stride;
     m_VertexBindDescription.inputRate = vk::VertexInputRate::eVertex;
 
     m_VertexInputInfo.vertexBindingDescriptionCount   = 1;
