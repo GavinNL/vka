@@ -114,6 +114,7 @@ int main(int argc, char ** argv)
     auto * ib = C.new_index_buffer( "ib", 1024 );
     auto * sb = C.new_staging_buffer( "sb", 1024 );
 
+
     if(1)
     {
 
@@ -133,24 +134,92 @@ int main(int argc, char ** argv)
         index[1] = 1;
         index[2] = 2;
 
-
         ////===============
         auto copy_cmd = cp->AllocateCommandBuffer();
         copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
-        copy_cmd.copyBuffer( sb->get(), vb->get(), vk::BufferCopy(0,0,6*sizeof(glm::vec3)) );
-        copy_cmd.copyBuffer( sb->get(), ib->get(), vk::BufferCopy(6*sizeof(glm::vec3),0,3*sizeof(uint16_t)) );
+        copy_cmd.copyBuffer( sb->get(), vb->get(), vk::BufferCopy{ 0,0,6*sizeof(glm::vec3)} );
+        copy_cmd.copyBuffer( sb->get(), ib->get(), vk::BufferCopy{ 6*sizeof(glm::vec3),0,3*sizeof(uint16_t) } );
 
         copy_cmd.end();
         C.submit_cmd_buffer(copy_cmd);
         ////===============
         //
-     //   cp->FreeCommandBuffer(copy_cmd);
+        cp->FreeCommandBuffer(copy_cmd);
 
         vb->unmap_memory();
         ib->unmap_memory();
     }
 #endif
+
+
+    // C.new_texture_2d("test_texture", w,h,d, vk::Format::eR8G8B8A8Unorm);
+    // C.new_texture_2d("test_texture", w,h,d, vk::Format::eR8G8B8A8Unorm);
+
+    if( 1 )
+    {
+    auto * staging_texture = C.new_texture("staging_texture");
+    staging_texture->set_size(1024,1024,1);
+    staging_texture->set_tiling(vk::ImageTiling::eLinear);
+    staging_texture->set_usage(  vk::ImageUsageFlagBits::eSampled  | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc );
+    staging_texture->set_memory_properties( vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    staging_texture->set_format(vk::Format::eR8G8B8A8Unorm);
+    staging_texture->set_view_type(vk::ImageViewType::e2D);
+    staging_texture->create();
+    staging_texture->create_image_view(vk::ImageAspectFlagBits::eColor);
+
+
+    auto * tex = C.new_texture("test_texture");
+    tex->set_size(1024,1024,1);
+    tex->set_tiling(vk::ImageTiling::eOptimal);
+    tex->set_usage(  vk::ImageUsageFlagBits::eSampled  | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc );
+    tex->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal);
+    tex->set_format(vk::Format::eR8G8B8A8Unorm);
+    tex->set_view_type(vk::ImageViewType::e2D);
+    tex->create();
+    tex->create_image_view(vk::ImageAspectFlagBits::eColor);
+
+    // Convert the staging texture into a TransferSrcOptimal so that it can be
+    // transferred to the device texture
+        auto cb1 = cp->AllocateCommandBuffer();
+        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+
+        staging_texture->convert_layer(cb1, vk::ImageLayout::eTransferSrcOptimal,0,0);
+        tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
+
+        // need to implement this:
+        //  Records the following into the command buffer:
+        //    - Convert staging-texture into eTransferSrcOptimal
+        //    - Convert tex into eTransferDstOptimal
+        //    - Converts
+      //  tex->copy_image( cb1, staging_texture, vk::Offset3D(0,0), vk::Extent3D(1024,1024,1) );
+      //  tex->copy_buffer(cb1, staging_buffer,)
+
+        //======================================================================
+        vk::ImageCopy IC;
+        vk::ImageSubresourceLayers subResource;
+        subResource.aspectMask     = vk::ImageAspectFlagBits::eColor;//  VK_IMAGE_ASPECT_COLOR_BIT;
+        subResource.baseArrayLayer = 0;
+        subResource.mipLevel       = 0;
+        subResource.layerCount     = 1;
+        IC.setDstOffset( vk::Offset3D(0,0,0))
+          .setSrcOffset(vk::Offset3D(0,0,0))
+          .setExtent(vk::Extent3D(1024,1024,1))
+          .setSrcSubresource(subResource)
+          .setDstSubresource(subResource);
+
+       // cb1.copyImage( staging_texture->get_image(),
+       //                vk::ImageLayout::eTransferSrcOptimal ,
+       //                tex->get_image(),
+       //                vk::ImageLayout::eTransferDstOptimal,
+       //                IC);
+
+        cb1.end();
+        C.submit_cmd_buffer(cb1);
+        cp->FreeCommandBuffer(cb1);
+    }
+    //tex->convert( vk::ImageLayout::eTransferSrcOptimal);
+
 
     auto cb = cp->AllocateCommandBuffer();
 
