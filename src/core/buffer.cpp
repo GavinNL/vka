@@ -35,7 +35,7 @@ bool vka::buffer::create()
     if(!m_buffer)
         throw std::runtime_error("Failed to create buffer");
 
-    m_memory.allocate( this );
+    m_memory.allocate( device.getBufferMemoryRequirements(m_buffer) );
     m_memory.bind(this);
 
     return true;

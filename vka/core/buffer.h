@@ -61,7 +61,7 @@ public:
     array_view<T> map(size_t byte_offset=0, size_t alignment=sizeof(T))
     {
         unsigned char * v = reinterpret_cast<unsigned char*>(map_memory());
-        return array_view<T>(size(), v+byte_offset, alignment );
+        return array_view<T>(size()/sizeof(T), v+byte_offset, alignment );
     }
 
     void * map_memory();
@@ -71,16 +71,8 @@ protected:
 
     vk::Buffer              m_buffer;
     vk::BufferCreateInfo    m_create_info;
-    //vk::MemoryPropertyFlags m_memory_type;
-    //vk::DeviceMemory        m_device_memory;
 
     vka::buffer_memory      m_memory;
-
-    //void * m_mapped = nullptr;
-    //uint32_t findMemoryType(uint32_t typeFilter,
-    //                        vk::MemoryPropertyFlags properties,
-    //                        vk::Device device,
-    //                        vk::PhysicalDevice physicaldevice);
 
     friend class context;
     friend class deleter<buffer>;

@@ -41,7 +41,7 @@ class device_memory : public context_child
         return m_info.allocationSize;
     }
 
-    bool allocate(vka::buffer * b);
+
     bool allocate(vk::MemoryRequirements requirements);
     void free();
 

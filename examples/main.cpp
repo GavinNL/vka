@@ -120,6 +120,8 @@ int main(int argc, char ** argv)
 
 
         auto vertex =  sb->map<glm::vec3>();
+
+        LOG << "Vertex size: " << vertex.size() << ENDL;
         vertex[0] = glm::vec3(0, -1.0, 0.0);
         vertex[1] = glm::vec3(1, 0   ,0);
 
@@ -134,12 +136,13 @@ int main(int argc, char ** argv)
         index[1] = 1;
         index[2] = 2;
 
+        LOG << "Index size: " << index.size() << ENDL;
         ////===============
         auto copy_cmd = cp->AllocateCommandBuffer();
         copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
-        copy_cmd.copyBuffer( sb->get(), vb->get(), vk::BufferCopy{ 0,0,6*sizeof(glm::vec3)} );
-        copy_cmd.copyBuffer( sb->get(), ib->get(), vk::BufferCopy{ 6*sizeof(glm::vec3),0,3*sizeof(uint16_t) } );
+        copy_cmd.copyBuffer( *sb , *vb, vk::BufferCopy{ 0,0,6*sizeof(glm::vec3)} );
+        copy_cmd.copyBuffer( *sb , *ib, vk::BufferCopy{ 6*sizeof(glm::vec3),0,3*sizeof(uint16_t) } );
 
         copy_cmd.end();
         C.submit_cmd_buffer(copy_cmd);

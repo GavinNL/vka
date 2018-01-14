@@ -6,12 +6,6 @@ vka::device_memory::~device_memory()
     free();
 }
 
-bool vka::device_memory::allocate(vka::buffer * b)
-{
-    auto req = get_device().getBufferMemoryRequirements(b->get());
-    return allocate(req);
-
-}
 
 void vka::device_memory::free()
 {
