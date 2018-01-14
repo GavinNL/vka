@@ -6,4 +6,6 @@
 #include "core/shader.h"
 #include "core/pipeline.h"
 #include "core/texture.h"
+#include "core/descriptor_pool.h"
+#include "core/descriptor_set.h"
 

@@ -7,10 +7,13 @@
 #include <vka/core/pipeline.h>
 #include <vka/core/semaphore.h>
 #include <vka/core/texture.h>
+#include <vka/core/descriptor_pool.h>
+#include <vka/core/descriptor_set.h>
 #include <vulkan/vulkan.hpp>
 #include <vka/core/context_child.h>
 #include <GLFW/glfw3.h>
 #include <set>
+
 
 vk::Device          vka::context_child::get_device()
 {
@@ -472,6 +475,16 @@ vka::renderpass* vka::context::new_renderpass(const std::string & name)
     return _new<vka::renderpass>(name);
 }
 
+vka::descriptor_pool* vka::context::new_descriptor_pool(const std::string & name)
+{
+    return _new<vka::descriptor_pool>(name);
+}
+
+vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::string &name)
+{
+    return _new<vka::descriptor_set_layout>(name);
+}
+
 vka::command_pool* vka::context::new_command_pool(const std::string & name)
 {
     //vka::command_pool* new_command_pool(const std::string & name);
@@ -574,14 +587,9 @@ std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Im
 
 void vka::context::clean()
 {
-    registry_t<vka::buffer>::clear();
-    registry_t<vka::semaphore>::clear();
-    registry_t<vka::command_pool>::clear();
-    registry_t<vka::renderpass>::clear();
-    registry_t<vka::framebuffer>::clear();
-    registry_t<vka::shader>::clear();
-    registry_t<vka::pipeline>::clear();
-    registry_t<vka::texture>::clear();
+#define X_MACRO(A) registry_t<A>::clear();
+X_LIST
+#undef X_MACRO
 
     for(auto & image_view : m_image_views)
     {

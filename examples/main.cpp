@@ -49,6 +49,18 @@ int main(int argc, char ** argv)
     }
 
 
+    //====================================
+    auto descriptor_pool = C.new_descriptor_pool("main_desc_pool");
+    descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 1);
+    descriptor_pool->create();
+    //====================================
+
+    auto layout = C.new_descriptor_set_layout("my_layout");
+    layout->add_texture_layout_binding(0, vk::ShaderStageFlagBits::eFragment);
+    layout->create();
+
+    //====================================
+
 
     auto * vertex_shader = C.new_shader_module("vs");
     vertex_shader->load_from_file("../resources/shaders/hello_triangle/hello_triangle_v.spv");

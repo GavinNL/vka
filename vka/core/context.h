@@ -4,23 +4,13 @@
 #include <vulkan/vulkan.hpp>
 #include <vka/core/log.h>
 #include "deleter.h"
+#include "classes.h"
 #include <map>
 
 struct GLFWwindow;
 
 namespace vka
 {
-
-
-
-class renderpass;
-class command_pool;
-class buffer;
-class framebuffer;
-class shader;
-class pipeline;
-class semaphore;
-class texture;
 
 template<typename T>
 class registry_t
@@ -82,16 +72,15 @@ struct queue_family_index_t
     }
 };
 
+struct blank{};
 
-class context : public registry_t<vka::renderpass>,
-                public registry_t<vka::command_pool>,
-                public registry_t<vka::buffer>,
-                public registry_t<vka::framebuffer>,
-                public registry_t<vka::shader>,
-                public registry_t<vka::semaphore>,
-                public registry_t<vka::texture>,
-                public registry_t<vka::pipeline>
+
+class context :
+                #define X_MACRO(A) public registry_t<A>,
+                X_LIST
+                public blank
 {
+#undef X_MACRO
 private:
     vk::Instance       m_instance;
 
@@ -229,6 +218,11 @@ public:
     vka::framebuffer* new_framebuffer(const std::string & name);
 
     vka::command_pool* new_command_pool(const std::string & name);
+
+    vka::descriptor_pool* new_descriptor_pool(const std::string & name);
+
+    // this one should be private
+    vka::descriptor_set_layout* new_descriptor_set_layout(const std::string & name);
 
 
     uint32_t get_next_image_index( vka::semaphore * signal_semaphore);
