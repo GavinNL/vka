@@ -5,7 +5,7 @@
 #include "context_child.h"
 #include "array_view.h"
 #include "deleter.h"
-
+#include "device_memory.h"
 
 namespace vka
 {
@@ -15,7 +15,8 @@ class context;
 class buffer : public context_child
 {
 private:
-    buffer( context* parent) : context_child(parent){}
+    buffer( context* parent) : context_child(parent)
+                              ,m_memory(parent){}
     ~buffer();
 public:
 
@@ -34,7 +35,7 @@ public:
 
     buffer* set_memory_properties(vk::MemoryPropertyFlags flags)
     {
-        m_memory_type = flags;
+        m_memory.set_memory_properties(flags);
         return this;
     }
 
@@ -70,15 +71,16 @@ protected:
 
     vk::Buffer              m_buffer;
     vk::BufferCreateInfo    m_create_info;
-    vk::MemoryPropertyFlags m_memory_type;
-    vk::DeviceMemory        m_device_memory;
+    //vk::MemoryPropertyFlags m_memory_type;
+    //vk::DeviceMemory        m_device_memory;
 
+    vka::buffer_memory      m_memory;
 
-    void * m_mapped = nullptr;
-    uint32_t findMemoryType(uint32_t typeFilter,
-                            vk::MemoryPropertyFlags properties,
-                            vk::Device device,
-                            vk::PhysicalDevice physicaldevice);
+    //void * m_mapped = nullptr;
+    //uint32_t findMemoryType(uint32_t typeFilter,
+    //                        vk::MemoryPropertyFlags properties,
+    //                        vk::Device device,
+    //                        vk::PhysicalDevice physicaldevice);
 
     friend class context;
     friend class deleter<buffer>;

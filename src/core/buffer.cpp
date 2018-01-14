@@ -8,17 +8,6 @@ vka::buffer::~buffer()
 {
     //if( get_Par )
     {
-        if(m_mapped)
-        {
-            unmap_memory();
-        }
-
-        if(m_device_memory)
-        {
-            LOG << "Memory freed"             << ENDL;
-            get_device().freeMemory(m_device_memory);
-        }
-
         if(m_buffer)
         {
             get_device().destroyBuffer(m_buffer);
@@ -30,7 +19,6 @@ vka::buffer::~buffer()
 bool vka::buffer::create()
 {
     auto device = get_device();
-    auto physical_device = get_physical_device();
 
     if( m_create_info.size == 0)
     {
@@ -47,64 +35,21 @@ bool vka::buffer::create()
     if(!m_buffer)
         throw std::runtime_error("Failed to create buffer");
 
-    //==================== Allocate Memory =======================
-    LOG << "Allocating buffer memory" << ENDL;
-    vk::MemoryAllocateInfo allocInfo;
+    m_memory.allocate( this );
+    m_memory.bind(this);
 
-    auto memRequirements      = device.getBufferMemoryRequirements( m_buffer);
-
-    allocInfo.allocationSize  = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType( memRequirements.memoryTypeBits, m_memory_type ,device, physical_device);
-
-    m_device_memory =  device.allocateMemory( allocInfo );
-
-    if( !m_device_memory )
-    {
-        throw std::runtime_error("Failed to allocate memory for buffer");
-    }
-
-    m_create_info.size = memRequirements.size;
-
-    device.bindBufferMemory(m_buffer, m_device_memory, 0);
-    LOG << "Buffer Memory Allocated: " << m_create_info.size << " bytes" << ENDL;
     return true;
 }
 
 
-uint32_t vka::buffer::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties, vk::Device device, vk::PhysicalDevice physicaldevice)
-{
-   // auto memRequirements      = device.getBufferMemoryRequirements( m_buffer );
-    auto memProperites        = physicaldevice.getMemoryProperties();
-    for (uint32_t i = 0; i < memProperites.memoryTypeCount ; i++)
-    {
-        // vk::MemoryPropertyFlagBits properties = static_cast<vk::MemoryPropertyFlagBits>(Properties);
-        if ((typeFilter & (1 << i)) && ( static_cast<vk::MemoryPropertyFlags>(memProperites.memoryTypes[i].propertyFlags) & properties) == properties) {
-            return i;
-        }
-    }
-    throw std::runtime_error("failed to find suitable memory type!");
-}
-
 
 void * vka::buffer::map_memory()
 {
-    if( m_memory_type & vk::MemoryPropertyFlagBits::eHostVisible )
-    {
-        if(m_mapped) return m_mapped;
+    return m_memory.map();
 
-        void * data = get_device().mapMemory( m_device_memory, 0, m_create_info.size, vk::MemoryMapFlags());
-
-        m_mapped = data;
-        return m_mapped;
-    }
-    return nullptr;
 }
 
 void   vka::buffer::unmap_memory()
 {
-    if(m_mapped)
-    {
-        get_device().unmapMemory(m_device_memory);
-        m_mapped = nullptr;
-    }
+    m_memory.unmap();
 }
