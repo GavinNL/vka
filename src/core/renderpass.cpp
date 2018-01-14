@@ -4,10 +4,13 @@
 
 vka::renderpass::~renderpass()
 {
-    if( m_parent_context )
+  //  if( m_parent_context )
     {
-        m_parent_context->get_device().destroyRenderPass( m_RenderPass );
-        LOG << "Render pass destroyed" << ENDL;
+        if( m_RenderPass)
+        {
+            get_device().destroyRenderPass( m_RenderPass );
+            LOG << "Render pass destroyed" << ENDL;
+        }
     }
 }
 void vka::renderpass::attach_color(vk::Format f)

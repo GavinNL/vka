@@ -7,11 +7,11 @@
 vka::pipeline::~pipeline()
 {
     if(m_PipelineLayout)
-        m_parent_context->get_device().destroyPipelineLayout( m_PipelineLayout);
+        get_device().destroyPipelineLayout( m_PipelineLayout);
 
     if( m_pipeline )
     {
-        m_parent_context->get_device().destroyPipeline( m_pipeline );
+        get_device().destroyPipeline( m_pipeline );
     }
 }
 
@@ -61,7 +61,7 @@ vka::pipeline* vka::pipeline::set_render_pass( vka::renderpass * p)
 
 void vka::pipeline::create()
 {
-    auto device = m_parent_context->get_device(); //Device::GetGlobal().m_Device;
+    auto device = get_device(); //Device::GetGlobal().m_Device;
 
 //    if( !I.m_RenderPass )
 //    {

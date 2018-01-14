@@ -6,7 +6,7 @@
 
 vka::buffer::~buffer()
 {
-    if( m_parent_context )
+    //if( get_Par )
     {
         if(m_mapped)
         {
@@ -16,12 +16,12 @@ vka::buffer::~buffer()
         if(m_device_memory)
         {
             LOG << "Memory freed"             << ENDL;
-            m_parent_context->get_device().freeMemory(m_device_memory);
+            get_device().freeMemory(m_device_memory);
         }
 
         if(m_buffer)
         {
-            m_parent_context->get_device().destroyBuffer(m_buffer);
+            get_device().destroyBuffer(m_buffer);
         }
         LOG << "Buffer destroyed " << ENDL;
     }
@@ -29,8 +29,8 @@ vka::buffer::~buffer()
 
 bool vka::buffer::create()
 {
-    auto device = m_parent_context->get_device();
-    auto physical_device = m_parent_context->get_physical_device();
+    auto device = get_device();
+    auto physical_device = get_physical_device();
 
     if( m_create_info.size == 0)
     {
@@ -92,7 +92,7 @@ void * vka::buffer::map_memory()
     {
         if(m_mapped) return m_mapped;
 
-        void * data = m_parent_context->get_device().mapMemory( m_device_memory, 0, m_create_info.size, vk::MemoryMapFlags());
+        void * data = get_device().mapMemory( m_device_memory, 0, m_create_info.size, vk::MemoryMapFlags());
 
         m_mapped = data;
         return m_mapped;
@@ -104,7 +104,7 @@ void   vka::buffer::unmap_memory()
 {
     if(m_mapped)
     {
-        m_parent_context->get_device().unmapMemory(m_device_memory);
+        get_device().unmapMemory(m_device_memory);
         m_mapped = nullptr;
     }
 }

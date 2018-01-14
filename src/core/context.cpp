@@ -6,9 +6,25 @@
 #include <vka/core/shader.h>
 #include <vka/core/pipeline.h>
 #include <vka/core/semaphore.h>
+#include <vka/core/texture.h>
 #include <vulkan/vulkan.hpp>
+#include <vka/core/context_child.h>
 #include <GLFW/glfw3.h>
 #include <set>
+
+vk::Device          vka::context_child::get_device()
+{
+    return m_parent->get_device();
+}
+
+vk::PhysicalDevice  vka::context_child::get_physical_device()
+{
+    return m_parent->get_physical_device();
+}
+vka::context*            vka::context_child::get_parent_context()
+{
+    return m_parent;
+}
 
 void vka::context::init()
 {
@@ -358,17 +374,7 @@ void vka::context::create_swap_chain(vk::Extent2D extents)
 
 vka::framebuffer* vka::context::new_framebuffer(const std::string & name)
 {
-    if( registry_t<framebuffer>::get_object(name) == nullptr)
-    {
-        std::shared_ptr<vka::framebuffer> R(new vka::framebuffer, vka::deleter<vka::framebuffer>() );
-
-        R->m_parent_context = this;
-        registry_t<framebuffer>::insert_object(name, R);
-
-        return R.get();
-    }
-
-    return nullptr;
+    return _new<vka::framebuffer>(name);
 }
 
 
@@ -377,6 +383,7 @@ vka::buffer*   vka::context::new_buffer(const std::string & name,
                           vk::MemoryPropertyFlags memory_properties,
                           vk::BufferUsageFlags usage)
 {
+
     auto * b = new_buffer(name);
     if( b )
     {
@@ -391,67 +398,38 @@ vka::buffer*   vka::context::new_buffer(const std::string & name,
 
 vka::buffer* vka::context::new_buffer(const std::string & name)
 {
-    if( registry_t<buffer>::get_object(name) == nullptr)
-    {
-        std::shared_ptr<vka::buffer> R(new vka::buffer, vka::deleter<vka::buffer>() );
-
-        R->m_parent_context = this;
-        registry_t<buffer>::insert_object(name, R);
-
-        return R.get();
-    }
-    throw std::runtime_error("Object with name: " + name + " already exists");
-    return nullptr;
+        return _new<vka::buffer>(name);
 }
 
 
 vka::shader* vka::context::new_shader_module(const std::string &name)
 {
-    if( registry_t<shader>::get_object(name) == nullptr)
-    {
-        std::shared_ptr<vka::shader> R( new vka::shader, vka::deleter<vka::shader>() );
-        R->m_parent_context = this;
-        registry_t<shader>::insert_object(name, R);
-
-        return R.get();
-    }
-
-    return nullptr;
+    return _new<vka::shader>(name);
 }
 
 
 vka::pipeline* vka::context::new_pipeline(const std::string &name)
 {
-    if( registry_t<pipeline>::get_object(name) == nullptr)
+    auto * R =  _new<vka::pipeline>(name);
+    if( R )
     {
-        std::shared_ptr<vka::pipeline> R( new vka::pipeline, vka::deleter<vka::pipeline>() );
-        R->m_parent_context = this;
-
-        registry_t<pipeline>::insert_object(name, R);
-
         R->set_scissor( vk::Rect2D({0,0}, m_extent) );
         R->set_viewport( vk::Viewport(0,0, m_extent.width,m_extent.height,0,1));
-
-        return R.get();
     }
 
-    return nullptr;
+    return R;
 }
 
 vka::semaphore *vka::context::new_semaphore(const std::string &name)
 {
-    if( registry_t<semaphore>::get_object(name) == nullptr)
-    {
-        std::shared_ptr<vka::semaphore> R( new vka::semaphore(this), vka::deleter<vka::semaphore>() );
-        //R->m_parent_context = this;
-
-        registry_t<semaphore>::insert_object(name, R);
-
-        return R.get();
-    }
-
-    return nullptr;
+    return _new<vka::semaphore>(name);
 }
+
+vka::texture *vka::context::new_texture(const std::string &name)
+{
+    return _new<vka::texture>(name);
+}
+
 
 
 void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
@@ -491,16 +469,7 @@ void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
 
 vka::renderpass* vka::context::new_renderpass(const std::string & name)
 {
-    if( registry_t<renderpass>::get_object(name) == nullptr)
-    {
-        std::shared_ptr<vka::renderpass> R( new vka::renderpass, vka::deleter<vka::renderpass>() );
-        R->m_parent_context = this;
-        registry_t<renderpass>::insert_object(name, R);
-
-        return R.get();
-    }
-
-    return nullptr;
+    return _new<vka::renderpass>(name);
 }
 
 vka::command_pool* vka::context::new_command_pool(const std::string & name)
@@ -508,8 +477,7 @@ vka::command_pool* vka::context::new_command_pool(const std::string & name)
     //vka::command_pool* new_command_pool(const std::string & name);
     if( registry_t<command_pool>::get_object(name) == nullptr)
     {
-        std::shared_ptr<vka::command_pool> R( new vka::command_pool, vka::deleter<vka::command_pool>() );
-        R->m_parent_context = this;
+        std::shared_ptr<vka::command_pool> R( new vka::command_pool(this), vka::deleter<vka::command_pool>() );
 
         //====
         vk::CommandPoolCreateInfo poolInfo;
@@ -613,6 +581,7 @@ void vka::context::clean()
     registry_t<vka::framebuffer>::clear();
     registry_t<vka::shader>::clear();
     registry_t<vka::pipeline>::clear();
+    registry_t<vka::texture>::clear();
 
     for(auto & image_view : m_image_views)
     {
@@ -854,4 +823,5 @@ void vka::context::setup_debug_callback()
     }
     LOG << "Debug Callback created" << ENDL;
 }
+
 

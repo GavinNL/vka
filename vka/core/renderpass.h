@@ -3,13 +3,14 @@
 
 #include <vulkan/vulkan.hpp>
 #include "deleter.h"
+#include "context_child.h"
 
 namespace vka
 {
 class context;
 class pipeline;
 
-class renderpass
+class renderpass : public context_child
 {
     private:
     vk::RenderPass                     m_RenderPass;
@@ -19,9 +20,8 @@ class renderpass
     vk::AttachmentReference            m_DepthRef;
     std::vector<vk::SubpassDependency> m_SubpassDependency;
 
-    context * m_parent_context = nullptr;
 
-    renderpass()
+    renderpass(context * parent) : context_child(parent)
     {
         m_DepthRef.attachment =  std::numeric_limits< decltype(m_DepthRef.attachment) >::max();
         m_ColorRef.attachment =  std::numeric_limits< decltype(m_ColorRef.attachment) >::max();

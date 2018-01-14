@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan.hpp>
 #include <vka/core/log.h>
+#include "deleter.h"
 #include <map>
 
 struct GLFWwindow;
@@ -370,6 +371,19 @@ public:
 
 private:
 
+    template<typename T>
+    T* _new(const std::string & name)
+    {
+        if( registry_t<T>::get_object(name) == nullptr)
+        {
+            std::shared_ptr<T> R( new T(this), vka::deleter<T>() );
+            registry_t<T>::insert_object(name, R);
+
+            return R.get();
+        }
+
+        return nullptr;
+    }
 
     std::map< std::string, std::shared_ptr<vka::renderpass> > m_renderpasses;
 

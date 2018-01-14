@@ -6,7 +6,7 @@ vka::shader::~shader()
 {
     if(m_shader)
     {
-        m_parent_context->get_device().destroyShaderModule(m_shader);
+        get_device().destroyShaderModule(m_shader);
     }
 }
 
@@ -60,7 +60,7 @@ void vka::shader::load_from_memory(const std::string  &SPIRV_code)
     memcpy( codeAligned.data(), SPIRV_code.data(), SPIRV_code.size() );
     createInfo.pCode = codeAligned.data();
 
-    m_shader = m_parent_context->get_device().createShaderModule( createInfo );
+    m_shader = get_device().createShaderModule( createInfo );
 
     if( !m_shader)
     {

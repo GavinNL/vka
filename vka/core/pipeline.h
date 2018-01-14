@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan.hpp>
 #include "deleter.h"
+#include "context_child.h"
 
 namespace vka
 {
@@ -11,11 +12,9 @@ class context;
 class shader;
 class renderpass;
 
-class pipeline
+class pipeline : public context_child
 {
 private:
-    context * m_parent_context;
-
     vk::PipelineLayout      m_PipelineLayout;
 
     vk::Pipeline            m_pipeline;
@@ -55,7 +54,7 @@ private:
     //vka::DescriptorSetLayout>                         m_DSetLayouts;
 
 
-    pipeline()
+    pipeline(context * parent) : context_child(parent)
     {
      //   #warning We need to change this
         m_viewport = vk::Viewport{0.0f,0.0f, 640.0f, 480.0f, 0.0f, 1.0f};

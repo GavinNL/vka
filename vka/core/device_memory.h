@@ -20,7 +20,6 @@ class device_memory
 
 
     private:
-        context * m_parent_context;
 
         vk::DeviceMemory m_memory;
     friend class context;

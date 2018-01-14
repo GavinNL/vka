@@ -2,6 +2,7 @@
 #define VKA_BUFFER_H
 
 #include <vulkan/vulkan.hpp>
+#include "context_child.h"
 #include "array_view.h"
 #include "deleter.h"
 
@@ -11,10 +12,10 @@ namespace vka
 
 class context;
 
-class buffer
+class buffer : public context_child
 {
 private:
-    buffer(){};
+    buffer( context* parent) : context_child(parent){}
     ~buffer();
 public:
 
@@ -66,8 +67,6 @@ public:
     void   unmap_memory();
 
 protected:
-    context * m_parent_context;
-
 
     vk::Buffer              m_buffer;
     vk::BufferCreateInfo    m_create_info;

@@ -6,7 +6,7 @@ vka::framebuffer::~framebuffer()
     if(m_framebuffer)
     {
         LOG << "Framebuffer destroyed" << ENDL;
-        m_parent_context->get_device().destroyFramebuffer(m_framebuffer);
+        get_device().destroyFramebuffer(m_framebuffer);
     }
 }
 
@@ -31,7 +31,7 @@ void vka::framebuffer::create( vk::RenderPass render_pass,
     C.height          = extents.height;
     C.layers          = 1;
 
-    m_framebuffer = m_parent_context->get_device().createFramebuffer(C);
+    m_framebuffer = get_device().createFramebuffer(C);
     if(!m_framebuffer)
     {
         ERROR << "Error creating frame buffer" << ENDL;

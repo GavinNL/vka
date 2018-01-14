@@ -4,20 +4,20 @@
 #include <vulkan/vulkan.hpp>
 #include "log.h"
 #include "deleter.h"
+#include "context_child.h"
 
 namespace vka
 {
 
 class context;
 
-class framebuffer
+class framebuffer : public context_child
 {
     public:
         vk::Framebuffer m_framebuffer;
         vk::Image       m_image;
         vk::ImageView   m_image_view;
 
-        context * m_parent_context;
 
 
         operator vk::Framebuffer()
@@ -31,9 +31,8 @@ class framebuffer
                      vk::ImageView  depth_image=vk::ImageView() );
     private:
 
-        framebuffer()
-        {
-        }
+        CONTEXT_CHILD_DEFAULT_CONSTRUCTOR(framebuffer)
+
         ~framebuffer();
 
         friend class context;

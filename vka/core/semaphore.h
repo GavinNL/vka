@@ -3,13 +3,14 @@
 
 #include <vulkan/vulkan.hpp>
 #include "deleter.h"
+#include "context_child.h"
 
 namespace vka
 {
 
 class context;
 
-class semaphore
+class semaphore : public context_child
 {
     public:
     operator vk::Semaphore()
@@ -27,7 +28,7 @@ class semaphore
         ~semaphore();
 
         vk::Semaphore m_semaphore;
-        context *m_parent_context=nullptr;
+
         friend class context;
         friend class deleter<semaphore>;
 };

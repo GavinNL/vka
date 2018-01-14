@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.hpp>
 #include "log.h"
 #include "deleter.h"
+#include "context_child.h"
 
 namespace vka
 {
@@ -11,16 +12,15 @@ namespace vka
 class context;
 class pipeline;
 
-class shader
+class shader : public context_child
 {
     private:
 
     vk::ShaderModule m_shader;
 
-    shader(){}
+    CONTEXT_CHILD_DEFAULT_CONSTRUCTOR(shader)
     ~shader();
 
-    context * m_parent_context;
 
     public:
 
