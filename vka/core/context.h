@@ -72,6 +72,24 @@ struct queue_family_index_t
     }
 };
 
+
+struct DescriptorSetLayoutBindingCmp
+{
+bool operator()(const std::vector<vk::DescriptorSetLayoutBinding> & lhs, const std::vector<vk::DescriptorSetLayoutBinding> & rhs)
+{
+    if( lhs.size() < rhs.size() ) return true;
+    if( lhs.size() > rhs.size() ) return false;
+
+    if( memcmp( lhs.data(), rhs.data(), sizeof(vk::DescriptorSetLayoutBinding)* rhs.size() ) < 0)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+};
+
 struct blank{};
 
 
@@ -121,6 +139,11 @@ private:
 
 
     vk::SurfaceKHR     m_surface;
+
+
+    std::map< std::vector<vk::DescriptorSetLayoutBinding>,
+              vka::descriptor_set_layout*,
+              DescriptorSetLayoutBindingCmp> m_DescriptorSetLayouts;
 
 public:
     vk::Device get_device() { return m_device; }
@@ -343,6 +366,18 @@ public:
     vka::semaphore* new_semaphore(const std::string & name);
 
     vka::texture* new_texture(const std::string &name);
+
+    //============================================================
+    /**
+     * @brief new_descriptor_set_layout
+     * @param bindings
+     * @return
+     *
+     * Creates a new descriptor set layout based on the binding information given.
+     * or returns one that already exists which matches the binding
+     */
+    vka::descriptor_set_layout* new_descriptor_set_layout( std::vector< vk::DescriptorSetLayoutBinding > const & bindings);
+
 
     //============================================================
 

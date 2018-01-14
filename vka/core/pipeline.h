@@ -4,13 +4,13 @@
 #include <vulkan/vulkan.hpp>
 #include "deleter.h"
 #include "context_child.h"
+#include "classes.h"
+#include <map>
 
 namespace vka
 {
 
-class context;
-class shader;
-class renderpass;
+
 
 class pipeline : public context_child
 {
@@ -41,8 +41,9 @@ private:
 
     std::vector<vk::PushConstantRange>                m_PushConstantRange;
 
-    std::vector<vk::DescriptorSetLayoutBinding>      m_DescriptorSetLayoutBindings;
-    std::vector<vk::DescriptorSetLayout>             m_DescriptorSetLayouts;
+    std::map<uint32_t , std::vector<vk::DescriptorSetLayoutBinding> >
+                                                     m_DescriptorSetLayoutBindings;
+    //std::vector<vka::descriptor_set_layout*>         m_DescriptorSetLayouts;
 
     vka::shader * m_VertexShader   = nullptr;
     std::string   m_VertexShaderEntry;
@@ -197,10 +198,17 @@ public:
 
     pipeline* set_vertex_attribute(uint32_t index, uint32_t offset, vk::Format format , uint32_t size);
 
+
+
+    pipeline* add_texture_layout_binding(        uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
+    pipeline* add_uniform_layout_binding(        uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
+    pipeline* add_dynamic_uniform_layout_binding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
+
     void create();
 
     friend class context;
     friend class deleter<pipeline>;
+
 };
 
 }

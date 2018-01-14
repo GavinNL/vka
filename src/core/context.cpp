@@ -433,6 +433,27 @@ vka::texture *vka::context::new_texture(const std::string &name)
     return _new<vka::texture>(name);
 }
 
+vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings)
+{
+    auto it = m_DescriptorSetLayouts.find( bindings );
+
+
+    if( it == m_DescriptorSetLayouts.end() )
+    {
+        static int i=0;
+        std::string name = "descriptor_set_" + std::to_string(i++);
+        auto * ds = new_descriptor_set_layout(name);
+
+        ds->set_bindings( bindings );
+        ds->create();
+        m_DescriptorSetLayouts[bindings] = ds;
+        LOG << "New descriptor set created" << ENDL;
+        return ds;
+    }
+    LOG << "New descriptor already created, returning previously created set" << ENDL;
+    return it->second;
+}
+
 
 
 void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,

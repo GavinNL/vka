@@ -87,6 +87,7 @@ int main(int argc, char ** argv)
               // Don't cull the
               ->set_cull_mode(vk::CullModeFlagBits::eNone)
               ->set_front_face(vk::FrontFace::eCounterClockwise)
+              ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
               //
               ->set_render_pass( R )
               ->create();

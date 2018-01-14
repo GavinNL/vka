@@ -3,6 +3,7 @@
 #include <vka/core/context.h>
 #include <vka/core/shader.h>
 #include <vka/core/renderpass.h>
+#include <vka/core/descriptor_set.h>
 
 vka::pipeline::~pipeline()
 {
@@ -47,6 +48,50 @@ vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t index, uint32_t offs
 
     m_VertexInputInfo.vertexAttributeDescriptionCount = m_VertexAttributeDescription.size();
     m_VertexInputInfo.pVertexAttributeDescriptions    = m_VertexAttributeDescription.data();
+
+    return this;
+}
+
+
+vka::pipeline *vka::pipeline::add_texture_layout_binding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages)
+{
+    vk::DescriptorSetLayoutBinding samplerLayoutBinding;
+    samplerLayoutBinding.binding            = binding;
+    samplerLayoutBinding.descriptorCount    = 1;
+    samplerLayoutBinding.descriptorType     = vk::DescriptorType::eCombinedImageSampler;
+    samplerLayoutBinding.pImmutableSamplers = nullptr;
+    samplerLayoutBinding.stageFlags         = stages;// VK_SHADER_STAGE_VERTEX_BIT;
+
+    m_DescriptorSetLayoutBindings[set].push_back(samplerLayoutBinding);
+
+    return this;
+}
+
+vka::pipeline *vka::pipeline::add_uniform_layout_binding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages)
+{
+    vk::DescriptorSetLayoutBinding uboLayoutBinding;
+    uboLayoutBinding.binding            = binding;
+    uboLayoutBinding.descriptorCount    = 1;
+    uboLayoutBinding.descriptorType     = vk::DescriptorType::eUniformBuffer;
+    uboLayoutBinding.pImmutableSamplers = nullptr;
+    uboLayoutBinding.stageFlags         = stages;// VK_SHADER_STAGE_VERTEX_BIT;
+
+    m_DescriptorSetLayoutBindings[set].push_back(uboLayoutBinding);
+
+    return this;
+}
+
+vka::pipeline *vka::pipeline::add_dynamic_uniform_layout_binding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages)
+{
+    vk::DescriptorSetLayoutBinding duboLayoutBinding;
+
+    duboLayoutBinding.binding            = binding;
+    duboLayoutBinding.descriptorCount    = 1;
+    duboLayoutBinding.descriptorType     = vk::DescriptorType::eUniformBufferDynamic;
+    duboLayoutBinding.pImmutableSamplers = nullptr;
+    duboLayoutBinding.stageFlags         = stages;// VK_SHADER_STAGE_VERTEX_BIT;
+
+    m_DescriptorSetLayoutBindings[set].push_back(duboLayoutBinding);
 
     return this;
 }
@@ -100,16 +145,22 @@ void vka::pipeline::create()
     //}
     //LOG << "Descriptor Set Layouts created" << END;
 
-    std::vector<vk::DescriptorSetLayout> layouts;
 
-    //for(auto & d : get().m_DSetLayouts)
-    //{
-    //    layouts.push_back( d.get().m_DescriptorSetLayout );
-    //}
+
+    std::vector<vk::DescriptorSetLayout> layouts;
+    for(auto & bindings : m_DescriptorSetLayoutBindings)
+    {
+        layouts.push_back(  *get_parent_context()->new_descriptor_set_layout( bindings.second ) );
+    }
+
+   // for(auto  d : m_DescriptorSetLayouts)
+   // {
+   //     layouts.push_back( *d );
+   // }
 
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
-        pipelineLayoutInfo.setLayoutCount         = layouts.size();
+        pipelineLayoutInfo.setLayoutCount     = static_cast<uint32_t>(layouts.size());
     pipelineLayoutInfo.pSetLayouts            = layouts.data();
 
     pipelineLayoutInfo.pushConstantRangeCount = m_PushConstantRange.size();

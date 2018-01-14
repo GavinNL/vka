@@ -21,8 +21,16 @@ public:
         return m_descriptor_set_layout;
     }
 
+
+
     descriptor_set_layout* clear_bindings() { m_DescriptorSetLayoutBindings.clear(); return this;}
 
+
+    descriptor_set_layout* set_bindings(std::vector<vk::DescriptorSetLayoutBinding> const & bindings)
+    {
+        m_DescriptorSetLayoutBindings = bindings;
+        return this;
+    }
 
     descriptor_set_layout*  add_texture_layout_binding(uint32_t binding, vk::ShaderStageFlags stages);
 
