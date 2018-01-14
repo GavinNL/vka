@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.hpp>
 #include "deleter.h"
 #include "context_child.h"
+#include "device_memory.h"
 #include <map>
 
 namespace vka
@@ -79,15 +80,17 @@ private:
                        std::map< uint32_t, // mipmap
                                  vk::ImageLayout> >  m_Layout;
 
-    vk::DeviceMemory        m_Memory;
-    vk::MemoryRequirements  m_MemoryRequirements;
-    vk::MemoryPropertyFlags m_MemoryProperties;
+    vka::image_memory        m_Memory;
+    //vk::DeviceMemory        m_Memory;
+    //vk::MemoryRequirements  m_MemoryRequirements;
+    //vk::MemoryPropertyFlags m_MemoryProperties;
+
     vk::ImageViewCreateInfo m_ViewInfo;
     vk::ImageView           m_View;
 
     vk::ImageCreateInfo     m_CreateInfo;
 
-    void  * m_Mapped = nullptr;
+    //void  * m_Mapped = nullptr;
 
     friend class context;
     friend class deleter<texture>;

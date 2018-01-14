@@ -10,6 +10,7 @@ namespace vka
 
 class context;
 class buffer;
+class texture;
 
 class device_memory : public context_child
 {
@@ -98,10 +99,11 @@ public:
 
 class image_memory : public device_memory
 {
+public:
     image_memory(context * p) : device_memory(p)
     {}
 
-
+    void bind( vka::texture * b, vk::DeviceSize memoryOffset=0);
 };
 
 

@@ -1,5 +1,6 @@
 #include <vka/core/device_memory.h>
 #include <vka/core/buffer.h>
+#include <vka/core/texture.h>
 
 vka::device_memory::~device_memory()
 {
@@ -53,4 +54,9 @@ uint32_t vka::device_memory::findMemoryType(uint32_t typeFilter, vk::MemoryPrope
 void vka::buffer_memory::bind( vka::buffer * b, vk::DeviceSize memoryOffset )
 {
     get_device().bindBufferMemory( *b , m_memory, memoryOffset);
+}
+
+void vka::image_memory::bind( vka::texture * b, vk::DeviceSize memoryOffset)
+{
+    get_device().bindImageMemory( b->get_image(), m_memory, memoryOffset);
 }

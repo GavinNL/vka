@@ -3,7 +3,7 @@
 #include <vka/core/buffer.h>
 
 
-vka::texture::texture(vka::context *parent) : context_child(parent)
+vka::texture::texture(vka::context *parent) : context_child(parent), m_Memory(parent)
 {
     m_CreateInfo.imageType     = vk::ImageType::e2D;// VK_IMAGE_TYPE_2D;
     //m_CreateInfo.extent.width  = 512;
@@ -23,7 +23,7 @@ vka::texture::texture(vka::context *parent) : context_child(parent)
     m_CreateInfo.samples       = vk::SampleCountFlagBits::e1; // VK_SAMPLE_COUNT_1_BIT;
     m_CreateInfo.sharingMode   = vk::SharingMode::eExclusive; // VK_SHARING_MODE_EXCLUSIVE;
 
-    m_MemoryProperties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+    m_Memory.set_memory_properties(vk::MemoryPropertyFlagBits::eDeviceLocal);
 }
 
 vka::texture::~texture()
@@ -34,10 +34,10 @@ vka::texture::~texture()
     if( m_View)
         get_device().destroyImageView(m_View);
 
-    if( m_Memory)
-    {
-        get_device().freeMemory(m_Memory);
-    }
+    //if( m_Memory)
+    //{
+    //    get_device().freeMemory(m_Memory);
+    //}
 }
 
 
@@ -128,7 +128,7 @@ uint32_t vka::texture::get_mipmap_levels( ) const
 
 void vka::texture::set_memory_properties(vk::MemoryPropertyFlags flags)
 {
-    m_MemoryProperties = flags;
+    m_Memory.set_memory_properties(flags);
 }
 
 vk::ImageUsageFlags vka::texture::get_usage() const
@@ -177,21 +177,23 @@ void vka::texture::create()
 
     //============= Allocate the Memory =================
 
-    m_MemoryRequirements = device.getImageMemoryRequirements(m_Image);
+    auto req = device.getImageMemoryRequirements(m_Image);
+    m_Memory.allocate(req);
+    m_Memory.bind(this);
 
-    vk::MemoryAllocateInfo allocInfo;
-    allocInfo.allocationSize  = m_MemoryRequirements.size;
-
-    LOG << "Memory allocation size: " << m_MemoryRequirements.size << ENDL;
-
-    allocInfo.memoryTypeIndex = findMemoryType( m_MemoryRequirements.memoryTypeBits, m_MemoryProperties);
-
-    m_Memory = device.allocateMemory(allocInfo);
-
-    if( !m_Memory )
-        throw std::runtime_error("Error allocating memory for image");
-
-    device.bindImageMemory( m_Image , m_Memory,0);
+    //vk::MemoryAllocateInfo allocInfo;
+    //allocInfo.allocationSize  = m_MemoryRequirements.size;
+    //
+    //LOG << "Memory allocation size: " << m_MemoryRequirements.size << ENDL;
+    //
+    //allocInfo.memoryTypeIndex = findMemoryType( m_MemoryRequirements.memoryTypeBits, m_MemoryProperties);
+    //
+    //m_Memory = device.allocateMemory(allocInfo);
+    //
+    //if( !m_Memory )
+    //    throw std::runtime_error("Error allocating memory for image");
+    //
+    //device.bindImageMemory( m_Image , m_Memory,0);
 
     LOG << "Memory allocated: " << m_Memory << ENDL;
 
@@ -420,21 +422,22 @@ void vka::texture::convert( vk::CommandBuffer commandBuffer,
 
 void* vka::texture::map_memory()
 {
-    if( m_Mapped )
-    {
-        m_Mapped;
-    }
-    void * data = get_device().mapMemory( m_Memory, 0, m_MemoryRequirements.size, vk::MemoryMapFlags());
-    m_Mapped = data;
-    return data;
+    return  m_Memory.map();
+//    if( m_Mapped )
+//    {
+//        return m_Mapped;
+//    }
+//    void * data = get_device().mapMemory( m_Memory, 0, m_MemoryRequirements.size, vk::MemoryMapFlags());
+//    m_Mapped = data;
+//    return data;
 }
 
 void  vka::texture::unmap_memory()
 {
-
-    if( m_Mapped)
-    {
-        get_device().unmapMemory( m_Memory );
-        m_Mapped = nullptr;
-    }
+    m_Memory.unmap();
+    //if( m_Mapped)
+    //{
+    //    get_device().unmapMemory( m_Memory );
+    //    m_Mapped = nullptr;
+    //}
 }
