@@ -1,0 +1,440 @@
+#include <vka/core/context.h>
+#include <vka/core/texture.h>
+#include <vka/core/buffer.h>
+
+
+vka::texture::texture(vka::context *parent) : context_child(parent)
+{
+    m_CreateInfo.imageType     = vk::ImageType::e2D;// VK_IMAGE_TYPE_2D;
+    //m_CreateInfo.extent.width  = 512;
+    //m_CreateInfo.extent.height = height;
+    m_CreateInfo.extent.depth  = 1;
+    m_CreateInfo.mipLevels     = 1;
+    m_CreateInfo.arrayLayers   = 1;
+    m_CreateInfo.format        = vk::Format::eR8G8B8A8Unorm;
+    m_CreateInfo.tiling        = vk::ImageTiling::eLinear;;
+
+
+    m_CreateInfo.initialLayout = vk::ImageLayout::ePreinitialized;// VK_IMAGE_LAYOUT_PREINITIALIZED;
+    //m_CreateInfo.initialLayout = vk::ImageLayout::eUndefined;// VK_IMAGE_LAYOUT_PREINITIALIZED;
+    //m_CreateInfo.initialLayout = vk::ImageLayout::eGeneral;// VK_IMAGE_LAYOUT_PREINITIALIZED;
+
+    m_CreateInfo.usage         = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;// VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    m_CreateInfo.samples       = vk::SampleCountFlagBits::e1; // VK_SAMPLE_COUNT_1_BIT;
+    m_CreateInfo.sharingMode   = vk::SharingMode::eExclusive; // VK_SHARING_MODE_EXCLUSIVE;
+
+    m_MemoryProperties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+}
+
+vka::texture::~texture()
+{
+    if( m_Image)
+        get_device().destroyImage(m_Image);
+
+    if( m_View)
+        get_device().destroyImageView(m_View);
+
+    if( m_Memory)
+    {
+        get_device().freeMemory(m_Memory);
+    }
+}
+
+
+vk::DeviceSize vka::texture::get_layers() const
+{
+    return m_CreateInfo.arrayLayers;
+}
+void vka::texture::set_layers(vk::DeviceSize l)
+{
+    m_CreateInfo.arrayLayers = l;
+}
+
+void vka::texture::set_size(vk::DeviceSize w, vk::DeviceSize h, vk::DeviceSize d)
+{
+    m_CreateInfo.extent.width  = w;
+    m_CreateInfo.extent.height = h;
+    m_CreateInfo.extent.depth  = d;
+
+    if( d == 1)
+    {
+        m_CreateInfo.imageType = vk::ImageType::e2D;
+    }
+    else if( d > 1)
+    {
+        m_CreateInfo.imageType     = vk::ImageType::e3D;
+    }
+}
+
+void vka::texture::set_format(vk::Format F)
+{
+    m_CreateInfo.format = F;
+
+    set_mipmap_levels( get_mipmap_levels() );
+    //m_CreateInfo.mipLevels
+}
+
+vk::Format vka::texture::get_format() const
+{
+    return m_CreateInfo.format;
+}
+
+void vka::texture::set_tiling(vk::ImageTiling T)
+{
+    m_CreateInfo.tiling = T;
+}
+
+vk::ImageTiling vka::texture::get_tiling() const
+{
+    return m_CreateInfo.tiling;
+}
+
+void vka::texture::set_view_type( vk::ImageViewType type)
+{
+    m_ViewInfo.viewType = type;
+}
+
+vk::ImageViewType vka::texture::get_view_type( )
+{
+    return m_ViewInfo.viewType;
+}
+
+void vka::texture::copy_buffer(vk::CommandBuffer cb,
+                               vka::buffer *b,
+                               vk::BufferImageCopy region)
+{
+    cb.copyBufferToImage( b->get(), m_Image, vk::ImageLayout::eTransferDstOptimal, region);
+}
+
+
+void vka::texture::set_mipmap_levels( uint32_t levels)
+{
+#warning The format should not be hard coded
+    auto formatProperties = get_physical_device().getFormatProperties(vk::Format::eR8G8B8A8Unorm);
+
+    if( !(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eBlitSrc )  ||
+        !(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eBlitDst ))
+    {
+        throw std::runtime_error("Bliting of the chosen format is not suported on this device. Set the mipmap levels to zero or choose a different format");
+    }
+
+    m_CreateInfo.mipLevels = levels;
+}
+
+uint32_t vka::texture::get_mipmap_levels( ) const
+{
+    return m_CreateInfo.mipLevels;
+}
+
+void vka::texture::set_memory_properties(vk::MemoryPropertyFlags flags)
+{
+    m_MemoryProperties = flags;
+}
+
+vk::ImageUsageFlags vka::texture::get_usage() const
+{
+    return m_CreateInfo.usage;
+}
+
+void vka::texture::set_usage(vk::ImageUsageFlags flags)
+{
+    m_CreateInfo.usage = flags;
+}
+
+void vka::texture::create()
+{
+    auto device = get_device();
+
+    if(m_Image)
+    {
+        throw std::runtime_error("Image already created.");
+    }
+
+    if( m_CreateInfo.extent.depth * m_CreateInfo.extent.width * m_CreateInfo.extent.height == 0)
+        throw std::runtime_error("Image extents not set. Use Texture::SetSize()");
+
+
+    m_Image = device.createImage(m_CreateInfo);
+
+    if(!m_Image)
+    {
+        throw std::runtime_error("Error creating image");
+    }
+
+    auto initial_layout = m_CreateInfo.initialLayout;
+
+    auto & L = m_Layout;
+    L.clear();
+    for(uint32_t l =0 ; l < m_CreateInfo.arrayLayers;++l)
+    {
+        for(uint32_t m =0 ; m < m_CreateInfo.mipLevels;++m)
+        {
+            L[l][m] = initial_layout;
+        }
+    }
+
+    LOG << "Texture Created" << ENDL;
+
+    //============= Allocate the Memory =================
+
+    m_MemoryRequirements = device.getImageMemoryRequirements(m_Image);
+
+    vk::MemoryAllocateInfo allocInfo;
+    allocInfo.allocationSize  = m_MemoryRequirements.size;
+
+    LOG << "Memory allocation size: " << m_MemoryRequirements.size << ENDL;
+
+    allocInfo.memoryTypeIndex = findMemoryType( m_MemoryRequirements.memoryTypeBits, m_MemoryProperties);
+
+    m_Memory = device.allocateMemory(allocInfo);
+
+    if( !m_Memory )
+        throw std::runtime_error("Error allocating memory for image");
+
+    device.bindImageMemory( m_Image , m_Memory,0);
+
+    LOG << "Memory allocated: " << m_Memory << ENDL;
+
+    //============== Create Image View ====================
+
+
+}
+
+
+void vka::texture::create_image_view( vk::ImageAspectFlags flags)
+{
+    vk::ImageViewCreateInfo create_info;
+
+    create_info.image    = m_Image;
+
+    if( m_CreateInfo.imageType != vk::ImageType::e2D )
+    {
+        throw std::runtime_error("Only 2D textures supported at the moment.");
+    }
+
+    create_info.viewType                        = get_view_type();// vk::ImageViewType::e2D;
+    create_info.format                          = m_CreateInfo.format;
+    create_info.subresourceRange.aspectMask     = flags;
+    create_info.subresourceRange.baseMipLevel   = 0;
+    create_info.subresourceRange.levelCount     = get_mipmap_levels();
+    create_info.subresourceRange.baseArrayLayer = 0;
+    create_info.subresourceRange.layerCount     = get_layers();
+
+    create_image_view( create_info );
+
+}
+
+void vka::texture::create_image_view( const vk::ImageViewCreateInfo & view_info)
+{
+    if( m_View)
+        throw std::runtime_error("Image View alreayd created. cannot create one again for this texture");
+
+    m_ViewInfo = view_info;
+
+    m_View = get_device().createImageView( m_ViewInfo );
+
+    if ( !m_View )
+    {
+        throw std::runtime_error("Failed to create texture image view!");
+    }
+    LOG << "Image View Created" << ENDL;
+}
+
+uint32_t vka::texture::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
+{
+
+    auto physicaldevice = get_physical_device();
+
+    //auto memRequirements      = device().getBufferMemoryRequirements(m_Buffer);
+    auto memProperites        = physicaldevice.getMemoryProperties();
+    for (uint32_t i = 0; i < memProperites.memoryTypeCount ; i++)
+    {
+        // vk::MemoryPropertyFlagBits properties = static_cast<vk::MemoryPropertyFlagBits>(Properties);
+        if ((typeFilter & (1 << i)) && ( static_cast<vk::MemoryPropertyFlags>(memProperites.memoryTypes[i].propertyFlags) & properties) == properties) {
+            return i;
+        }
+    }
+    throw std::runtime_error("failed to find suitable memory type!");
+}
+
+
+bool vka::texture::has_stencil_component(vk::Format format)
+{
+    return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint;
+}
+
+vk::ImageLayout vka::texture::get_layout(uint32_t layer, uint32_t mip_level) const
+{
+    return m_Layout.at(layer).at(mip_level);
+}
+
+void vka::texture::convert_layer(vk::CommandBuffer commandBuffer,
+                                 vk::ImageLayout layout ,
+                                 uint32_t layer, uint32_t level,
+                                 vk::PipelineStageFlags srcStageMask,
+                                 vk::PipelineStageFlags dstStageMask)
+{
+
+    vk::ImageSubresourceRange subresourceRange;
+    if( layout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+    {
+        subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
+        if( has_stencil_component( get_format() ) )
+        {
+            subresourceRange.aspectMask |= vk::ImageAspectFlagBits::eStencil;
+        }
+    } else {
+        subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    }
+
+    subresourceRange.baseMipLevel   = level;
+    subresourceRange.levelCount     = 1;
+
+    subresourceRange.baseArrayLayer = layer;
+    subresourceRange.layerCount     = 1;
+
+    convert(commandBuffer, get_layout(layer,level), layout, subresourceRange,srcStageMask, dstStageMask);
+}
+
+
+
+void vka::texture::convert( vk::CommandBuffer commandBuffer,
+                            vk::ImageLayout old_layout ,
+                            vk::ImageLayout new_layout ,
+                            vk::ImageSubresourceRange const & range,
+                            vk::PipelineStageFlags srcStageMask,
+                            vk::PipelineStageFlags dstStageMask)
+{
+    vk::ImageMemoryBarrier barrier;
+
+    barrier.oldLayout = old_layout;
+    barrier.newLayout = new_layout;
+
+    barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image                           = m_Image;//image();
+
+    barrier.subresourceRange = range;
+
+    auto & imageMemoryBarrier = barrier;
+    switch (old_layout)
+    {
+    case vk::ImageLayout::eUndefined: // VK_IMAGE_LAYOUT_UNDEFINED:
+        // Image layout is undefined (or does not matter)
+        // Only valid as initial layout
+        // No flags required, listed only for completeness
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlags();
+        break;
+
+    case vk::ImageLayout::ePreinitialized: //:
+        // Image is preinitialized
+        // Only valid as initial layout for linear images, preserves memory contents
+        // Make sure host writes have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eHostWrite;// VK_ACCESS_HOST_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eColorAttachmentOptimal: //:
+        // Image is a color attachment
+        // Make sure any writes to the color buffer have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;//VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eDepthStencilAttachmentOptimal: //:
+        // Image is a depth/stencil attachment
+        // Make sure any writes to the depth/stencil buffer have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;//VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eTransferSrcOptimal: //:
+        // Image is a transfer source
+        // Make sure any reads from the image have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;//VK_ACCESS_TRANSFER_READ_BIT;
+        break;
+
+    case vk::ImageLayout::eTransferDstOptimal: //:
+        // Image is a transfer destination
+        // Make sure any writes to the image have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;//VK_ACCESS_TRANSFER_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eShaderReadOnlyOptimal: //:
+        // Image is read by a shader
+        // Make sure any shader reads from the image have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eShaderRead;//VK_ACCESS_SHADER_READ_BIT;
+        break;
+    default:
+        // Other source layouts aren't handled (yet)
+        break;
+    }
+
+    // Target layouts (new)
+    // Destination access mask controls the dependency for the new image layout
+    switch (new_layout)
+    {
+    case vk::ImageLayout::eTransferDstOptimal: //:
+        // Image will be used as a transfer destination
+        // Make sure any writes to the image have been finished
+        imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;//VK_ACCESS_TRANSFER_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eTransferSrcOptimal: //:
+        // Image will be used as a transfer source
+        // Make sure any reads from the image have been finished
+        imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;//VK_ACCESS_TRANSFER_READ_BIT;
+        break;
+
+    case vk::ImageLayout::eColorAttachmentOptimal: //:
+        // Image will be used as a color attachment
+        // Make sure any writes to the color buffer have been finished
+        imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;//VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eDepthStencilAttachmentOptimal: //:
+        // Image layout will be used as a depth/stencil attachment
+        // Make sure any writes to depth/stencil buffer have been finished
+        imageMemoryBarrier.dstAccessMask = imageMemoryBarrier.dstAccessMask | vk::AccessFlagBits::eDepthStencilAttachmentWrite;//VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eShaderReadOnlyOptimal: //:
+        // Image will be read in a shader (sampler, input attachment)
+        // Make sure any writes to the image have been finished
+        if (imageMemoryBarrier.srcAccessMask == vk::AccessFlags())
+        {
+            imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite;// ;//VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+        }
+        imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;//VK_ACCESS_SHADER_READ_BIT;
+        break;
+    default:
+        // Other source layouts aren't handled (yet)
+        break;
+    }
+
+    commandBuffer.pipelineBarrier( srcStageMask,
+                                   dstStageMask,
+                                   vk::DependencyFlags(),0,0,barrier);
+
+
+
+}
+
+
+void* vka::texture::map_memory()
+{
+    if( m_Mapped )
+    {
+        m_Mapped;
+    }
+    void * data = get_device().mapMemory( m_Memory, 0, m_MemoryRequirements.size, vk::MemoryMapFlags());
+    m_Mapped = data;
+    return data;
+}
+
+void  vka::texture::unmap_memory()
+{
+
+    if( m_Mapped)
+    {
+        get_device().unmapMemory( m_Memory );
+        m_Mapped = nullptr;
+    }
+}
