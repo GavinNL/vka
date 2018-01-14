@@ -3,6 +3,8 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "deleter.h"
+
 namespace vka
 {
 
