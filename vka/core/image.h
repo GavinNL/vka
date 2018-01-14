@@ -443,8 +443,7 @@ public:
 
     ~image()
     {
-        if( m_data )
-            delete [] m_data;
+        free_memory();
     }
 
     image(const std::string & path, uint32_t channels) :
@@ -548,13 +547,21 @@ public:
         a.m_channel = m_channels>=4 ? 3:0;
     }
 
+    void free_memory()
+    {
+        if( m_data )
+        {
+            delete [] m_data;
+            m_width = m_height = m_channels = 0;
+            m_data = nullptr;
+        }
+    }
     bool allocate(uint32_t w, uint32_t h, uint32_t channels, bool erase=false)
     {
         if( w*h*channels == 0)
             return false;
 
-        if( m_data )
-            delete [] m_data;
+        free_memory();
 
         m_data     = new element_type[ w * h * channels ];
         m_width    = w;

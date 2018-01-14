@@ -5,4 +5,5 @@
 #include "core/framebuffer.h"
 #include "core/shader.h"
 #include "core/pipeline.h"
+#include "core/texture.h"
 

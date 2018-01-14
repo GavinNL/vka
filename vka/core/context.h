@@ -12,6 +12,7 @@ namespace vka
 {
 
 
+
 class renderpass;
 class command_pool;
 class buffer;
@@ -19,6 +20,7 @@ class framebuffer;
 class shader;
 class pipeline;
 class semaphore;
+class texture;
 
 template<typename T>
 class registry_t
@@ -87,6 +89,7 @@ class context : public registry_t<vka::renderpass>,
                 public registry_t<vka::framebuffer>,
                 public registry_t<vka::shader>,
                 public registry_t<vka::semaphore>,
+                public registry_t<vka::texture>,
                 public registry_t<vka::pipeline>
 {
 private:
@@ -344,6 +347,9 @@ public:
 
 
     vka::semaphore* new_semaphore(const std::string & name);
+
+    vka::texture* new_texture(const std::string &name);
+
     //============================================================
 
 
