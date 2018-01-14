@@ -161,6 +161,9 @@ int main(int argc, char ** argv)
 
     if( 1 )
     {
+        vka::image D;
+        D.load_from_path("../resources/textures/Brick-2852a.jpg",4);
+
     auto * staging_texture = C.new_texture("staging_texture");
     staging_texture->set_size(1024,1024,1);
     staging_texture->set_tiling(vk::ImageTiling::eLinear);
@@ -168,8 +171,13 @@ int main(int argc, char ** argv)
     staging_texture->set_memory_properties( vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
     staging_texture->set_format(vk::Format::eR8G8B8A8Unorm);
     staging_texture->set_view_type(vk::ImageViewType::e2D);
+    staging_texture->set_mipmap_levels(1);
     staging_texture->create();
     staging_texture->create_image_view(vk::ImageAspectFlagBits::eColor);
+
+    void * image_data = staging_texture->map_memory();
+    LOG << "Image size: " << D.size() << ENDL;
+    memcpy(image_data, D.data(), D.size());
 
 
     auto * tex = C.new_texture("test_texture");
@@ -195,8 +203,8 @@ int main(int argc, char ** argv)
         //    - Convert staging-texture into eTransferSrcOptimal
         //    - Convert tex into eTransferDstOptimal
         //    - Converts
-      //  tex->copy_image( cb1, staging_texture, vk::Offset3D(0,0), vk::Extent3D(1024,1024,1) );
-      //  tex->copy_buffer(cb1, staging_buffer,)
+        //tex->copy_image( cb1, staging_texture, vk::Offset3D(0,0), vk::Extent3D(1024,1024,1) );
+        //tex->copy_buffer(cb1, staging_buffer,)
 
         //======================================================================
         vk::ImageCopy IC;
@@ -211,11 +219,11 @@ int main(int argc, char ** argv)
           .setSrcSubresource(subResource)
           .setDstSubresource(subResource);
 
-       // cb1.copyImage( staging_texture->get_image(),
-       //                vk::ImageLayout::eTransferSrcOptimal ,
-       //                tex->get_image(),
-       //                vk::ImageLayout::eTransferDstOptimal,
-       //                IC);
+        cb1.copyImage( staging_texture->get_image(),
+                       vk::ImageLayout::eTransferSrcOptimal ,
+                       tex->get_image(),
+                       vk::ImageLayout::eTransferDstOptimal,
+                       IC);
 
         cb1.end();
         C.submit_cmd_buffer(cb1);
@@ -287,3 +295,6 @@ int main(int argc, char ** argv)
 
     return 0;
 }
+
+#define STB_IMAGE_IMPLEMENTATION
+#include<stb/stb_image.h>

@@ -27,7 +27,7 @@ bool vka::device_memory::allocate(vk::MemoryRequirements requirements)
     m_info.allocationSize  = requirements.size;
     m_info.memoryTypeIndex = findMemoryType(requirements.memoryTypeBits, m_memory_properties);
 
-    LOG << "Allocated Buffer Memory: Size: " <<requirements.size << "  alignment: " << requirements.alignment << ENDL;
+    LOG << "Allocated Device Memory: Size: " <<requirements.size << "  alignment: " << requirements.alignment << ENDL;
     m_memory = get_device().allocateMemory(m_info);
 
     if( !m_memory)

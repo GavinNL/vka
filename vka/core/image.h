@@ -7,6 +7,8 @@
 #include<cmath>
 #include<stb/stb_image.h>
 
+namespace vka
+{
 class pixel_color
 {
 public:
@@ -756,5 +758,6 @@ inline channel & channel::operator = ( image const & other)
     return *this;
 }
 
+}
 
 #endif
