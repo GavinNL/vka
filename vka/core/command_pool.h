@@ -16,6 +16,12 @@ public:
 
     ~command_pool();
 
+
+    operator vk::CommandPool() const
+    {
+        return m_command_pool;
+    }
+
     vk::CommandBuffer AllocateCommandBuffer(vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary);
 
     void FreeCommandBuffer(vk::CommandBuffer cmd);

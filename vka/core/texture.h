@@ -17,9 +17,10 @@ class texture : public context_child
 {
 
 public:
-    vk::DeviceSize get_layers() const;
-    void set_layers(vk::DeviceSize l);
+    uint32_t get_layers() const;
+    void set_layers(uint32_t l);
     void set_size(vk::DeviceSize w, vk::DeviceSize h, vk::DeviceSize d);
+    vk::Extent3D get_extents() const;
     void set_format(vk::Format F);
     vk::Format get_format() const;
     void set_tiling(vk::ImageTiling T);
@@ -30,6 +31,34 @@ public:
     void set_memory_properties(vk::MemoryPropertyFlags flags);
     vk::ImageUsageFlags get_usage() const;
     void set_usage(vk::ImageUsageFlags flags);
+
+    texture* set_mag_filter(vk::Filter f)
+    {
+        m_SamplerInfo.magFilter = f;
+        return this;
+    }
+    vk::Filter get_mag_filter() const
+    {
+        return m_SamplerInfo.magFilter;
+    }
+    texture* set_min_filter(vk::Filter f)
+    {
+        m_SamplerInfo.minFilter = f;
+        return this;
+    }
+    vk::Filter get_min_filter() const
+    {
+        return m_SamplerInfo.minFilter;
+    }
+    texture* set_address_mode(vk::SamplerAddressMode u,
+                              vk::SamplerAddressMode v,
+                              vk::SamplerAddressMode w)
+    {
+        m_SamplerInfo.addressModeU = u;
+        m_SamplerInfo.addressModeV = v;
+        m_SamplerInfo.addressModeW = w;
+        return this;
+    }
 
     vk::Image get_image() const
     {
@@ -63,13 +92,55 @@ public:
      * Copies data from the buffer to the image.
      */
     void copy_buffer( vk::CommandBuffer, vka::buffer *b , vk::BufferImageCopy);
+    void copy_buffer( vka::buffer const * b , vk::BufferImageCopy);
+
+
+    /**
+     * @brief convert
+     * @param commandBuffer
+     * @param new_layout
+     * @param srcStageMask
+     * @param dstStageMask
+     *
+     * Converts the entire texture into a new layout. All layers/mip levels
+     * but already be the same layout before it can be changed.
+     */
+    void convert(vk::CommandBuffer commandBuffer,
+                 vk::ImageLayout new_layout,
+                 vk::PipelineStageFlags srcStageMask=vk::PipelineStageFlagBits::eTopOfPipe,
+                 vk::PipelineStageFlags dstStageMask=vk::PipelineStageFlagBits::eTopOfPipe);
+
 
     // converts the image into another layout by writing the approrpiate
     // command into the command buffer
-    void convert(vk::CommandBuffer commandBuffer, vk::ImageLayout old_layout, vk::ImageLayout new_layout, const vk::ImageSubresourceRange &range, vk::PipelineStageFlags srcStageMask=vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlags dstStageMask=vk::PipelineStageFlagBits::eTopOfPipe);
+    void convert(vk::CommandBuffer commandBuffer,
+                 vk::ImageLayout old_layout,
+                 vk::ImageLayout new_layout,
+                 const vk::ImageSubresourceRange &range,
+                 vk::PipelineStageFlags srcStageMask=vk::PipelineStageFlagBits::eTopOfPipe,
+                 vk::PipelineStageFlags dstStageMask=vk::PipelineStageFlagBits::eTopOfPipe);
 
-    // converts a specific layer and mipmap level to another layout.
-    void convert_layer(vk::CommandBuffer commandBuffer, vk::ImageLayout layout, uint32_t layer, uint32_t level, vk::PipelineStageFlags srcStageMask=vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlags dstStageMask=vk::PipelineStageFlagBits::eTopOfPipe);
+
+    /**
+     * @brief convert_layer
+     * @param commandBuffer
+     * @param layout
+     * @param layer
+     * @param level
+     * @param srcStageMask
+     * @param dstStageMask
+     *
+     * Converts a specific layer to another layout by writing the appropriate
+     * command into the command buffer. Note that after this function is called
+     * any calls to get_layout( layer, level) will return the newly converted
+     * layout even if the command buffer has not been submitted.
+     */
+    void convert_layer(vk::CommandBuffer commandBuffer,
+                       vk::ImageLayout layout,
+                       uint32_t layer,
+                       uint32_t level,
+                       vk::PipelineStageFlags srcStageMask=vk::PipelineStageFlagBits::eTopOfPipe,
+                       vk::PipelineStageFlags dstStageMask=vk::PipelineStageFlagBits::eTopOfPipe);
 
     // get the layout of a specific layer and mipmap level
     vk::ImageLayout get_layout(uint32_t layer=0, uint32_t mip_level=0) const;
@@ -77,9 +148,10 @@ public:
     void* map_memory();
     void  unmap_memory();
 
+
 protected:
     bool has_stencil_component(vk::Format format);
-private:
+
      texture(context * parent);
     ~texture();
 
@@ -93,15 +165,15 @@ private:
                                  vk::ImageLayout> >  m_Layout;
 
     vka::image_memory        m_Memory;
-    //vk::DeviceMemory        m_Memory;
-    //vk::MemoryRequirements  m_MemoryRequirements;
-    //vk::MemoryPropertyFlags m_MemoryProperties;
+
 
     vk::ImageViewCreateInfo m_ViewInfo;
     vk::ImageView           m_View;
 
     vk::SamplerCreateInfo   m_SamplerInfo;
     vk::Sampler             m_Sampler;
+
+
 
     vk::ImageCreateInfo     m_CreateInfo;
 

@@ -41,7 +41,7 @@ public:
 
     bool create();
 
-    operator vk::Buffer ()
+    operator vk::Buffer () const
     {
         return m_buffer;
     }

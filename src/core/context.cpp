@@ -7,6 +7,7 @@
 #include <vka/core/pipeline.h>
 #include <vka/core/semaphore.h>
 #include <vka/core/texture.h>
+#include <vka/core/texture2d.h>
 #include <vka/core/descriptor_pool.h>
 #include <vka/core/descriptor_set.h>
 #include <vulkan/vulkan.hpp>
@@ -72,6 +73,7 @@ void vka::context::init()
     LOG << "Instance Created" << ENDL;
 
     setup_debug_callback();
+
 
 }
 
@@ -144,7 +146,8 @@ void vka::context::create_device()
                     {
                         throw std::runtime_error("Error creating fence");
                     }
-
+                    m_command_pool   = new_command_pool("context_command_pool");
+                    m_staging_buffer = new_staging_buffer("context_staging_buffer",1024*1024*10);
                     return;
                 }
             }
@@ -433,6 +436,25 @@ vka::texture *vka::context::new_texture(const std::string &name)
     return _new<vka::texture>(name);
 }
 
+vka::texture2d *vka::context::new_texture2d(const std::string &name)
+{
+    return _new<vka::texture2d>(name);
+}
+
+vka::texture2d *vka::context::new_texture2d_host_visible(const std::string &name)
+{
+    auto * staging_texture = new_texture2d(name);
+    //staging_texture->set_size(512,512);
+    staging_texture->set_tiling(vk::ImageTiling::eLinear);
+    staging_texture->set_usage(  vk::ImageUsageFlagBits::eSampled  | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc );
+    staging_texture->set_memory_properties( vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    staging_texture->set_format(vk::Format::eR8G8B8A8Unorm);
+    staging_texture->set_view_type(vk::ImageViewType::e2D);
+    staging_texture->set_mipmap_levels(1);
+    //staging_texture->create();
+    //staging_texture->create_image_view(vk::ImageAspectFlagBits::eColor);
+    return staging_texture;
+}
 vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings)
 {
     auto it = m_DescriptorSetLayouts.find( bindings );
@@ -454,7 +476,10 @@ vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::v
     return it->second;
 }
 
-
+vka::command_pool* vka::context::get_command_pool()
+{
+    return m_command_pool;
+}
 
 void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
                                          const vka::semaphore * wait_semaphore,

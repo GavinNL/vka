@@ -367,6 +367,18 @@ public:
 
     vka::texture* new_texture(const std::string &name);
 
+    vka::texture2d* new_texture2d(const std::string &name);
+
+    /**
+     * @brief new_texture2d_host_visible
+     * @param name
+     * @return
+     *
+     * Sets up a host visible 2D texture. call ->create() to create
+     * the texture
+     */
+    vka::texture2d *new_texture2d_host_visible(const std::string &name);
+
     //============================================================
     /**
      * @brief new_descriptor_set_layout
@@ -380,8 +392,7 @@ public:
 
 
     //============================================================
-
-
+    vka::command_pool *get_command_pool();
 
     void submit_cmd_buffer(vk::CommandBuffer b)
     {
@@ -402,6 +413,8 @@ public:
                                 const vka::semaphore *wait_semaphore,
                                 const vka::semaphore *signal_semaphore,
                                 vk::PipelineStageFlags wait_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput );
+
+
 
 
 private:
@@ -469,7 +482,8 @@ private:
     VkResult CreateDebugReportCallbackEXT(vk::Instance &instance, const vk::DebugReportCallbackCreateInfoEXT &pCreateInfo, const VkAllocationCallbacks *pAllocator, vk::DebugReportCallbackEXT &pCallback);
     void     DestroyDebugReportCallbackEXT(vk::Instance const & instance,vk::DebugReportCallbackEXT & callback,const VkAllocationCallbacks* pAllocator);
 
-
+    vka::command_pool * m_command_pool = nullptr;
+    vka::buffer * m_staging_buffer = nullptr;
 
 };
 

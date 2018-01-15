@@ -90,69 +90,69 @@ int main(int argc, char ** argv)
     auto * set = pipeline->create_new_descriptor_set(0, descriptor_pool);
 
 
-#define USE_STAGING
 
-#if !defined USE_STAGING
-      auto * vb = C.new_buffer("vb", 1024, vk::MemoryPropertyFlagBits::eHostVisible| vk::MemoryPropertyFlagBits::eHostCoherent, vk::BufferUsageFlagBits::eVertexBuffer );
-      auto * ib = C.new_buffer("ib", 1024, vk::MemoryPropertyFlagBits::eHostVisible| vk::MemoryPropertyFlagBits::eHostCoherent, vk::BufferUsageFlagBits::eIndexBuffer);
-
-      if(1)
-      {
+    auto * vertex_buffer = C.new_vertex_buffer("vb", 1024 );
+    auto * index_buffer  = C.new_index_buffer( "ib", 1024 );
 
 
-          auto vertex =  vb->map<glm::vec3>();
-          vertex[0] = glm::vec3(0, -1.0, 0.0);
-          vertex[1] = glm::vec3(1, 0   ,0);
+//==============================================================================
+// Create the Vertex and Index buffers
+//
+//  We are going to  create a vertex and index buffer. The vertex buffer will
+//  hold the positions and UV coordates of our triangle.
+//
+//  The steps to create the buffer are.
+//    1. Copy the vertex/index data from the host to a memory mappable device buffer
+//    2. copy the memory-mapped buffer to the vertex/index buffers
+//==============================================================================
 
-          vertex[2] = glm::vec3(-1.0, 0.0,0.0);
-          vertex[3] = glm::vec3(0,1,0);
-
-          vertex[4] = glm::vec3( 1.0, 1.0   ,0.0);
-          vertex[5] = glm::vec3(0,1,0);
-
-          auto index =  ib->map<glm::uint16>();
-          index[0] = 0;
-          index[1] = 1;
-          index[2] = 2;
-
-          vb->unmap_memory();
-          ib->unmap_memory();
-      }
-#else
-
-    auto * vb = C.new_vertex_buffer("vb", 1024 );
-    auto * ib = C.new_index_buffer( "ib", 1024 );
-    auto * sb = C.new_staging_buffer( "sb", 1024 );
-
-
-    if(1)
-    {
+        // This is the vertex structure we are going to use
+        // it contains a position and a UV coordates field
         struct Vertex
         {
             glm::vec3 p;
             glm::vec2 u;
         };
 
-        auto vertex =  sb->map<Vertex>();
+        // allocate a staging buffer of 10MB
+        auto * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
 
-        LOG << "Vertex size: " << vertex.size() << ENDL;
-        vertex[0] = {glm::vec3(0, -1.0, 0.0)     , glm::vec2(0.5 , 0) } ;
-        vertex[1] = {glm::vec3(-1.0, 0.0,0.0)    , glm::vec2(0   , 1) };
-        vertex[2] = {glm::vec3( 1.0, 1.0   ,0.0) , glm::vec2(1   , 1) };
+        // using the map< > method, we can return an array_view into the
+        // memory. We are going to place them in their own scope so that
+        // the array_view is destroyed after exiting the scope. This is
+        // so we do not accidenty access teh array_view after the
+        // staging_buffer has been unmapped.
+        {
+            vka::array_view<Vertex> vertex =  staging_buffer->map<Vertex>();
+
+            LOG << "Vertex size: " << vertex.size() << ENDL;
+            // we can access each vertex as if it was an array. Copy the
+            // vertex data we want into the first three indices.
+            vertex[0] = {glm::vec3(0, -1.0, 0.0)     , glm::vec2(0.5 , 0) } ;
+            vertex[1] = {glm::vec3(-1.0, 0.0,0.0)    , glm::vec2(0   , 1) };
+            vertex[2] = {glm::vec3( 1.0, 1.0   ,0.0) , glm::vec2(1   , 1) };
+        }
+        // Do the same for the index buffer. but we want to specific an
+        // offset form the start of the buffer so we do not overwrite the
+        // vertex data.
+        {
+            vka::array_view<glm::uint16_t> index =  staging_buffer->map<glm::uint16>( 3*sizeof(Vertex));
+            index[0] = 0;
+            index[1] = 1;
+            index[2] = 2;
+            LOG << "Index size: " << index.size() << ENDL;
+        }
 
 
-        auto index =  sb->map<glm::uint16>( 3*sizeof(Vertex));
-        index[0] = 0;
-        index[1] = 1;
-        index[2] = 2;
+        // 2. Copy the data from the host-visible buffer to the vertex/index buffers
 
-        LOG << "Index size: " << index.size() << ENDL;
-        ////===============
+        // allocate a comand buffer
         auto copy_cmd = cp->AllocateCommandBuffer();
         copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
-        copy_cmd.copyBuffer( *sb , *vb, vk::BufferCopy{ 0,0,3*sizeof(Vertex)} );
-        copy_cmd.copyBuffer( *sb , *ib, vk::BufferCopy{ 3*sizeof(Vertex),0,3*sizeof(uint16_t) } );
+        // write the commands to copy each of the buffer data
+        copy_cmd.copyBuffer( *staging_buffer , *vertex_buffer, vk::BufferCopy{ 0               ,0,3*sizeof(Vertex)} );
+        copy_cmd.copyBuffer( *staging_buffer , *index_buffer , vk::BufferCopy{ 3*sizeof(Vertex),0,3*sizeof(uint16_t) } );
 
         copy_cmd.end();
         C.submit_cmd_buffer(copy_cmd);
@@ -160,162 +160,78 @@ int main(int argc, char ** argv)
         //
         cp->FreeCommandBuffer(copy_cmd);
 
-        vb->unmap_memory();
-        ib->unmap_memory();
-    }
-#endif
+        // Unmap the memory.
+        //   WARNING: DO NOT ACCESS the vertex and index array_views as these
+        //            now point to unknown memory spaces
+        staging_buffer->unmap_memory();
 
 
-    // C.new_texture_2d("test_texture", w,h,d, vk::Format::eR8G8B8A8Unorm);
-    // C.new_texture_2d("test_texture", w,h,d, vk::Format::eR8G8B8A8Unorm);
+//==============================================================================
+// Create a texture
+//
+//==============================================================================
+
+    // 1. First load host_image into memory.
+        vka::host_image D("../resources/textures/Brick-2852a.jpg",4);
+        //D.load_from_path
 
 
-        vka::image D;
-        D.load_from_path("../resources/textures/Brick-2852a.jpg",4);
-
-    auto * staging_texture = C.new_texture("staging_texture");
-    staging_texture->set_size(512,512,1);
-    staging_texture->set_tiling(vk::ImageTiling::eLinear);
-    staging_texture->set_usage(  vk::ImageUsageFlagBits::eSampled  | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc );
-    staging_texture->set_memory_properties( vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-    staging_texture->set_format(vk::Format::eR8G8B8A8Unorm);
-    staging_texture->set_view_type(vk::ImageViewType::e2D);
-    staging_texture->set_mipmap_levels(1);
-    staging_texture->create();
-    staging_texture->create_image_view(vk::ImageAspectFlagBits::eColor);
-
-    void * image_data = staging_texture->map_memory();
-    LOG << "Image size: " << D.size() << ENDL;
-    memcpy(image_data, D.data(), D.size() );
+    // 2. Use the context's helper function to create a device local texture
+    //    We will be using a texture2d which is a case specific version of the
+    //    generic texture
+        vka::texture2d * tex = C.new_texture2d("test_texture");
+        tex->set_size( D.width() , D.height() );
+        tex->set_format(vk::Format::eR8G8B8A8Unorm);
+        tex->set_mipmap_levels(1);
+        tex->create();
+        tex->create_image_view(vk::ImageAspectFlagBits::eColor);
 
 
-    auto * tex = C.new_texture("test_texture");
-    tex->set_size(512,512,1);
-    tex->set_tiling(vk::ImageTiling::eOptimal);
-    tex->set_usage(  vk::ImageUsageFlagBits::eSampled  | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc );
-    tex->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal);
-    tex->set_format(vk::Format::eR8G8B8A8Unorm);
-    tex->set_view_type(vk::ImageViewType::e2D);
-    tex->set_mipmap_levels(1);
-    tex->create();
-    tex->create_image_view(vk::ImageAspectFlagBits::eColor);
-    tex->create_sampler();
+    // 3. Map the buffer to memory and copy the image to it.
+        void * image_buffer_data = staging_buffer->map_memory();
+        memcpy( image_buffer_data, D.data(), D.size() );
+        staging_buffer->unmap_memory();
 
 
+    // 4. Now that the data is on the device. We need to get it from teh buffer
+    //    to the texture. To do this we will record a command buffer to do the
+    //    following:
+    //         a. convert the texture2d into a layout which can accept transfer data
+    //         b. copy the data from teh buffer to the texture2d.
+    //         c. convert the texture2d into a layout which is good for shader use
 
-
-
-    // Convert the staging texture into a TransferSrcOptimal so that it can be
-    // transferred to the device texture
-    {
-        auto cb1 = cp->AllocateCommandBuffer();
-        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-        staging_texture->convert_layer(cb1, vk::ImageLayout::eGeneral,0,0);
-        cb1.end();
-        C.submit_cmd_buffer(cb1);
-        cp->FreeCommandBuffer(cb1);
-    }
-    {
-        auto cb1 = cp->AllocateCommandBuffer();
-        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-         staging_texture->convert_layer(cb1, vk::ImageLayout::eTransferSrcOptimal,0,0);
-        cb1.end();
-        C.submit_cmd_buffer(cb1);
-        cp->FreeCommandBuffer(cb1);
-    }
-    {
-        auto cb1 = cp->AllocateCommandBuffer();
-        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-         tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
-        cb1.end();
-        C.submit_cmd_buffer(cb1);
-        cp->FreeCommandBuffer(cb1);
-    }
-    {
+        // allocate the command buffer
         auto cb1 = cp->AllocateCommandBuffer();
         cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
-        vk::ImageCopy IC;
-        vk::ImageSubresourceLayers subResource;
-        subResource.aspectMask     = vk::ImageAspectFlagBits::eColor;//  VK_IMAGE_ASPECT_COLOR_BIT;
-        subResource.baseArrayLayer = 0;
-        subResource.mipLevel       = 0;
-        subResource.layerCount     = 1;
-        IC.setDstOffset( vk::Offset3D(0,0,0))
-          .setSrcOffset(vk::Offset3D(0,0,0))
-          .setExtent(vk::Extent3D(512,512,1))
-          .setSrcSubresource(subResource)
-          .setDstSubresource(subResource);
+            // a. convert the texture to eTransferDstOptimal
+            tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
 
-        cb1.copyImage( staging_texture->get_image(),
-                       vk::ImageLayout::eTransferSrcOptimal ,
-                       tex->get_image(),
-                       vk::ImageLayout::eTransferDstOptimal,
-                       IC);
+            // b. copy the data from the buffer to the texture
+            vk::BufferImageCopy BIC;
+            BIC.setBufferImageHeight(  D.height() )
+               .setBufferOffset(0)
+               .setImageExtent( vk::Extent3D(D.width(), D.height(), 1) )
+               .setImageOffset( vk::Offset3D(0,0,0))
+               .imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
+                                .setBaseArrayLayer(0)
+                                .setLayerCount(1)
+                                .setMipLevel(0);
+
+            tex->copy_buffer( cb1, staging_buffer, BIC);
+
+            // c. convert the texture into eShaderReadOnlyOptimal
+            tex->convert(cb1, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+        // end and submit the command buffer
         cb1.end();
         C.submit_cmd_buffer(cb1);
+        // free the command buffer
         cp->FreeCommandBuffer(cb1);
-    }
-    {
-        auto cb1 = cp->AllocateCommandBuffer();
-        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-         tex->convert_layer(cb1, vk::ImageLayout::eShaderReadOnlyOptimal,0,0);
-        cb1.end();
-        C.submit_cmd_buffer(cb1);
-        cp->FreeCommandBuffer(cb1);
-    }
-#if 0
-        auto cb1 = cp->AllocateCommandBuffer();
-        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-
-        staging_texture->convert_layer(cb1, vk::ImageLayout::eGeneral,0,0);
-
-
-        staging_texture->convert_layer(cb1, vk::ImageLayout::eTransferSrcOptimal,0,0);
-        tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
-
-        // need to implement this:
-        //  Records the following into the command buffer:
-        //    - Convert staging-texture into eTransferSrcOptimal
-        //    - Convert tex into eTransferDstOptimal
-        //    - Converts
-        //tex->copy_image( cb1, staging_texture, vk::Offset3D(0,0), vk::Extent3D(1024,1024,1) );
-        //tex->copy_buffer(cb1, staging_buffer,)
-
-        //======================================================================
-        vk::ImageCopy IC;
-        vk::ImageSubresourceLayers subResource;
-        subResource.aspectMask     = vk::ImageAspectFlagBits::eColor;//  VK_IMAGE_ASPECT_COLOR_BIT;
-        subResource.baseArrayLayer = 0;
-        subResource.mipLevel       = 0;
-        subResource.layerCount     = 1;
-        IC.setDstOffset( vk::Offset3D(0,0,0))
-          .setSrcOffset(vk::Offset3D(0,0,0))
-          .setExtent(vk::Extent3D(512,512,1))
-          .setSrcSubresource(subResource)
-          .setDstSubresource(subResource);
-
-        cb1.copyImage( staging_texture->get_image(),
-                       vk::ImageLayout::eTransferSrcOptimal ,
-                       tex->get_image(),
-                       vk::ImageLayout::eTransferDstOptimal,
-                       IC);
-
-        tex->convert_layer(cb1, vk::ImageLayout::eShaderReadOnlyOptimal,0,0);
-
-        cb1.end();
-        C.submit_cmd_buffer(cb1);
-        cp->FreeCommandBuffer(cb1);
-
-        set->attach_sampler(0, tex);
-        set->update();
-#endif
-
+//==============================================================================
 
     set->attach_sampler(0, tex);
     set->update();
-    //tex->convert( vk::ImageLayout::eTransferSrcOptimal);
-
 
 
     auto cb = cp->AllocateCommandBuffer();
@@ -370,8 +286,8 @@ int main(int argc, char ** argv)
                                                     0,
                                                     dsp,
                                                     nullptr );
-            cb.bindVertexBuffers(0, vb->get(), {0} );// ( m_VertexBuffer, 0);
-            cb.bindIndexBuffer(  ib->get() , 0 , vk::IndexType::eUint16);
+            cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );// ( m_VertexBuffer, 0);
+            cb.bindIndexBuffer(  index_buffer ->get() , 0 , vk::IndexType::eUint16);
             cb.drawIndexed(3, 1, 0 , 0, 0);
 
       cb.endRenderPass();

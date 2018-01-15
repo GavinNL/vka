@@ -1,5 +1,7 @@
 #include <vka/core/context.h>
 #include <vka/core/texture.h>
+#include <vka/core/texture2d.h>
+#include <vka/core/command_pool.h>
 #include <vka/core/buffer.h>
 
 
@@ -62,13 +64,18 @@ vka::texture::~texture()
 }
 
 
-vk::DeviceSize vka::texture::get_layers() const
+uint32_t vka::texture::get_layers() const
 {
     return m_CreateInfo.arrayLayers;
 }
-void vka::texture::set_layers(vk::DeviceSize l)
+void vka::texture::set_layers(uint32_t l)
 {
     m_CreateInfo.arrayLayers = l;
+}
+
+vk::Extent3D vka::texture::get_extents() const
+{
+    return m_CreateInfo.extent;
 }
 
 void vka::texture::set_size(vk::DeviceSize w, vk::DeviceSize h, vk::DeviceSize d)
@@ -220,6 +227,7 @@ void vka::texture::create()
 
     //============== Create Image View ====================
 
+    create_sampler();
 
 }
 
@@ -270,11 +278,17 @@ void vka::texture::create_sampler()
     create_sampler(create_info);
 }
 
+
+
+
 void vka::texture::create_sampler(const vk::SamplerCreateInfo &create_info)
 {
+    m_SamplerInfo = create_info;
+
     if(m_Sampler)
         get_device().destroySampler(m_Sampler);
-    m_Sampler = get_device().createSampler( create_info );
+
+    m_Sampler = get_device().createSampler( m_SamplerInfo );
 }
 
 void vka::texture::create_image_view( const vk::ImageViewCreateInfo & view_info)
@@ -336,7 +350,9 @@ void vka::texture::convert_layer(vk::CommandBuffer commandBuffer,
         {
             subresourceRange.aspectMask |= vk::ImageAspectFlagBits::eStencil;
         }
-    } else {
+    }
+    else
+    {
         subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
     }
 
@@ -350,6 +366,62 @@ void vka::texture::convert_layer(vk::CommandBuffer commandBuffer,
     m_Layout.at(layer).at(level) = layout;
 }
 
+
+void vka::texture::convert(vk::CommandBuffer commandBuffer,
+                           vk::ImageLayout new_layout,
+                           vk::PipelineStageFlags srcStageMask,
+                           vk::PipelineStageFlags dstStageMask)
+{
+
+    //========= Check if all the layers are the same===========================
+    auto current_layout = get_layout(0,0);
+    for(uint32_t layer=0; layer < get_layers() ;layer++)
+    {
+        for(uint32_t level=0; level < get_mipmap_levels() ; level++)
+        {
+            auto L = get_layout(layer,level);
+            if(L != current_layout)
+            {
+                throw std::runtime_error("Some layers/mipmap levels are not the same.");
+            }
+        }
+    }
+
+
+    vk::ImageSubresourceRange subresourceRange;
+
+    if( new_layout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+    {
+        subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
+        if( has_stencil_component( get_format() ) )
+        {
+            subresourceRange.aspectMask |= vk::ImageAspectFlagBits::eStencil;
+        }
+    }
+    else
+    {
+        subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    }
+
+    subresourceRange.baseMipLevel   = 0;
+    subresourceRange.levelCount     = get_mipmap_levels();
+
+    subresourceRange.baseArrayLayer = 0;
+    subresourceRange.layerCount     = get_layers();
+
+    convert(commandBuffer, current_layout, new_layout, subresourceRange,srcStageMask, dstStageMask);
+
+    for(uint32_t layer=0; layer < get_layers() ;layer++)
+    {
+        for(uint32_t level=0; level < get_mipmap_levels() ; level++)
+        {
+            m_Layout.at(layer).at(level) = new_layout;
+        }
+    }
+
+
+
+}
 
 
 void vka::texture::convert( vk::CommandBuffer commandBuffer,
@@ -493,3 +565,93 @@ void  vka::texture::unmap_memory()
     //    m_Mapped = nullptr;
     //}
 }
+
+
+
+
+
+//void vka::texture::copy_buffer( vka::buffer const * i, vk::BufferImageCopy const & region) const
+void vka::texture::copy_buffer( vka::buffer const * b , vk::BufferImageCopy const region)
+{
+    auto commandBuffer = get_parent_context()->get_command_pool()->AllocateCommandBuffer(vk::CommandBufferLevel::ePrimary);
+
+    commandBuffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+
+    commandBuffer.copyBufferToImage( *b,
+                                     get_image(),
+                                     vk::ImageLayout::eTransferDstOptimal,
+                                     region);
+
+    commandBuffer.end();
+
+    get_parent_context()->submit_cmd_buffer(commandBuffer);
+
+    get_device().freeCommandBuffers( *get_parent_context()->get_command_pool() , commandBuffer );
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void vka::texture2d::copy( vk::CommandBuffer cm, texture2d* t, vk::Offset2D dstOffset, vk::Offset2D srcOffset, vk::Extent2D extent)
+{
+    if( t->get_layout(0,0) != vk::ImageLayout::eTransferSrcOptimal )
+    {
+         t->convert_layer(cm, vk::ImageLayout::eTransferSrcOptimal,0,0);
+    }
+    if( get_layout(0,0) != vk::ImageLayout::eTransferDstOptimal )
+    {
+         this->convert_layer(cm, vk::ImageLayout::eTransferDstOptimal,0,0);
+    }
+
+    vk::ImageCopy IC;
+    vk::ImageSubresourceLayers subResource;
+    subResource.aspectMask     = vk::ImageAspectFlagBits::eColor;//  VK_IMAGE_ASPECT_COLOR_BIT;
+    subResource.baseArrayLayer = 0;
+    subResource.mipLevel       = 0;
+    subResource.layerCount     = 1;
+    IC.setDstOffset( vk::Offset3D(dstOffset.x,dstOffset.y,0))
+      .setSrcOffset( vk::Offset3D(srcOffset.x,srcOffset.y,0))
+      .setExtent(    vk::Extent3D(extent.width,extent.height,1))
+      .setSrcSubresource(subResource)
+      .setDstSubresource(subResource);
+
+    cm.copyImage( t->get_image(),
+                   vk::ImageLayout::eTransferSrcOptimal ,
+                   get_image(),
+                   vk::ImageLayout::eTransferDstOptimal,
+                   IC);
+
+}
+
+/**
+ * @brief copy
+ * @param t
+ *
+ * Copies the texture, t, into this texture.  This method will
+ * allocate it's own comamnd buffer and execture the commands.
+ */
+void vka::texture2d::copy( texture2d * t)
+{
+
+}
+

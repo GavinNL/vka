@@ -758,6 +758,7 @@ inline channel & channel::operator = ( image const & other)
     return *this;
 }
 
+using host_image = vka::image;
 }
 
 #endif
