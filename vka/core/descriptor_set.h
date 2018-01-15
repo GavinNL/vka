@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan.hpp>
 #include "context_child.h"
+#include "classes.h"
 #include <map>
 
 
@@ -51,6 +52,14 @@ private:
     friend class deleter<descriptor_set_layout>;
 };
 
+struct DescriptorInfo
+{
+    enum {None, DynamicBuffer, Buffer, Image} type;
+    vk::DescriptorBufferInfo  buffer;
+    vk::DescriptorImageInfo   image;
+};
+
+
 class descriptor_set : public context_child
 {
 public:
@@ -60,18 +69,22 @@ public:
 
 
 
-    void create();
+    void create(std::vector< vk::DescriptorSetLayoutBinding > const & bindings);
 
 
     //==========================================
-
+    void update();
+    vka::descriptor_set *attach_sampler(uint32_t index, vka::texture *texture);
 private:
-    vk::DescriptorSet m_descriptor_set;
+    vk::DescriptorSet     m_descriptor_set;
+    vka::descriptor_pool *m_parent_pool = nullptr;
+    std::vector< vk::DescriptorSetLayoutBinding > m_bindings;
+    std::map<uint32_t, DescriptorInfo>    m_DescriptorInfos;
 
-    std::map<vk::DescriptorType, vk::DescriptorPoolSize> m_pools;
 
     friend class context;
     friend class deleter<descriptor_set>;
+    friend class descriptor_pool;
 };
 
 }

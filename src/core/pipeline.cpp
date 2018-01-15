@@ -3,6 +3,7 @@
 #include <vka/core/context.h>
 #include <vka/core/shader.h>
 #include <vka/core/renderpass.h>
+#include <vka/core/descriptor_pool.h>
 #include <vka/core/descriptor_set.h>
 
 vka::pipeline::~pipeline()
@@ -96,6 +97,12 @@ vka::pipeline *vka::pipeline::add_dynamic_uniform_layout_binding(uint32_t set, u
     return this;
 }
 
+vka::descriptor_set* vka::pipeline::create_new_descriptor_set(uint32_t set, descriptor_pool * pool)
+{
+    descriptor_set * S = pool->allocate_descriptor_set();
+    S->create( m_DescriptorSetLayoutBindings.at(set) );
+    return S;
+}
 
 vka::pipeline* vka::pipeline::set_render_pass( vka::renderpass * p)
 {

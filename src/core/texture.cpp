@@ -24,6 +24,25 @@ vka::texture::texture(vka::context *parent) : context_child(parent), m_Memory(pa
     m_CreateInfo.sharingMode   = vk::SharingMode::eExclusive; // VK_SHARING_MODE_EXCLUSIVE;
 
     m_Memory.set_memory_properties(vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+
+
+    m_SamplerInfo.magFilter        = vk::Filter::eLinear;// VK_FILTER_LINEAR;
+    m_SamplerInfo.minFilter        = vk::Filter::eLinear;// VK_FILTER_LINEAR;
+    m_SamplerInfo.addressModeU     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    m_SamplerInfo.addressModeV     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    m_SamplerInfo.addressModeW     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    m_SamplerInfo.anisotropyEnable = VK_TRUE;
+    m_SamplerInfo.maxAnisotropy    = 1;
+    m_SamplerInfo.borderColor      = vk::BorderColor::eIntOpaqueBlack;// VK_BORDER_COLOR_INT_OPAQUE_BLACK ;
+    m_SamplerInfo.unnormalizedCoordinates = VK_FALSE;
+    m_SamplerInfo.compareEnable    = VK_FALSE;
+    m_SamplerInfo.compareOp        = vk::CompareOp::eAlways;// VK_COMPARE_OP_ALWAYS;
+    m_SamplerInfo.mipmapMode       = vk::SamplerMipmapMode::eLinear;// VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    m_SamplerInfo.mipLodBias       = 0.0f;
+    m_SamplerInfo.minLod           = 0.0f;
+    m_SamplerInfo.maxLod           = 8.0f;
+
 }
 
 vka::texture::~texture()
@@ -34,6 +53,8 @@ vka::texture::~texture()
     if( m_View)
         get_device().destroyImageView(m_View);
 
+    if(m_Sampler)
+        get_device().destroySampler(m_Sampler);
     //if( m_Memory)
     //{
     //    get_device().freeMemory(m_Memory);
@@ -224,6 +245,36 @@ void vka::texture::create_image_view( vk::ImageAspectFlags flags)
 
     create_image_view( create_info );
 
+}
+
+void vka::texture::create_sampler()
+{
+    vk::SamplerCreateInfo create_info;
+
+    create_info.magFilter        = vk::Filter::eLinear;// VK_FILTER_LINEAR;
+    create_info.minFilter        = vk::Filter::eLinear;// VK_FILTER_LINEAR;
+    create_info.addressModeU     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    create_info.addressModeV     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    create_info.addressModeW     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    create_info.anisotropyEnable = VK_TRUE;
+    create_info.maxAnisotropy    = 1;
+    create_info.borderColor      = vk::BorderColor::eIntOpaqueBlack;// VK_BORDER_COLOR_INT_OPAQUE_BLACK ;
+    create_info.unnormalizedCoordinates = VK_FALSE;
+    create_info.compareEnable    = VK_FALSE;
+    create_info.compareOp        = vk::CompareOp::eAlways;// VK_COMPARE_OP_ALWAYS;
+    create_info.mipmapMode       = vk::SamplerMipmapMode::eLinear;// VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    create_info.mipLodBias       = 0.0f;
+    create_info.minLod           = 0.0f;
+    create_info.maxLod           = (float)get_mipmap_levels();
+
+    create_sampler(create_info);
+}
+
+void vka::texture::create_sampler(const vk::SamplerCreateInfo &create_info)
+{
+    if(m_Sampler)
+        get_device().destroySampler(m_Sampler);
+    m_Sampler = get_device().createSampler( create_info );
 }
 
 void vka::texture::create_image_view( const vk::ImageViewCreateInfo & view_info)

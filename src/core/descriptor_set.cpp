@@ -1,4 +1,8 @@
 #include <vka/core/descriptor_set.h>
+#include <vka/core/descriptor_pool.h>
+#include <vka/core/texture.h>
+#include <vka/core/context.h>
+
 #include <vka/core/log.h>
 
 vka::descriptor_set_layout::~descriptor_set_layout()
@@ -84,4 +88,83 @@ void vka::descriptor_set_layout::create()
     //    reset( it->second );
     //    LOG << "Descriptor layout already exists. Using that one" << ENDL;
     //}
+}
+
+vka::descriptor_set::~descriptor_set()
+{
+
+}
+
+void vka::descriptor_set::create(std::vector< vk::DescriptorSetLayoutBinding > const & bindings)
+{
+    m_bindings = bindings;
+    auto * dsl = get_parent_context()->new_descriptor_set_layout(m_bindings);
+
+    vk::DescriptorSetAllocateInfo         info;
+
+    vk::DescriptorSetLayout S = *dsl;
+
+    info.setDescriptorPool( *m_parent_pool );
+    info.pSetLayouts        = &S;
+    info.descriptorSetCount = 1;
+
+    auto ds = get_device().allocateDescriptorSets( info );
+    if( ds.size() == 0)
+    {
+        throw std::runtime_error("Descriptor set not created");
+    }
+    m_descriptor_set = ds[0];
+}
+
+
+
+void vka::descriptor_set::update()
+{
+    std::vector<vk::WriteDescriptorSet> descriptorWrite;
+
+    for(auto & e : m_DescriptorInfos)
+    {
+        vk::WriteDescriptorSet w;
+        w.dstSet          = m_descriptor_set;
+        w.dstBinding      = e.first;
+        w.dstArrayElement = 0; // what is this?
+        w.descriptorCount = 1;
+
+        switch(e.second.type)
+        {
+        case DescriptorInfo::DynamicBuffer:
+            w.descriptorType  = vk::DescriptorType::eUniformBufferDynamic;
+            w.pBufferInfo     = &e.second.buffer;
+            break;
+        case DescriptorInfo::Buffer:
+            w.descriptorType  = vk::DescriptorType::eUniformBuffer;
+            w.pBufferInfo     = &e.second.buffer;
+            break;
+        case DescriptorInfo::Image:
+            w.descriptorType  = vk::DescriptorType::eCombinedImageSampler;
+            w.pImageInfo      = &e.second.image;
+            break;
+        default:
+            continue;
+        }
+
+        descriptorWrite.push_back(w);
+    }
+
+    get_device().updateDescriptorSets( descriptorWrite, nullptr);
+
+}
+
+
+vka::descriptor_set * vka::descriptor_set::attach_sampler( uint32_t index,  vka::texture * texture)
+{
+    vka::DescriptorInfo imageInfo;
+    imageInfo.type              = DescriptorInfo::Image;
+    imageInfo.image.imageLayout = texture->get_layout();// texture.get().m_CreateInfo.initialLayout;
+    imageInfo.image.imageView   = texture->get_image_view();// texture.get().m_View;
+    imageInfo.image.sampler     = texture->get_sampler();// texture.get().m_Sampler;
+
+    m_DescriptorInfos[index] = imageInfo;
+
+    return this;
 }

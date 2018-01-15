@@ -51,22 +51,17 @@ int main(int argc, char ** argv)
 
     //====================================
     auto descriptor_pool = C.new_descriptor_pool("main_desc_pool");
-    descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 1);
+    descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 2);
     descriptor_pool->create();
     //====================================
 
-    auto layout = C.new_descriptor_set_layout("my_layout");
-    layout->add_texture_layout_binding(0, vk::ShaderStageFlagBits::eFragment);
-    layout->create();
-
-    //====================================
 
 
     auto * vertex_shader = C.new_shader_module("vs");
-    vertex_shader->load_from_file("../resources/shaders/hello_triangle/hello_triangle_v.spv");
+    vertex_shader->load_from_file("../resources/shaders/hello_textured_triangle/hello_textured_triangle_v.spv");
 
     auto * fragment_shader = C.new_shader_module("fs");
-    fragment_shader->load_from_file("../resources/shaders/hello_triangle/hello_triangle_f.spv");
+    fragment_shader->load_from_file("../resources/shaders/hello_textured_triangle/hello_textured_triangle_f.spv");
 
     auto * pipeline = C.new_pipeline("triangle");
 
@@ -79,10 +74,10 @@ int main(int argc, char ** argv)
 
               // tell the pipeline that attribute 0 contains 3 floats
               // and the data starts at offset 0
-              ->set_vertex_attribute(0 ,  0,  vk::Format::eR32G32B32Sfloat,  2*sizeof(glm::vec3) )
+              ->set_vertex_attribute(0 ,  0,  vk::Format::eR32G32B32Sfloat,  sizeof(glm::vec3)+sizeof(glm::vec2) )
               // tell the pipeline that attribute 1 contains 3 floats
               // and the data starts at offset 12
-              ->set_vertex_attribute(1 , 12,  vk::Format::eR32G32B32Sfloat,  2*sizeof(glm::vec3) )
+              ->set_vertex_attribute(1 , 12,  vk::Format::eR32G32Sfloat,  sizeof(glm::vec3)+sizeof(glm::vec2) )
 
               // Don't cull the
               ->set_cull_mode(vk::CullModeFlagBits::eNone)
@@ -91,6 +86,8 @@ int main(int argc, char ** argv)
               //
               ->set_render_pass( R )
               ->create();
+
+    auto * set = pipeline->create_new_descriptor_set(0, descriptor_pool);
 
 
 #define USE_STAGING
@@ -202,7 +199,11 @@ int main(int argc, char ** argv)
     tex->set_view_type(vk::ImageViewType::e2D);
     tex->create();
     tex->create_image_view(vk::ImageAspectFlagBits::eColor);
+    tex->create_sampler();
 
+
+    set->attach_sampler(0, tex);
+    set->update();
     // Convert the staging texture into a TransferSrcOptimal so that it can be
     // transferred to the device texture
         auto cb1 = cp->AllocateCommandBuffer();

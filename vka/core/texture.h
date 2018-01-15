@@ -36,10 +36,22 @@ public:
         return m_Image;
     }
 
+    vk::ImageView get_image_view() const
+    {
+        return m_View;
+    }
+
+    vk::Sampler get_sampler() const
+    {
+        return m_Sampler;
+    }
+
     void create();
     void create_image_view(const vk::ImageViewCreateInfo &view_info);
     void create_image_view(vk::ImageAspectFlags flags);
 
+    void create_sampler();
+    void create_sampler(const vk::SamplerCreateInfo & create_info);
 
     vk::ImageViewType get_view_type();
 
@@ -87,6 +99,9 @@ private:
 
     vk::ImageViewCreateInfo m_ViewInfo;
     vk::ImageView           m_View;
+
+    vk::SamplerCreateInfo   m_SamplerInfo;
+    vk::Sampler             m_Sampler;
 
     vk::ImageCreateInfo     m_CreateInfo;
 

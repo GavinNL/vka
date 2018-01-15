@@ -204,6 +204,17 @@ public:
     pipeline* add_uniform_layout_binding(        uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
     pipeline* add_dynamic_uniform_layout_binding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
 
+
+    /**
+     * @brief create_new_descriptor_set
+     * @param set - the set number to create the descriptor set out of
+     * @param pool - the pool to allocate the descriptor set from
+     * @return
+     *
+     * Create a new descriptor set based on the layout created in this pipeline.
+     */
+    descriptor_set* create_new_descriptor_set(uint32_t set, descriptor_pool * pool);
+
     void create();
 
     friend class context;
