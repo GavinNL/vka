@@ -157,7 +157,7 @@ void vka::pipeline::create()
     std::vector<vk::DescriptorSetLayout> layouts;
     for(auto & bindings : m_DescriptorSetLayoutBindings)
     {
-        layouts.push_back(  *get_parent_context()->new_descriptor_set_layout( bindings.second ) );
+        layouts.push_back(  get_parent_context()->new_descriptor_set_layout( bindings.second )->get() );
     }
 
    // for(auto  d : m_DescriptorSetLayouts)
@@ -170,7 +170,7 @@ void vka::pipeline::create()
         pipelineLayoutInfo.setLayoutCount     = static_cast<uint32_t>(layouts.size());
     pipelineLayoutInfo.pSetLayouts            = layouts.data();
 
-    pipelineLayoutInfo.pushConstantRangeCount = m_PushConstantRange.size();
+    pipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>( m_PushConstantRange.size() );
     pipelineLayoutInfo.pPushConstantRanges    = m_PushConstantRange.data();
 
 

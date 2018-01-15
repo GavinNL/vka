@@ -102,10 +102,10 @@ void vka::descriptor_set::create(std::vector< vk::DescriptorSetLayoutBinding > c
 
     vk::DescriptorSetAllocateInfo         info;
 
-    vk::DescriptorSetLayout S = *dsl;
+    //vk::DescriptorSetLayout S = *dsl;
 
     info.setDescriptorPool( *m_parent_pool );
-    info.pSetLayouts        = &S;
+    info.pSetLayouts        = &dsl->get();
     info.descriptorSetCount = 1;
 
     auto ds = get_device().allocateDescriptorSets( info );

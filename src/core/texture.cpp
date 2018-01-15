@@ -347,6 +347,7 @@ void vka::texture::convert_layer(vk::CommandBuffer commandBuffer,
     subresourceRange.layerCount     = 1;
 
     convert(commandBuffer, get_layout(layer,level), layout, subresourceRange,srcStageMask, dstStageMask);
+    m_Layout.at(layer).at(level) = layout;
 }
 
 

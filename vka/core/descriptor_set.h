@@ -22,6 +22,9 @@ public:
         return m_descriptor_set_layout;
     }
 
+    vk::DescriptorSetLayout const & get() const {
+        return m_descriptor_set_layout;
+    }
 
 
     descriptor_set_layout* clear_bindings() { m_DescriptorSetLayoutBindings.clear(); return this;}
@@ -68,6 +71,19 @@ public:
     ~descriptor_set();
 
 
+    operator vk::DescriptorSet()
+    {
+        return m_descriptor_set;
+    }
+
+    vk::DescriptorSet const & get() const
+    {
+        return m_descriptor_set;
+    }
+    vk::DescriptorSet  & get()
+    {
+        return m_descriptor_set;
+    }
 
     void create(std::vector< vk::DescriptorSetLayoutBinding > const & bindings);
 

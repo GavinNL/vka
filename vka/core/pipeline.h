@@ -199,6 +199,9 @@ public:
     pipeline* set_vertex_attribute(uint32_t index, uint32_t offset, vk::Format format , uint32_t size);
 
 
+    vk::PipelineLayout  get_layout() const {
+        return m_PipelineLayout;
+    }
 
     pipeline* add_texture_layout_binding(        uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
     pipeline* add_uniform_layout_binding(        uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);

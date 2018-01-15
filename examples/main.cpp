@@ -127,21 +127,21 @@ int main(int argc, char ** argv)
 
     if(1)
     {
+        struct Vertex
+        {
+            glm::vec3 p;
+            glm::vec2 u;
+        };
 
-
-        auto vertex =  sb->map<glm::vec3>();
+        auto vertex =  sb->map<Vertex>();
 
         LOG << "Vertex size: " << vertex.size() << ENDL;
-        vertex[0] = glm::vec3(0, -1.0, 0.0);
-        vertex[1] = glm::vec3(1, 0   ,0);
+        vertex[0] = {glm::vec3(0, -1.0, 0.0)     , glm::vec2(0.5 , 0) } ;
+        vertex[1] = {glm::vec3(-1.0, 0.0,0.0)    , glm::vec2(0   , 1) };
+        vertex[2] = {glm::vec3( 1.0, 1.0   ,0.0) , glm::vec2(1   , 1) };
 
-        vertex[2] = glm::vec3(-1.0, 0.0,0.0);
-        vertex[3] = glm::vec3(0,1,0);
 
-        vertex[4] = glm::vec3( 1.0, 1.0   ,0.0);
-        vertex[5] = glm::vec3(0,1,0);
-
-        auto index =  sb->map<glm::uint16>( 6*sizeof(glm::vec3));
+        auto index =  sb->map<glm::uint16>( 3*sizeof(Vertex));
         index[0] = 0;
         index[1] = 1;
         index[2] = 2;
@@ -151,8 +151,8 @@ int main(int argc, char ** argv)
         auto copy_cmd = cp->AllocateCommandBuffer();
         copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
-        copy_cmd.copyBuffer( *sb , *vb, vk::BufferCopy{ 0,0,6*sizeof(glm::vec3)} );
-        copy_cmd.copyBuffer( *sb , *ib, vk::BufferCopy{ 6*sizeof(glm::vec3),0,3*sizeof(uint16_t) } );
+        copy_cmd.copyBuffer( *sb , *vb, vk::BufferCopy{ 0,0,3*sizeof(Vertex)} );
+        copy_cmd.copyBuffer( *sb , *ib, vk::BufferCopy{ 3*sizeof(Vertex),0,3*sizeof(uint16_t) } );
 
         copy_cmd.end();
         C.submit_cmd_buffer(copy_cmd);
@@ -169,13 +169,12 @@ int main(int argc, char ** argv)
     // C.new_texture_2d("test_texture", w,h,d, vk::Format::eR8G8B8A8Unorm);
     // C.new_texture_2d("test_texture", w,h,d, vk::Format::eR8G8B8A8Unorm);
 
-    if( 1 )
-    {
+
         vka::image D;
         D.load_from_path("../resources/textures/Brick-2852a.jpg",4);
 
     auto * staging_texture = C.new_texture("staging_texture");
-    staging_texture->set_size(1024,1024,1);
+    staging_texture->set_size(512,512,1);
     staging_texture->set_tiling(vk::ImageTiling::eLinear);
     staging_texture->set_usage(  vk::ImageUsageFlagBits::eSampled  | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc );
     staging_texture->set_memory_properties( vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
@@ -187,27 +186,90 @@ int main(int argc, char ** argv)
 
     void * image_data = staging_texture->map_memory();
     LOG << "Image size: " << D.size() << ENDL;
-    memcpy(image_data, D.data(), D.size());
+    memcpy(image_data, D.data(), D.size() );
 
 
     auto * tex = C.new_texture("test_texture");
-    tex->set_size(1024,1024,1);
+    tex->set_size(512,512,1);
     tex->set_tiling(vk::ImageTiling::eOptimal);
     tex->set_usage(  vk::ImageUsageFlagBits::eSampled  | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc );
     tex->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal);
     tex->set_format(vk::Format::eR8G8B8A8Unorm);
     tex->set_view_type(vk::ImageViewType::e2D);
+    tex->set_mipmap_levels(1);
     tex->create();
     tex->create_image_view(vk::ImageAspectFlagBits::eColor);
     tex->create_sampler();
 
 
-    set->attach_sampler(0, tex);
-    set->update();
+
+
+
     // Convert the staging texture into a TransferSrcOptimal so that it can be
     // transferred to the device texture
+    {
         auto cb1 = cp->AllocateCommandBuffer();
         cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+        staging_texture->convert_layer(cb1, vk::ImageLayout::eGeneral,0,0);
+        cb1.end();
+        C.submit_cmd_buffer(cb1);
+        cp->FreeCommandBuffer(cb1);
+    }
+    {
+        auto cb1 = cp->AllocateCommandBuffer();
+        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+         staging_texture->convert_layer(cb1, vk::ImageLayout::eTransferSrcOptimal,0,0);
+        cb1.end();
+        C.submit_cmd_buffer(cb1);
+        cp->FreeCommandBuffer(cb1);
+    }
+    {
+        auto cb1 = cp->AllocateCommandBuffer();
+        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+         tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
+        cb1.end();
+        C.submit_cmd_buffer(cb1);
+        cp->FreeCommandBuffer(cb1);
+    }
+    {
+        auto cb1 = cp->AllocateCommandBuffer();
+        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+
+        vk::ImageCopy IC;
+        vk::ImageSubresourceLayers subResource;
+        subResource.aspectMask     = vk::ImageAspectFlagBits::eColor;//  VK_IMAGE_ASPECT_COLOR_BIT;
+        subResource.baseArrayLayer = 0;
+        subResource.mipLevel       = 0;
+        subResource.layerCount     = 1;
+        IC.setDstOffset( vk::Offset3D(0,0,0))
+          .setSrcOffset(vk::Offset3D(0,0,0))
+          .setExtent(vk::Extent3D(512,512,1))
+          .setSrcSubresource(subResource)
+          .setDstSubresource(subResource);
+
+        cb1.copyImage( staging_texture->get_image(),
+                       vk::ImageLayout::eTransferSrcOptimal ,
+                       tex->get_image(),
+                       vk::ImageLayout::eTransferDstOptimal,
+                       IC);
+        cb1.end();
+        C.submit_cmd_buffer(cb1);
+        cp->FreeCommandBuffer(cb1);
+    }
+    {
+        auto cb1 = cp->AllocateCommandBuffer();
+        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+         tex->convert_layer(cb1, vk::ImageLayout::eShaderReadOnlyOptimal,0,0);
+        cb1.end();
+        C.submit_cmd_buffer(cb1);
+        cp->FreeCommandBuffer(cb1);
+    }
+#if 0
+        auto cb1 = cp->AllocateCommandBuffer();
+        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+
+        staging_texture->convert_layer(cb1, vk::ImageLayout::eGeneral,0,0);
+
 
         staging_texture->convert_layer(cb1, vk::ImageLayout::eTransferSrcOptimal,0,0);
         tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
@@ -229,7 +291,7 @@ int main(int argc, char ** argv)
         subResource.layerCount     = 1;
         IC.setDstOffset( vk::Offset3D(0,0,0))
           .setSrcOffset(vk::Offset3D(0,0,0))
-          .setExtent(vk::Extent3D(1024,1024,1))
+          .setExtent(vk::Extent3D(512,512,1))
           .setSrcSubresource(subResource)
           .setDstSubresource(subResource);
 
@@ -239,11 +301,21 @@ int main(int argc, char ** argv)
                        vk::ImageLayout::eTransferDstOptimal,
                        IC);
 
+        tex->convert_layer(cb1, vk::ImageLayout::eShaderReadOnlyOptimal,0,0);
+
         cb1.end();
         C.submit_cmd_buffer(cb1);
         cp->FreeCommandBuffer(cb1);
-    }
+
+        set->attach_sampler(0, tex);
+        set->update();
+#endif
+
+
+    set->attach_sampler(0, tex);
+    set->update();
     //tex->convert( vk::ImageLayout::eTransferSrcOptimal);
+
 
 
     auto cb = cp->AllocateCommandBuffer();
@@ -290,7 +362,14 @@ int main(int argc, char ** argv)
       //  BEGIN RENDER PASS=====================================================
 
 
+      auto dsp = vk::ArrayProxy<const vk::DescriptorSet>( set->get());
+
             cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
+            cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
+                                                    pipeline->get_layout(),
+                                                    0,
+                                                    dsp,
+                                                    nullptr );
             cb.bindVertexBuffers(0, vb->get(), {0} );// ( m_VertexBuffer, 0);
             cb.bindIndexBuffer(  ib->get() , 0 , vk::IndexType::eUint16);
             cb.drawIndexed(3, 1, 0 , 0, 0);
