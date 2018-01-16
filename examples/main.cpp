@@ -24,13 +24,17 @@ int main(int argc, char ** argv)
     auto window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
 
 
+    // the context is the main class for the vka library. It is keeps track of
+    // all the vulkan objects and releases them appropriately when it is destroyed
+    // It is also responsible for creating the objects such as buffers, textures
+    // command pools, etc.
     vka::context C;
 
     C.init();
-    C.create_window_surface(window);
-    C.create_device();
+    C.create_window_surface(window); // create the vulkan surface using the window provided
+    C.create_device(); // find the appropriate device
+    C.create_swap_chain( {WIDTH,HEIGHT}); // create the swap chain
 
-    C.create_swap_chain( {WIDTH,HEIGHT});
 
     auto R = C.new_renderpass("main_renderpass");
     R->attach_color(vk::Format::eB8G8R8A8Unorm);
@@ -57,42 +61,7 @@ int main(int argc, char ** argv)
 
 
 
-    auto * vertex_shader = C.new_shader_module("vs");
-    vertex_shader->load_from_file("../resources/shaders/hello_textured_triangle/hello_textured_triangle_v.spv");
 
-    auto * fragment_shader = C.new_shader_module("fs");
-    fragment_shader->load_from_file("../resources/shaders/hello_textured_triangle/hello_textured_triangle_f.spv");
-
-    auto * pipeline = C.new_pipeline("triangle");
-
-    // Create the graphics Pipeline
-      pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
-              ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
-
-              ->set_vertex_shader(   vertex_shader ) // the shaders we want to use
-              ->set_fragment_shader( fragment_shader ) // the shaders we want to use
-
-              // tell the pipeline that attribute 0 contains 3 floats
-              // and the data starts at offset 0
-              ->set_vertex_attribute(0 ,  0,  vk::Format::eR32G32B32Sfloat,  sizeof(glm::vec3)+sizeof(glm::vec2) )
-              // tell the pipeline that attribute 1 contains 3 floats
-              // and the data starts at offset 12
-              ->set_vertex_attribute(1 , 12,  vk::Format::eR32G32Sfloat,  sizeof(glm::vec3)+sizeof(glm::vec2) )
-
-              // Don't cull the
-              ->set_cull_mode(vk::CullModeFlagBits::eNone)
-              ->set_front_face(vk::FrontFace::eCounterClockwise)
-              ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
-              //
-              ->set_render_pass( R )
-              ->create();
-
-    auto * set = pipeline->create_new_descriptor_set(0, descriptor_pool);
-
-
-
-    auto * vertex_buffer = C.new_vertex_buffer("vb", 1024 );
-    auto * index_buffer  = C.new_index_buffer( "ib", 1024 );
 
 
 //==============================================================================
@@ -105,6 +74,10 @@ int main(int argc, char ** argv)
 //    1. Copy the vertex/index data from the host to a memory mappable device buffer
 //    2. copy the memory-mapped buffer to the vertex/index buffers
 //==============================================================================
+        // Create two buffers, one for vertices and one for indices. THey
+        // will each be 1024 bytes long
+        auto * vertex_buffer = C.new_vertex_buffer("vb", 1024 );
+        auto * index_buffer  = C.new_index_buffer( "ib", 1024 );
 
         // This is the vertex structure we are going to use
         // it contains a position and a UV coordates field
@@ -129,7 +102,7 @@ int main(int argc, char ** argv)
             // we can access each vertex as if it was an array. Copy the
             // vertex data we want into the first three indices.
             vertex[0] = {glm::vec3(0, -1.0, 0.0)     , glm::vec2(0.5 , 0) } ;
-            vertex[1] = {glm::vec3(-1.0, 0.0,0.0)    , glm::vec2(0   , 1) };
+            vertex[1] = {glm::vec3(-1.0, 1.0,0.0)    , glm::vec2(0   , 1) };
             vertex[2] = {glm::vec3( 1.0, 1.0   ,0.0) , glm::vec2(1   , 1) };
         }
         // Do the same for the index buffer. but we want to specific an
@@ -173,7 +146,6 @@ int main(int argc, char ** argv)
 
     // 1. First load host_image into memory.
         vka::host_image D("../resources/textures/Brick-2852a.jpg",4);
-        //D.load_from_path
 
 
     // 2. Use the context's helper function to create a device local texture
@@ -230,6 +202,57 @@ int main(int argc, char ** argv)
         cp->FreeCommandBuffer(cb1);
 //==============================================================================
 
+
+//==============================================================================
+// Create a Rendering pipeline
+//
+//==============================================================================
+        // create the vertex shader from a pre compiled SPIR-V file
+        auto * vertex_shader = C.new_shader_module("vs");
+        vertex_shader->load_from_file("../resources/shaders/hello_textured_triangle/hello_textured_triangle_v.spv");
+
+        // create the fragment shader from a pre compiled SPIR-V file
+        auto * fragment_shader = C.new_shader_module("fs");
+        fragment_shader->load_from_file("../resources/shaders/hello_textured_triangle/hello_textured_triangle_f.spv");
+
+        auto * pipeline = C.new_pipeline("triangle");
+
+        // Create the graphics Pipeline
+          pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
+                  ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
+
+                  ->set_vertex_shader(   vertex_shader ) // the shaders we want to use
+                  ->set_fragment_shader( fragment_shader ) // the shaders we want to use
+
+                  // tell the pipeline that attribute 0 contains 3 floats
+                  // and the data starts at offset 0
+                  ->set_vertex_attribute(0 ,  0,  vk::Format::eR32G32B32Sfloat,  sizeof(glm::vec3)+sizeof(glm::vec2) )
+                  // tell the pipeline that attribute 1 contains 3 floats
+                  // and the data starts at offset 12
+                  ->set_vertex_attribute(1 , 12,  vk::Format::eR32G32Sfloat,  sizeof(glm::vec3)+sizeof(glm::vec2) )
+
+                  // Don't cull
+                  ->set_cull_mode(vk::CullModeFlagBits::eBack)
+                  ->set_front_face(vk::FrontFace::eCounterClockwise)
+
+                  // Tell the shader that we are going to use a texture
+                  // in Set #0 binding #0
+                  ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
+                  //
+                  ->set_render_pass( R )
+                  ->create();
+
+
+
+//==============================================================================
+// Create a descriptor set:
+//   once the pipeline has been created. We need to create a descriptor set
+//   which we can use to tell what textures we want to use in the shader.
+//   The pipline object can generate a descriptor set for you.
+//==============================================================================
+    // we want a descriptor set for set #0 in the pipeline.
+    auto * set = pipeline->create_new_descriptor_set(0, descriptor_pool);
+    //  attach our texture to binding 0 in the set.
     set->attach_sampler(0, tex);
     set->update();
 
@@ -243,13 +266,9 @@ int main(int argc, char ** argv)
     uint32_t fb_index=0;
     while (!glfwWindowShouldClose(window) )
     {
-      static bool once = true;
 
       glfwPollEvents();
 
-      if(once)
-      {
-          //once = false;
 
       fb_index = C.get_next_image_index(image_available_semaphore);
 
@@ -293,10 +312,13 @@ int main(int argc, char ** argv)
       cb.endRenderPass();
       cb.end();
 
+      // Submit the command buffers, but wait until the image_available_semaphore
+      // is flagged. Once teh commands have been executed, flag the render_complete_semaphore
       C.submit_command_buffer(cb, image_available_semaphore, render_complete_semaphore);
 
+      // present the image to the surface, but wait for the render_complete_semaphore
+      // to be flagged by the submit_command_buffer
       C.present_image(fb_index, render_complete_semaphore);
-        }
 
 
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );
