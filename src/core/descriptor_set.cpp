@@ -1,6 +1,7 @@
 #include <vka/core/descriptor_set.h>
 #include <vka/core/descriptor_pool.h>
 #include <vka/core/texture.h>
+#include <vka/core/buffer.h>
 #include <vka/core/context.h>
 
 #include <vka/core/log.h>
@@ -168,3 +169,21 @@ vka::descriptor_set * vka::descriptor_set::attach_sampler( uint32_t index,  vka:
 
     return this;
 }
+
+vka::descriptor_set * vka::descriptor_set::attach_uniform_buffer(uint32_t index,
+                     const buffer * buff,
+                     vk::DeviceSize size,
+                     vk::DeviceSize offset)
+{
+
+    DescriptorInfo bufferInfo;
+    bufferInfo.type = DescriptorInfo::Buffer;
+    bufferInfo.buffer.buffer = *buff;
+    bufferInfo.buffer.offset = offset;
+    bufferInfo.buffer.range  = size;
+
+    m_DescriptorInfos[index] = bufferInfo;
+
+    return this;
+}
+

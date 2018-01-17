@@ -8,11 +8,26 @@
 #include <vka/vka.h>
 
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #define WIDTH 1024
 #define HEIGHT 768
 #define APP_TITLE "Test"
+
+
+double get_elapsed_time()
+{
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    double time = 1.0 * std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0;
+
+    return time;
+
+}
 
 int main(int argc, char ** argv)
 {
@@ -56,6 +71,7 @@ int main(int argc, char ** argv)
     //====================================
     auto descriptor_pool = C.new_descriptor_pool("main_desc_pool");
     descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 2);
+    descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
     descriptor_pool->create();
     //====================================
 
@@ -78,6 +94,7 @@ int main(int argc, char ** argv)
         // will each be 1024 bytes long
         auto * vertex_buffer = C.new_vertex_buffer("vb", 1024 );
         auto * index_buffer  = C.new_index_buffer( "ib", 1024 );
+        auto * u_buffer      = C.new_uniform_buffer( "ub", 1024);
 
         // This is the vertex structure we are going to use
         // it contains a position and a UV coordates field
@@ -101,9 +118,11 @@ int main(int argc, char ** argv)
             LOG << "Vertex size: " << vertex.size() << ENDL;
             // we can access each vertex as if it was an array. Copy the
             // vertex data we want into the first three indices.
-            vertex[0] = {glm::vec3(0, -1.0, 0.0)     , glm::vec2(0.5 , 0) } ;
-            vertex[1] = {glm::vec3(-1.0, 1.0,0.0)    , glm::vec2(0   , 1) };
-            vertex[2] = {glm::vec3( 1.0, 1.0   ,0.0) , glm::vec2(1   , 1) };
+            vertex[0] = {glm::vec3( 0.0,  0.0,  1.0 ) , glm::vec2(0.5 , 0) } ;
+            vertex[1] = {glm::vec3( 1.0,  0.0, -1.0 ) , glm::vec2(0   , 1) };
+            vertex[2] = {glm::vec3(-1.0,  0.0, -1.0 ) , glm::vec2(1   , 1) };
+
+         //   vertex[3] = {glm::vec3( 0.0,  1.0,  0.0 ) , glm::vec2(0.5 , 0) };
         }
         // Do the same for the index buffer. but we want to specific an
         // offset form the start of the buffer so we do not overwrite the
@@ -209,11 +228,11 @@ int main(int argc, char ** argv)
 //==============================================================================
         // create the vertex shader from a pre compiled SPIR-V file
         auto * vertex_shader = C.new_shader_module("vs");
-        vertex_shader->load_from_file("../resources/shaders/hello_textured_triangle/hello_textured_triangle_v.spv");
+        vertex_shader->load_from_file("../resources/shaders/uniform_buffer/uniform_buffer_v.spv");
 
         // create the fragment shader from a pre compiled SPIR-V file
         auto * fragment_shader = C.new_shader_module("fs");
-        fragment_shader->load_from_file("../resources/shaders/hello_textured_triangle/hello_textured_triangle_f.spv");
+        fragment_shader->load_from_file("../resources/shaders/uniform_buffer/uniform_buffer_f.spv");
 
         auto * pipeline = C.new_pipeline("triangle");
 
@@ -238,6 +257,7 @@ int main(int argc, char ** argv)
                   // Tell the shader that we are going to use a texture
                   // in Set #0 binding #0
                   ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
+                  ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
                   //
                   ->set_render_pass( R )
                   ->create();
@@ -251,11 +271,23 @@ int main(int argc, char ** argv)
 //   The pipline object can generate a descriptor set for you.
 //==============================================================================
     // we want a descriptor set for set #0 in the pipeline.
-    auto * set = pipeline->create_new_descriptor_set(0, descriptor_pool);
+    auto * texture_descriptor = pipeline->create_new_descriptor_set(0, descriptor_pool);
     //  attach our texture to binding 0 in the set.
-    set->attach_sampler(0, tex);
-    set->update();
+    texture_descriptor->attach_sampler(0, tex);
+    texture_descriptor->update();
 
+    auto * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
+    ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, 10, 0);
+    ubuffer_descriptor->update();
+
+    struct uniform_buffer_t
+    {
+        glm::mat4 model;
+        glm::mat4 view;
+        glm::mat4 proj;
+    };
+
+    auto staging_buffer_map = staging_buffer->map<uniform_buffer_t>();
 
     auto cb = cp->AllocateCommandBuffer();
 
@@ -269,12 +301,31 @@ int main(int argc, char ** argv)
 
       glfwPollEvents();
 
+      //============ Update the uniform buffer=====================
+      float t = get_elapsed_time();
+
+      const float AR = WIDTH / ( float )HEIGHT;
+
+      staging_buffer_map[0].model = glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+      staging_buffer_map[0].view  = glm::lookAt( glm::vec3(5.0f, 5.0f, 5.0f),
+                                                 glm::vec3(0.0f, 0.0f, 0.0f),
+                                                 glm::vec3(0.0f, 1.0f, 0.0f));
+      staging_buffer_map[0].proj  = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
+      staging_buffer_map[0].proj[1][1] *= -1;
+
+      //staging_buffer_map[0].model = glm::mat4();//rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+      //staging_buffer_map[0].view  = glm::mat4();//lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+      //staging_buffer_map[0].proj  = glm::mat4();//perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
+      //============================================================
 
       fb_index = C.get_next_image_index(image_available_semaphore);
 
       cb.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
       //  BEGIN RENDER PASS=====================================================
       cb.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
+
+      // Copy the uniform buffer data from the stating buffer to the uniform buffer
+      cb.copyBuffer( *staging_buffer , *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
 
       // We want the to use the render pass we created earlier
       vk::RenderPassBeginInfo renderPassInfo;
@@ -297,16 +348,22 @@ int main(int argc, char ** argv)
       //  BEGIN RENDER PASS=====================================================
 
 
-      auto dsp = vk::ArrayProxy<const vk::DescriptorSet>( set->get());
+
 
             cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
+
             cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
                                                     pipeline->get_layout(),
                                                     0,
-                                                    dsp,
+                                                    vk::ArrayProxy<const vk::DescriptorSet>( texture_descriptor->get()),
+                                                    nullptr );
+            cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
+                                                    pipeline->get_layout(),
+                                                    1,
+                                                    vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
                                                     nullptr );
             cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );// ( m_VertexBuffer, 0);
-            cb.bindIndexBuffer(  index_buffer ->get() , 0 , vk::IndexType::eUint16);
+            cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
             cb.drawIndexed(3, 1, 0 , 0, 0);
 
       cb.endRenderPass();
