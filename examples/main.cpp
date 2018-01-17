@@ -17,7 +17,12 @@
 #define HEIGHT 768
 #define APP_TITLE "Test"
 
-
+/**
+ * @brief get_elapsed_time
+ * @return
+ *
+ * Gets the number of seconds since the application started.
+ */
 double get_elapsed_time()
 {
     static auto startTime = std::chrono::high_resolution_clock::now();
@@ -105,12 +110,12 @@ int main(int argc, char ** argv)
         };
 
         // allocate a staging buffer of 10MB
-        auto * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
+        vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
 
         // using the map< > method, we can return an array_view into the
         // memory. We are going to place them in their own scope so that
         // the array_view is destroyed after exiting the scope. This is
-        // so we do not accidenty access teh array_view after the
+        // so we do not accidenty access the array_view after the
         // staging_buffer has been unmapped.
         {
             vka::array_view<Vertex> vertex =  staging_buffer->map<Vertex>();
@@ -121,14 +126,15 @@ int main(int argc, char ** argv)
             vertex[0] = {glm::vec3( 0.0,  0.0,  1.0 ) , glm::vec2(0.5 , 0) } ;
             vertex[1] = {glm::vec3( 1.0,  0.0, -1.0 ) , glm::vec2(0   , 1) };
             vertex[2] = {glm::vec3(-1.0,  0.0, -1.0 ) , glm::vec2(1   , 1) };
-
-         //   vertex[3] = {glm::vec3( 0.0,  1.0,  0.0 ) , glm::vec2(0.5 , 0) };
         }
         // Do the same for the index buffer. but we want to specific an
         // offset form the start of the buffer so we do not overwrite the
         // vertex data.
         {
-            vka::array_view<glm::uint16_t> index =  staging_buffer->map<glm::uint16>( 3*sizeof(Vertex));
+            // +--------------------------------------------------------+
+            // |  vertex data    |   index data                         |
+            // +--------------------------------------------------------+
+            vka::array_view<glm::uint16_t> index =  staging_buffer->map<glm::uint16>( 3*sizeof(Vertex) );
             index[0] = 0;
             index[1] = 1;
             index[2] = 2;
@@ -143,8 +149,15 @@ int main(int argc, char ** argv)
         copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
         // write the commands to copy each of the buffer data
-        copy_cmd.copyBuffer( *staging_buffer , *vertex_buffer, vk::BufferCopy{ 0               ,0,3*sizeof(Vertex)} );
-        copy_cmd.copyBuffer( *staging_buffer , *index_buffer , vk::BufferCopy{ 3*sizeof(Vertex),0,3*sizeof(uint16_t) } );
+        const vk::DeviceSize vertex_offset = 0;
+        const vk::DeviceSize vertex_size   = 3 * sizeof(Vertex);
+
+        const vk::DeviceSize index_size    = 3 * sizeof(uint16_t);
+        const vk::DeviceSize index_offset  = vertex_offset;
+
+
+        copy_cmd.copyBuffer( *staging_buffer , *vertex_buffer, vk::BufferCopy{ vertex_offset    , 0 , vertex_size } );
+        copy_cmd.copyBuffer( *staging_buffer , *index_buffer , vk::BufferCopy{ index_offset     , 0 , index_size  } );
 
         copy_cmd.end();
         C.submit_cmd_buffer(copy_cmd);
@@ -163,7 +176,7 @@ int main(int argc, char ** argv)
 //
 //==============================================================================
 
-    // 1. First load host_image into memory.
+    // 1. First load host_image into memory, and specifcy we want 4 channels.
         vka::host_image D("../resources/textures/Brick-2852a.jpg",4);
 
 
@@ -184,11 +197,11 @@ int main(int argc, char ** argv)
         staging_buffer->unmap_memory();
 
 
-    // 4. Now that the data is on the device. We need to get it from teh buffer
+    // 4. Now that the data is on the device. We need to get it from the buffer
     //    to the texture. To do this we will record a command buffer to do the
     //    following:
     //         a. convert the texture2d into a layout which can accept transfer data
-    //         b. copy the data from teh buffer to the texture2d.
+    //         b. copy the data from the buffer to the texture2d.
     //         c. convert the texture2d into a layout which is good for shader use
 
         // allocate the command buffer
@@ -201,13 +214,13 @@ int main(int argc, char ** argv)
             // b. copy the data from the buffer to the texture
             vk::BufferImageCopy BIC;
             BIC.setBufferImageHeight(  D.height() )
-               .setBufferOffset(0)
-               .setImageExtent( vk::Extent3D(D.width(), D.height(), 1) )
-               .setImageOffset( vk::Offset3D(0,0,0))
+               .setBufferOffset(0) // the image data starts at the start of the buffer
+               .setImageExtent( vk::Extent3D(D.width(), D.height(), 1) ) // size of the image
+               .setImageOffset( vk::Offset3D(0,0,0)) // where in the texture we want to paste the image
                .imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
-                                .setBaseArrayLayer(0)
-                                .setLayerCount(1)
-                                .setMipLevel(0);
+                                .setBaseArrayLayer(0) // the layer to copy
+                                .setLayerCount(1) // only copy one layer
+                                .setMipLevel(0);  // only the first mip-map level
 
             tex->copy_buffer( cb1, staging_buffer, BIC);
 
@@ -240,23 +253,30 @@ int main(int argc, char ** argv)
           pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                   ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                  ->set_vertex_shader(   vertex_shader ) // the shaders we want to use
+                  ->set_vertex_shader(   vertex_shader )   // the shaders we want to use
                   ->set_fragment_shader( fragment_shader ) // the shaders we want to use
 
                   // tell the pipeline that attribute 0 contains 3 floats
                   // and the data starts at offset 0
-                  ->set_vertex_attribute(0 ,  0,  vk::Format::eR32G32B32Sfloat,  sizeof(glm::vec3)+sizeof(glm::vec2) )
+                  ->set_vertex_attribute(0 ,  0,  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
                   // tell the pipeline that attribute 1 contains 3 floats
                   // and the data starts at offset 12
-                  ->set_vertex_attribute(1 , 12,  vk::Format::eR32G32Sfloat,  sizeof(glm::vec3)+sizeof(glm::vec2) )
+                  ->set_vertex_attribute(1 , 12,  vk::Format::eR32G32Sfloat,  sizeof(Vertex) )
 
-                  // Don't cull
-                  ->set_cull_mode(vk::CullModeFlagBits::eBack)
+                  // Triangle vertices are drawn in a counter clockwise manner
+                  // using the right hand rule which indicates which face is the
+                  // front
                   ->set_front_face(vk::FrontFace::eCounterClockwise)
+
+                  // Cull all back facing triangles.
+                  ->set_cull_mode(vk::CullModeFlagBits::eBack)
 
                   // Tell the shader that we are going to use a texture
                   // in Set #0 binding #0
                   ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
+
+                  // Tell teh shader that we are going to use a uniform buffer
+                  // in Set #0 binding #0
                   ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
                   //
                   ->set_render_pass( R )
@@ -296,6 +316,11 @@ int main(int argc, char ** argv)
     auto * render_complete_semaphore = C.new_semaphore("render_complete_semaphore");
 
     uint32_t fb_index=0;
+
+    // Here we finally perform the main loop for rendering.
+    // The steps required are:
+    //    a. update the uniform buffer with the MVP matrices
+    //
     while (!glfwWindowShouldClose(window) )
     {
 
@@ -313,20 +338,20 @@ int main(int argc, char ** argv)
       staging_buffer_map[0].proj  = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
       staging_buffer_map[0].proj[1][1] *= -1;
 
-      //staging_buffer_map[0].model = glm::mat4();//rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-      //staging_buffer_map[0].view  = glm::mat4();//lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-      //staging_buffer_map[0].proj  = glm::mat4();//perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
       //============================================================
 
+      // Get the next available image in the swapchain
       fb_index = C.get_next_image_index(image_available_semaphore);
 
+      // reset the command buffer so that we can record from scratch again.
       cb.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
-      //  BEGIN RENDER PASS=====================================================
       cb.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
+
 
       // Copy the uniform buffer data from the stating buffer to the uniform buffer
       cb.copyBuffer( *staging_buffer , *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
 
+      //  BEGIN RENDER PASS=====================================================
       // We want the to use the render pass we created earlier
       vk::RenderPassBeginInfo renderPassInfo;
       renderPassInfo.renderPass        = *R;
@@ -345,13 +370,13 @@ int main(int argc, char ** argv)
       renderPassInfo.pClearValues    = clearValues.data();
 
       cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-      //  BEGIN RENDER PASS=====================================================
+      //========================================================================
 
 
-
-
+      // bind the pipeline that we want to use next
             cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
 
+      // bind the two descriptor sets that we need to that pipeline
             cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
                                                     pipeline->get_layout(),
                                                     0,
@@ -362,15 +387,19 @@ int main(int argc, char ** argv)
                                                     1,
                                                     vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
                                                     nullptr );
+
+     // bind the vertex/index buffers
             cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );// ( m_VertexBuffer, 0);
             cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
+
+    // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
             cb.drawIndexed(3, 1, 0 , 0, 0);
 
       cb.endRenderPass();
       cb.end();
 
       // Submit the command buffers, but wait until the image_available_semaphore
-      // is flagged. Once teh commands have been executed, flag the render_complete_semaphore
+      // is flagged. Once the commands have been executed, flag the render_complete_semaphore
       C.submit_command_buffer(cb, image_available_semaphore, render_complete_semaphore);
 
       // present the image to the surface, but wait for the render_complete_semaphore
