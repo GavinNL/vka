@@ -53,8 +53,8 @@ add_definitions(
 
 
 file(GLOB_RECURSE core_files "src/core/*.cpp")
-add_library(core SHARED ${core_files} )
-set_target_properties(core PROPERTIES LINKER_LANGUAGE CXX)
+add_library(vkacore SHARED ${core_files} )
+set_target_properties(vkacore PROPERTIES LINKER_LANGUAGE CXX)
 
 #file(GLOB_RECURSE utils_files "src/utils/*.cpp")
 #add_library(utils SHARED ${utils_files} )
@@ -65,7 +65,7 @@ set_target_properties(core PROPERTIES LINKER_LANGUAGE CXX)
 #set_target_properties(stb PROPERTIES LINKER_LANGUAGE CXX)
 
 #SET(LIBS glfw vulkan core utils stb)
-SET(LIBS core glfw vulkan)
+SET(LIBS vkacore glfw vulkan)
 
 
 #file(GLOB files "*.cpp")
