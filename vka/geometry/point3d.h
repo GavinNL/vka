@@ -39,7 +39,7 @@ struct point3d
     typedef T                                  value_type;
     typedef glm::tvec3<value_type, glm::highp> vec_type;
 
-    point3d(value_type x=0.0f, value_type y=0.0f, value_type z=0.0f) : p(x,y,z){}
+    point3d(value_type X=0.0f, value_type Y=0.0f, value_type Z=0.0f) : p(X,Y,Z){}
 	
     point3d(const vec_type & P) : p(P){}
 
@@ -57,9 +57,6 @@ struct point3d
 	}
 
     vec_type p;
-    value_type & x = p.x;
-    value_type & y = p.y;
-    value_type & z = p.z;
 };
 
 

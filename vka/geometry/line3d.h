@@ -64,7 +64,7 @@ struct line3d
 	*/	
     value_type     distance(const point_type & P) const
     {
-        return displacement(P).length();
+        return glm::length( displacement(P) );
     }
 
 	/**
@@ -92,7 +92,7 @@ struct line3d
 	*/
     value_type     distance(    const line3d & L) const
     {
-        return displacement(L).v.length();
+        return glm::length( displacement(L).v );
     }
 
 

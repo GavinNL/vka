@@ -29,14 +29,23 @@
 #include "line3d.h"
 //#include "../core/camera.h"
 
-namespace vka {
+namespace vka
+{
 /*
     Frustum class that represents the frustum in 3 dimensional space.
     it can be used to check clipping with bounding boxes.
 
 */
+template<typename T>
 struct frustum
 {
+    typedef T                                    value_type;
+    typedef glm::tvec3<value_type, glm::highp>   vec_type;
+    typedef glm::tvec4<value_type, glm::highp>   vec4_type;
+    typedef glm::tmat4x4<value_type, glm::highp> mat_type;
+    typedef point3d<value_type>                  point_type;
+    typedef line3d<value_type>                   line_type;
+
     frustum()
     {
 
@@ -52,9 +61,12 @@ struct frustum
      * @brief Frustum
      * @param proj
      *
-     * Constructs the frustrum from a perspective projection matrix
+     * Constructs the frustrum from a perspective projection matrix.
+     * The Frustum will have a default position of (0,0,0) point down the
+     * negative Z axis
+     *
      */
-    frustum(const glm::mat4 & proj)
+    frustum(const mat_type & proj)
     {
         const auto & m = proj;
         left.v.x = -(m[0][3] + m[0][0]);
@@ -101,21 +113,21 @@ struct frustum
 
     // Transform the fustrum using a matrix
     // The matrix M needs to be unitary
-    void transform(const glm::mat4 & ViewMatrix)
+    void transform(const mat_type & ViewMatrix)
     {
-        vka::line3d * L = &top;
+        line_type * L = &top;
 
         for(int i=0;i<6;i++)
         {
-            auto p4 = ViewMatrix * glm::vec4( L[i].p.x, L[i].p.y, L[i].p.z, 1.0f);
-            auto v4 = ViewMatrix * glm::vec4( L[i].v.x, L[i].v.y, L[i].v.z, 0.0f);
+            auto p4 = ViewMatrix * vec4_type( L[i].p.x, L[i].p.y, L[i].p.z, 1.0f);
+            auto v4 = ViewMatrix * vec4_type( L[i].v.x, L[i].v.y, L[i].v.z, 0.0f);
 
-            L[i].p = glm::vec3(p4.x,p4.y,p4.z);
-            L[i].v = glm::vec3(v4.x,v4.y,v4.z);
+            L[i].p = vec_type(p4.x,p4.y,p4.z);
+            L[i].v = vec_type(v4.x,v4.y,v4.z);
         }
 
-        auto p4 = ViewMatrix * glm::vec4( p.x, p.y, p.z, 1.0f);
-        p = glm::vec3(p4.x,p4.y,p4.z);
+        auto p4 = ViewMatrix * vec4_type( p.x, p.y, p.z, 1.0f);
+        p = vec_type(p4.x,p4.y,p4.z);
     }
 
 
@@ -130,18 +142,18 @@ struct frustum
     bool intersects(const vka::bounding_box<T> & B) const
     {
         // for each plane, check if the corners of the bounding box are on the same side of the plane
-        vka::line3d const * L = &top;
+        line_type const * L = &top;
 
-        const glm::vec3 P[] =
+        const vec_type P[] =
         {
-            glm::vec3( B.min.x, B.min.y, B.min.z),
-            glm::vec3( B.min.x, B.min.y, B.max.z),
-            glm::vec3( B.min.x, B.max.y, B.min.z),
-            glm::vec3( B.min.x, B.max.y, B.max.z),
-            glm::vec3( B.max.x, B.min.y, B.min.z),
-            glm::vec3( B.max.x, B.min.y, B.max.z),
-            glm::vec3( B.max.x, B.max.y, B.min.z),
-            glm::vec3( B.max.x, B.max.y, B.max.z)
+            vec_type( B.min.x, B.min.y, B.min.z),
+            vec_type( B.min.x, B.min.y, B.max.z),
+            vec_type( B.min.x, B.max.y, B.min.z),
+            vec_type( B.min.x, B.max.y, B.max.z),
+            vec_type( B.max.x, B.min.y, B.min.z),
+            vec_type( B.max.x, B.min.y, B.max.z),
+            vec_type( B.max.x, B.max.y, B.min.z),
+            vec_type( B.max.x, B.max.y, B.max.z)
         };
 
         // for each plane
@@ -170,7 +182,7 @@ struct frustum
      */
     bool intersects(const glm::vec3 & P ) const
     {
-        vka::line3d const * L = &top;
+        line_type const * L = &top;
 
         for(int i=0;i<6;i++)
         {
@@ -192,12 +204,12 @@ protected:
 
     // the 6 planes that define the fustrum
     // these planes are in real coordinate space. not normalized.
-    vka::line3d top;    // this plane passes through the point, p,
-    vka::line3d right;  // this plane passes through the point, p,
-    vka::line3d bottom; // this plane passes through the point, p,
-    vka::line3d left;   // this plane passes through the point, p,
-    vka::line3d near;
-    vka::line3d far;
+    line_type top;    // this plane passes through the point, p,
+    line_type right;  // this plane passes through the point, p,
+    line_type bottom; // this plane passes through the point, p,
+    line_type left;   // this plane passes through the point, p,
+    line_type near;
+    line_type far;
 
 };
 

@@ -36,7 +36,6 @@ namespace vka
 template<typename T=float>
 struct bounding_box
 {
-    //using vec_type = glm::detail::tvec3<T, glm::defaultp>;
     using vec_type = glm::tvec3<T, glm::defaultp>;
 
     vec_type min;
@@ -241,7 +240,7 @@ struct bounding_box
 
     eLocation locate_point( const glm::vec3 & p )
     {
-        //#warning Not Implemented yet.
+        assert(false && "Not implemented yet");
         unsigned int l=0;
 
         auto x = p.x < min.x ?  eLocation::LEFT : (p.x > max.x ?  eLocation::RIGHT : eLocation::INSIDE);
@@ -303,12 +302,12 @@ inline bounding_box<T> operator*(const bounding_box<T> & left, const T & x )
 
     if( std::is_floating_point<T>::value )
     {
-        auto s = left.Size()*static_cast<T>(0.5);
+        auto s = left.size()*static_cast<T>(0.5);
         return bounding_box<T>( c-s*x, c+s*x);
     }
     else
     {
-        auto s = left.Size()/static_cast<T>(2);
+        auto s = left.size()/static_cast<T>(2);
         return bounding_box<T>( c - s*x, c+s*x);
     }
 

@@ -13,15 +13,17 @@ SCENARIO("Number Types")
 
     GIVEN("A JSON constructed with an int")
     {
-        P3 p1(0,0,0);
-        P3 p2(1,1,1);
+        P3 p1(1,2,3);
+        P3 p2(-2,0,1);
 
-        auto L = p2-p1;
-        THEN("size == 0")
+        REQUIRE( sizeof(P3) == sizeof(glm::vec3) );
+
+        THEN("Difference in two points yields a line")
         {
-            std::cout << glm::length(L) << std::endl;
-            REQUIRE( fabs( glm::length(L) - sqrt(3) ) < 0.001 );
-           // REQUIRE( J.size() == 0);
+            auto L = p2-p1;
+
+            REQUIRE( Approx( glm::length(L) ) == sqrt(9+4+4) );
+
         }
 
 
