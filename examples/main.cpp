@@ -1,3 +1,26 @@
+/*
+ * Example 1:
+ *
+ * This example outlines a very basic usage of vka which demonstrates
+ * the essentials of graphics rendering.   It is broken down into a number of
+ * steps
+ *
+ * 1. Initialize the Library and create a window
+ * 2. Create vertex/index buffers to store geometry
+ * 3. Load a texture into the GPU
+ * 4. Create a rendering pipeline
+ * 5. Start rendering
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ */
+
+
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.hpp>
@@ -23,7 +46,7 @@
  *
  * Gets the number of seconds since the application started.
  */
-double get_elapsed_time()
+float get_elapsed_time()
 {
     static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -36,6 +59,9 @@ double get_elapsed_time()
 
 int main(int argc, char ** argv)
 {
+    //==========================================================================
+    // 1. Initlize the library and create a window
+    //==========================================================================
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -55,11 +81,16 @@ int main(int argc, char ** argv)
     C.create_device(); // find the appropriate device
     C.create_swap_chain( {WIDTH,HEIGHT}); // create the swap chain
 
+    //==========================================================================
 
+
+
+    //==========================================================================
+    // Create the Render pass and the frame buffers
+    //==========================================================================
     auto R = C.new_renderpass("main_renderpass");
     R->attach_color(vk::Format::eB8G8R8A8Unorm);
     R->create(C);
-
 
     auto cp = C.new_command_pool("main_command_pool");
 
@@ -71,14 +102,18 @@ int main(int argc, char ** argv)
         framebuffers.push_back(  C.new_framebuffer( std::string("fb_") + std::to_string(i++) ) );
         framebuffers.back()->create( *R, vk::Extent2D{WIDTH,HEIGHT}, view, vk::ImageView());
     }
+    //==========================================================================
 
 
-    //====================================
+
+    //==========================================================================
+    // Initialize the Command and Descriptor Pools
+    //==========================================================================
     auto descriptor_pool = C.new_descriptor_pool("main_desc_pool");
     descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 2);
     descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
     descriptor_pool->create();
-    //====================================
+    //==========================================================================
 
 
 
@@ -153,7 +188,7 @@ int main(int argc, char ** argv)
         const vk::DeviceSize vertex_size   = 3 * sizeof(Vertex);
 
         const vk::DeviceSize index_size    = 3 * sizeof(uint16_t);
-        const vk::DeviceSize index_offset  = vertex_offset;
+        const vk::DeviceSize index_offset  = vertex_size;
 
 
         copy_cmd.copyBuffer( *staging_buffer , *vertex_buffer, vk::BufferCopy{ vertex_offset    , 0 , vertex_size } );
@@ -300,6 +335,8 @@ int main(int argc, char ** argv)
     ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, 10, 0);
     ubuffer_descriptor->update();
 
+    // This is the structure of the uniform buffer we want.
+    // it needs to match the structure in the shader.
     struct uniform_buffer_t
     {
         glm::mat4 model;
@@ -317,6 +354,10 @@ int main(int argc, char ** argv)
 
     uint32_t fb_index=0;
 
+
+    //==========================================================================
+    // Perform the Rendering
+    //==========================================================================
     // Here we finally perform the main loop for rendering.
     // The steps required are:
     //    a. update the uniform buffer with the MVP matrices
