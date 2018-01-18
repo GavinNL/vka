@@ -441,6 +441,45 @@ vka::texture2d *vka::context::new_texture2d(const std::string &name)
     return _new<vka::texture2d>(name);
 }
 
+vk::Format vka::context::find_depth_format()
+{
+    return find_supported_format(
+    {vk::Format::eD32Sfloat      ,// VK_FORMAT_D32_SFLOAT,
+     vk::Format::eD32SfloatS8Uint,// VK_FORMAT_D32_SFLOAT_S8_UINT,
+     vk::Format::eD24UnormS8Uint},  //VK_FORMAT_D24_UNORM_S8_UINT},
+
+                vk::ImageTiling::eOptimal,// VK_IMAGE_TILING_OPTIMAL,
+                vk::FormatFeatureFlagBits::eDepthStencilAttachment// VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+                );
+}
+
+vk::Format vka::context::find_supported_format(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
+{
+
+    for (vk::Format format : candidates)
+    {
+
+        vk::FormatProperties props = get_physical_device().getFormatProperties(format);
+
+        if (tiling == vk::ImageTiling::eLinear
+                && (props.linearTilingFeatures & features) == features)
+        {
+            LOG << "Depth Format selected: " << vk::to_string(format) << ENDL;
+            return format;
+        }
+        else if (tiling == vk::ImageTiling::eOptimal
+                 && (props.optimalTilingFeatures & features) == features)
+        {
+            LOG << "Depth Format selected: " << vk::to_string(format) << ENDL;
+            return format;
+        }
+    }
+
+    throw std::runtime_error("failed to find supported format!");
+}
+
+
+
 vka::texture2d *vka::context::new_texture2d_host_visible(const std::string &name)
 {
     auto * staging_texture = new_texture2d(name);

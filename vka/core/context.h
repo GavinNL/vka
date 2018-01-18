@@ -417,6 +417,9 @@ public:
 
 
 
+
+    vk::Format find_supported_format(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+    vk::Format find_depth_format();
 private:
 
     template<typename T>
