@@ -29,7 +29,20 @@ VKA uses the following libraries.
  * GLM - for linear algebra
  * STB - for image loading
 
-These libraries are set as submodules.
+If you already have GLM and STB installed on your system. Simply clone the
+repo with the following command:
+
+```bash
+git clone http://github.com/gavinNL/vka.git
+```
+
+If you do not have GLM or STB, you can recursively download the submodules
+using the ```--recursive comand```
+
+```bash
+git clone --recursive http://github.com/gavinNL/vka.git
+```
+
 
 ## Examples
 
