@@ -33,6 +33,108 @@
 namespace vka
 {
 
+template<typename T>
+struct aabb
+{
+    using vec_type = glm::tvec3<T, glm::defaultp>;
+    using value_type = T;
+
+private:
+    vec_type m_position; // the corer of the box we are consdering the center
+    vec_type m_size;   // the dimensions of the box.
+
+public:
+    aabb() : aabb( vec_type(0), vec_type(0) )
+    {
+
+    }
+
+    aabb( const vec_type & p, const vec_type & s) : m_position(p), m_size(s)
+    {
+        m_position.x = s.x<0 ? ( p.x+s.x ) : ( p.x );
+        m_position.y = s.y<0 ? ( p.y+s.y ) : ( p.y );
+        m_position.z = s.z<0 ? ( p.z+s.z ) : ( p.z );
+
+        m_size.x = std::abs(s.x);
+        m_size.y = std::abs(s.y);
+        m_size.z = std::abs(s.z);
+    }
+
+    aabb(const vec_type & p) : aabb(p, vec_type(0,0,0)) {}
+
+    aabb(value_type v) : aabb( vec_type(0,0,0), vec_type(v,v,v) )
+    {
+        m_position -= m_size / 2;
+    }
+
+    value_type min_x() const { return m_position.x; }
+    value_type max_x() const { return m_position.x+m_size.x; }
+    value_type min_y() const { return m_position.y; }
+    value_type max_y() const { return m_position.y+m_size.y; }
+    value_type min_z() const { return m_position.z; }
+    value_type max_z() const { return m_position.z+m_size.z; }
+
+
+    aabb& set_position( vec_type const & v)
+    {
+        m_position = v;
+        return *this;
+    }
+
+    aabb& set_size( vec_type const & s)
+    {
+        m_position.x = s.x<0 ? ( m_position.x+s.x ) : ( m_position.x );
+        m_position.y = s.y<0 ? ( m_position.y+s.y ) : ( m_position.y );
+        m_position.z = s.z<0 ? ( m_position.z+s.z ) : ( m_position.z );
+
+        m_size.x = std::abs(s.x);
+        m_size.y = std::abs(s.y);
+        m_size.z = std::abs(s.z);
+        return *this;
+    }
+
+    vec_type get_size() const
+    {
+        return m_size;
+    }
+    vec_type get_position() const
+    {
+        return m_position;
+    }
+
+    aabb& translate( vec_type const & v)
+    {
+        m_position+=v;
+    }
+    aabb& scale( vec_type const & v)
+    {
+        m_size += v;
+    }
+
+    value_type volume() const
+    {
+        return m_size.x*m_size.y*m_size.z;
+    }
+
+    vec_type centre() const
+    {
+        return m_position + m_size/2;
+    }
+
+    template<typename F>
+    bool intersects( aabb<F> const & other ) const
+    {
+        if( other.max_x() < min_x() || other.min_x() > max_x() ||
+            other.max_y() < min_y() || other.min_y() > max_y() ||
+            other.max_z() < min_z() || other.min_z() > max_z()  )
+        {
+                return false;
+        }
+        return true;
+    }
+
+};
+
 template<typename T=float>
 struct bounding_box
 {
@@ -85,7 +187,16 @@ struct bounding_box
         return *this;
     }
 
-
+    /**
+     * @brief transform
+     * @param M
+     * @return
+     *
+     * Transforms the bounding box and returns a new bounding box which
+     * encompasses the entire transformed box. The returned bounding box
+     * is always axis-aligned. In most cases the new bounding box
+     * will have a larger volume than the original.
+     */
     bounding_box<T> transform(const glm::mat4 & M) const
     {
         auto s = this->Size();
@@ -297,7 +408,7 @@ inline bounding_box<T> operator+(const bounding_box<T> & left, const glm::vec3 &
 template<typename T>
 inline bounding_box<T> operator*(const bounding_box<T> & left, const T & x )
 {
-    auto c = left.Centre();
+    auto c = left.centre();
 
 
     if( std::is_floating_point<T>::value )
