@@ -1,8 +1,23 @@
 /*
  * Example 3: Dynamic Uniform Buffers
  *
- * This example demonstrates how to setup a rendering pipeline using depth
- * testing. Depth testing is an integral part of most rendering pipelines.
+ * Dynamic uniform buffers are used to object data to the shader.
+ *
+ * In the previous example we used a uniform buffer to pass the Model, View
+ * and Projection matrices to the shader so that we can render a perspective
+ * camera.
+ *
+ * The View and Projection matrices are camera specific and generally only
+ * change once per frame.
+ *
+ * The Model matrix determines the transformation of an object and is different
+ * for each object in the scene. Each object rendered will have a different
+ * model matrix, while every object will have the same View and Projection matrix
+ *
+ * We will use a regular Uniform Buffer to pass in per frame data
+ * (Projection and View matrix) and a Dynamic Uniform Buffer to pass in per
+ * object data (model matrix)
+ *
  *
  */
 
@@ -44,6 +59,8 @@ struct uniform_buffer_t
     glm::mat4 proj;
 };
 
+
+// Each object just needs the model matrix
 struct dynamic_uniform_buffer_t
 {
     glm::mat4 model;
