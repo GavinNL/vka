@@ -40,11 +40,14 @@ struct Vertex
 // it needs to match the structure in the shader.
 struct uniform_buffer_t
 {
-    glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
 };
 
+struct dynamic_uniform_buffer_t
+{
+    glm::mat4 model;
+};
 
 /**
  * @brief get_elapsed_time
@@ -166,6 +169,7 @@ int main(int argc, char ** argv)
     vka::descriptor_pool* descriptor_pool = C.new_descriptor_pool("main_desc_pool");
     descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 2);
     descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
+    descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
     descriptor_pool->create();
 
     vka::command_pool* cp = C.new_command_pool("main_command_pool");
@@ -197,6 +201,7 @@ int main(int argc, char ** argv)
         vka::buffer* vertex_buffer = C.new_vertex_buffer(  "vb", 5*1024 );
         vka::buffer* index_buffer  = C.new_index_buffer(   "ib", 5*1024 );
         vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 5*1024);
+        vka::buffer* du_buffer     = C.new_uniform_buffer( "dub", 5*1024);
 
 
 
@@ -320,11 +325,11 @@ int main(int argc, char ** argv)
 //==============================================================================
         // create the vertex shader from a pre compiled SPIR-V file
         vka::shader* vertex_shader = C.new_shader_module("vs");
-        vertex_shader->load_from_file("../resources/shaders/depth_testing/depth_testing_v.spv");
+        vertex_shader->load_from_file("../resources/shaders/dynamic_uniform_buffer/dynamic_uniform_buffer_v.spv");
 
         // create the fragment shader from a pre compiled SPIR-V file
         vka::shader* fragment_shader = C.new_shader_module("fs");
-        fragment_shader->load_from_file("../resources/shaders/depth_testing/depth_testing_f.spv");
+        fragment_shader->load_from_file("../resources/shaders/dynamic_uniform_buffer/dynamic_uniform_buffer_f.spv");
 
         vka::pipeline* pipeline = C.new_pipeline("triangle");
 
@@ -359,6 +364,10 @@ int main(int argc, char ** argv)
                   // Tell teh shader that we are going to use a uniform buffer
                   // in Set #0 binding #0
                   ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
+
+                  // Tell teh shader that we are going to use a uniform buffer
+                  // in Set #0 binding #0
+                  ->add_dynamic_uniform_layout_binding(2, 0, vk::ShaderStageFlagBits::eVertex)
                   //
                   ->set_render_pass( R )
                   ->create();
@@ -381,13 +390,25 @@ int main(int argc, char ** argv)
     ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, sizeof(uniform_buffer_t), 0);
     ubuffer_descriptor->update();
 
-    vka::array_view<uniform_buffer_t> staging_buffer_map = staging_buffer->map<uniform_buffer_t>();
+    vka::descriptor_set * dubuffer_descriptor = pipeline->create_new_descriptor_set(2, descriptor_pool);
+    dubuffer_descriptor->attach_dynamic_uniform_buffer(0, du_buffer, sizeof(dynamic_uniform_buffer_t), 0);
+    dubuffer_descriptor->update();
+
+    vka::array_view<uniform_buffer_t> staging_buffer_map        = staging_buffer->map<uniform_buffer_t>();
+    vka::array_view<dynamic_uniform_buffer_t> staging_dbuffer_map = staging_buffer->map<dynamic_uniform_buffer_t>(sizeof(uniform_buffer_t));
 
     vk::CommandBuffer cb = cp->AllocateCommandBuffer();
 
 
     vka::semaphore * image_available_semaphore = C.new_semaphore("image_available_semaphore");
     vka::semaphore * render_complete_semaphore = C.new_semaphore("render_complete_semaphore");
+
+
+
+    // Dynamic Uniform buffers have a set alignment, meaning the number of bytes
+    // bound to the pipeline must be a multiple of the alignment
+    // In most case the alignment is 256 bytes.
+    auto alignment = C.get_physical_device_limits().minUniformBufferOffsetAlignment;
 
     //==========================================================================
     // Perform the Rendering
@@ -398,39 +419,75 @@ int main(int argc, char ** argv)
     //
     while (!glfwWindowShouldClose(window) )
     {
-
-      glfwPollEvents();
-
-      //============ Update the uniform buffer=====================
-      float t = get_elapsed_time();
-
-      const float AR = WIDTH / ( float )HEIGHT;
-
-
-      staging_buffer_map[0].model       = glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-      staging_buffer_map[0].view        = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-      staging_buffer_map[0].proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
-      staging_buffer_map[0].proj[1][1] *= -1;
-
-      //staging_buffer_map[0].model = glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.5f, 1.0f, -0.2f));
-      //staging_buffer_map[0].view  = glm::lookAt( glm::vec3(5.0f, 5.0f, 5.0f),
-      //                                           glm::vec3(0.0f, 0.0f, 0.0f),
-      //                                           glm::vec3(0.0f, 1.0f, 0.0f));
-      //staging_buffer_map[0].proj  = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
-      //staging_buffer_map[0].proj[1][1] *= -1;
-
-      //============================================================
-
+       float t = get_elapsed_time();
       // Get the next available image in the swapchain
       uint32_t fb_index = C.get_next_image_index(image_available_semaphore);
+      glfwPollEvents();
 
       // reset the command buffer so that we can record from scratch again.
       cb.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
       cb.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
 
 
-      // Copy the uniform buffer data from the stating buffer to the uniform buffer
-      cb.copyBuffer( *staging_buffer , *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
+
+      // The staging buffer will hold all data that will be sent to
+      // the other two buffers.
+      //
+      // +--------------+------+--------------------------------+
+      // | uniform_data | obj1 | obj2 |                         | Staging Buffer
+      // +--------------+------+--------------------------------+
+      uint32_t ub_src_offset = 0;
+      uint32_t ub_size       = sizeof(uniform_buffer_t);
+
+      std::vector<uint32_t> dub_src_offset = { ub_size ,
+                                               ub_size + sizeof(dynamic_uniform_buffer_t)};
+
+
+
+
+
+
+      // Copy the uniform buffer data into the staging buffer
+      const float AR = WIDTH / ( float )HEIGHT;
+      staging_buffer_map[0].view        = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+      staging_buffer_map[0].proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
+      staging_buffer_map[0].proj[1][1] *= -1;
+
+      // Copy the dynamic uniform buffer data into the staging buffer
+      staging_dbuffer_map[0].model       =  glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
+      staging_dbuffer_map[1].model       =  glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
+
+
+      // +------------------------------------------------------+
+      // | uniform_data |                                       | Uniform Buffer
+      // +------------------------------------------------------+
+
+
+      // Copy the uniform buffer data from the stating buffer to the uniform buffer. THis normally only needs to be done
+      // once per rendering frame because it contains frame constant data.
+      cb.copyBuffer( *staging_buffer ,  *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
+
+
+      // Copy the dynamic uniform buffer data from the staging buffer
+      // to the appropriate offset in the Dynamic Uniform Buffer.
+      // +-------------+---------------------------------------+
+      // | obj1        | obj2         | obj3...                | Dynamic Uniform Buffer
+      // +-------------+---------------------------------------+
+      // |<-alignment->|
+
+      for(uint32_t i=0; i < 2;i++)
+      {
+          uint32_t index = i;
+          // byte offset within the staging buffer where teh data resides
+          auto srcOffset = sizeof(uniform_buffer_t) + index * sizeof(dynamic_uniform_buffer_t);
+          // byte offset within the dynamic uniform buffer where to copy the data
+          auto dstOffset = i * alignment;
+          // number of bytes to copy
+          auto size      = sizeof(dynamic_uniform_buffer_t);
+
+          cb.copyBuffer( *staging_buffer , *du_buffer , vk::BufferCopy{ srcOffset,dstOffset, size } );
+      }
+
 
       //  BEGIN RENDER PASS=====================================================
       // We want the to use the render pass we created earlier
@@ -464,18 +521,35 @@ int main(int argc, char ** argv)
                                                     0,
                                                     vk::ArrayProxy<const vk::DescriptorSet>( texture_descriptor->get()),
                                                     nullptr );
+
             cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
                                                     pipeline->get_layout(),
                                                     1,
                                                     vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
                                                     nullptr );
 
-     // bind the vertex/index buffers
-            cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );// ( m_VertexBuffer, 0);
-            cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
+            // bind the vertex/index buffers
+                   cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );// ( m_VertexBuffer, 0);
+                   cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
+
+      //========================================================================
+      // Drawthe first object
+      //========================================================================
+      for(uint32_t i=0;i<2;i++)
+      {
+            cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
+                                                    pipeline->get_layout(),
+                                                    2,
+                                                    vk::ArrayProxy<const vk::DescriptorSet>( dubuffer_descriptor->get()),
+                                                    vk::ArrayProxy<const uint32_t>(i*alignment) );
+
+
 
     // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
             cb.drawIndexed(36, 1, 0 , 0, 0);
+      }
+
+
 
       cb.endRenderPass();
       cb.end();
