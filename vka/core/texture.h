@@ -121,6 +121,11 @@ public:
                  vk::PipelineStageFlags dstStageMask=vk::PipelineStageFlagBits::eTopOfPipe);
 
 
+
+    void convert(vk::ImageLayout new_layout,
+                 vk::PipelineStageFlags srcStageMask=vk::PipelineStageFlagBits::eTopOfPipe,
+                 vk::PipelineStageFlags dstStageMask=vk::PipelineStageFlagBits::eTopOfPipe);
+
     /**
      * @brief convert_layer
      * @param commandBuffer
