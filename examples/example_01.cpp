@@ -38,7 +38,7 @@
 
 #define WIDTH 1024
 #define HEIGHT 768
-#define APP_TITLE "Test"
+#define APP_TITLE "Example_01 - Hello Textured Rotating Triangle!"
 
 /**
  * @brief get_elapsed_time
@@ -358,9 +358,6 @@ int main(int argc, char ** argv)
     vka::semaphore * image_available_semaphore = C.new_semaphore("image_available_semaphore");
     vka::semaphore * render_complete_semaphore = C.new_semaphore("render_complete_semaphore");
 
-    uint32_t fb_index=0;
-
-
     //==========================================================================
     // Perform the Rendering
     //==========================================================================
@@ -388,7 +385,7 @@ int main(int argc, char ** argv)
       //============================================================
 
       // Get the next available image in the swapchain
-      fb_index = C.get_next_image_index(image_available_semaphore);
+      uint32_t fb_index = C.get_next_image_index(image_available_semaphore);
 
       // reset the command buffer so that we can record from scratch again.
       cb.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
@@ -402,10 +399,10 @@ int main(int argc, char ** argv)
       // We want the to use the render pass we created earlier
       vk::RenderPassBeginInfo renderPassInfo;
       renderPassInfo.renderPass        = *R;
-      renderPassInfo.framebuffer       = *framebuffers[fb_index];// m_Screen.get().m_Framebuffers[i];//  draw to the i'th frame buffer
+      renderPassInfo.framebuffer       = *framebuffers[fb_index];
       renderPassInfo.renderArea.offset = vk::Offset2D{0,0};
 
-      renderPassInfo.renderArea.extent = vk::Extent2D(WIDTH,HEIGHT);// vka::Context_t::Get()->GetSwapChain()->extent();
+      renderPassInfo.renderArea.extent = vk::Extent2D(WIDTH,HEIGHT);
 
       // Clear values are used to clear the various frame buffers
       // we want to clear the colour values to black

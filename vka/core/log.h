@@ -15,7 +15,8 @@ static std::string return_current_time_and_date()
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
 
     std::stringstream ss;
-    ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X - ");
+    //ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X ");
+    ss << std::put_time(std::localtime(&in_time_t), "%X");
     return ss.str();
 }
 
@@ -32,10 +33,14 @@ static std::string return_current_time_and_date()
 
 #define green(A) GREEN << A << WHITE
 
-#define INFO if(1 ) std::cout << CYAN   << "INFO[" << std::left << std::setw(80) << __PRETTY_FUNCTION__ << "] - "
-#define LOG     std::cout << GREEN  << "LOG[" << std::left << std::setw(80) << __PRETTY_FUNCTION__ << "] - "
-#define WARN    std::cout << YELLOW << "WARN[" << std::left << std::setw(80) << __PRETTY_FUNCTION__ << "] - "
-#define ERROR   std::cout << RED    << "ERROR[" << std::left << std::setw(80) << __PRETTY_FUNCTION__ << "] - "
+
+#define FUNC_PRINT std::setw(40) << __func__
+//#define FUNC_PRINT std::setw(80) << __PRETTY_FUNCTION__
+
+#define INFO if(1 ) std::cout << CYAN   << "INFO (" << return_current_time_and_date() << ") [" << std::left << FUNC_PRINT << "] - "
+#define LOG     std::cout << GREEN      << "LOG  (" << return_current_time_and_date() << ") [" << std::left << FUNC_PRINT << "] - "
+#define WARN    std::cout << YELLOW     << "WARN (" << return_current_time_and_date() << ") [" << std::left << FUNC_PRINT << "] - "
+#define ERROR   std::cout << RED        << "ERROR(" << return_current_time_and_date() << ") [" << std::left << FUNC_PRINT << "] - "
 
 
 #endif
