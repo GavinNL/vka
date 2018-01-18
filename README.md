@@ -43,6 +43,17 @@ using the ```--recursive comand```
 git clone --recursive http://github.com/gavinNL/vka.git
 ```
 
+## Build Instructions
+
+```bash
+git clone --recursive http://github.com/gavinNL/vka.git
+cd vka
+mkdir build
+cd build
+cmake ..
+make
+ln -s $PWD/../resources resources
+```
 
 ## Examples
 

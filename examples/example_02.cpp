@@ -256,7 +256,7 @@ int main(int argc, char ** argv)
 //==============================================================================
 
     // 1. First load host_image into memory, and specifcy we want 4 channels.
-        vka::host_image D("../resources/textures/Brick-2852a.jpg",4);
+        vka::host_image D("resources/textures/Brick-2852a.jpg",4);
 
 
     // 2. Use the context's helper function to create a device local texture
@@ -320,11 +320,11 @@ int main(int argc, char ** argv)
 //==============================================================================
         // create the vertex shader from a pre compiled SPIR-V file
         vka::shader* vertex_shader = C.new_shader_module("vs");
-        vertex_shader->load_from_file("../resources/shaders/depth_testing/depth_testing_v.spv");
+        vertex_shader->load_from_file("resources/shaders/depth_testing/depth_testing_v.spv");
 
         // create the fragment shader from a pre compiled SPIR-V file
         vka::shader* fragment_shader = C.new_shader_module("fs");
-        fragment_shader->load_from_file("../resources/shaders/depth_testing/depth_testing_f.spv");
+        fragment_shader->load_from_file("resources/shaders/depth_testing/depth_testing_f.spv");
 
         vka::pipeline* pipeline = C.new_pipeline("triangle");
 

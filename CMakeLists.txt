@@ -92,7 +92,7 @@ foreach(file ${files})
 
     set_target_properties( ${file}
         PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/examples"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     )
 endforeach()
 
