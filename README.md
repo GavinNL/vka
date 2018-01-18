@@ -44,8 +44,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ## Dependencies
 
 VKA uses the following libraries.
+ * Vulkan SDK
  * GLM - for linear algebra
  * STB - for image loading
+
+The VulkanSDK is required to build this library (obviously). If you do not have
+the VulkanSDK installed on your computer, follow the steps on this website:
+https://vulkan.lunarg.com/doc/view/latest/linux/getting_started.html
 
 If you already have GLM and STB installed on your system. Simply clone the
 repo with the following command:
