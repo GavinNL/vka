@@ -225,7 +225,7 @@ public:
     //============================================================
     // Get Methods
     //============================================================
-    std::vector<vk::ImageView>& get_swapchain_imageviews() {
+    std::vector<vk::ImageView> & get_swapchain_imageviews() {
         return m_image_views;
     }
     //============================================================

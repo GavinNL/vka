@@ -67,7 +67,7 @@ int main(int argc, char ** argv)
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
 
-    auto window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
 
 
     // the context is the main class for the vka library. It is keeps track of
@@ -86,16 +86,20 @@ int main(int argc, char ** argv)
 
 
     //==========================================================================
-    // Create the Render pass and the frame buffers
+    // Create the Render pass and the frame buffers.
+    //
+    // The Context holds the images that will be used for the swap chain. We need
+    // to create the framebuffers with those images.
+    //
+    // All objects created by the context requires a unique name
     //==========================================================================
-    auto R = C.new_renderpass("main_renderpass");
+    vka::renderpass * R = C.new_renderpass("main_renderpass");
     R->attach_color(vk::Format::eB8G8R8A8Unorm);
     R->create(C);
 
-    auto cp = C.new_command_pool("main_command_pool");
-
     std::vector<vka::framebuffer*> framebuffers;
-    auto & iv = C.get_swapchain_imageviews();
+
+    std::vector<vk::ImageView> & iv = C.get_swapchain_imageviews();
     int i=0;
     for(auto & view : iv)
     {
@@ -109,10 +113,12 @@ int main(int argc, char ** argv)
     //==========================================================================
     // Initialize the Command and Descriptor Pools
     //==========================================================================
-    auto descriptor_pool = C.new_descriptor_pool("main_desc_pool");
+    vka::descriptor_pool* descriptor_pool = C.new_descriptor_pool("main_desc_pool");
     descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 2);
     descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
     descriptor_pool->create();
+
+    vka::command_pool* cp = C.new_command_pool("main_command_pool");
     //==========================================================================
 
 
@@ -132,9 +138,9 @@ int main(int argc, char ** argv)
 //==============================================================================
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
-        auto * vertex_buffer = C.new_vertex_buffer("vb", 1024 );
-        auto * index_buffer  = C.new_index_buffer( "ib", 1024 );
-        auto * u_buffer      = C.new_uniform_buffer( "ub", 1024);
+        vka::buffer* vertex_buffer = C.new_vertex_buffer("vb", 1024 );
+        vka::buffer* index_buffer  = C.new_index_buffer( "ib", 1024 );
+        vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 1024);
 
         // This is the vertex structure we are going to use
         // it contains a position and a UV coordates field
@@ -180,7 +186,7 @@ int main(int argc, char ** argv)
         // 2. Copy the data from the host-visible buffer to the vertex/index buffers
 
         // allocate a comand buffer
-        auto copy_cmd = cp->AllocateCommandBuffer();
+        vk::CommandBuffer copy_cmd = cp->AllocateCommandBuffer();
         copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
         // write the commands to copy each of the buffer data
@@ -240,7 +246,7 @@ int main(int argc, char ** argv)
     //         c. convert the texture2d into a layout which is good for shader use
 
         // allocate the command buffer
-        auto cb1 = cp->AllocateCommandBuffer();
+        vk::CommandBuffer cb1 = cp->AllocateCommandBuffer();
         cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
             // a. convert the texture to eTransferDstOptimal
@@ -275,14 +281,14 @@ int main(int argc, char ** argv)
 //
 //==============================================================================
         // create the vertex shader from a pre compiled SPIR-V file
-        auto * vertex_shader = C.new_shader_module("vs");
+        vka::shader* vertex_shader = C.new_shader_module("vs");
         vertex_shader->load_from_file("../resources/shaders/uniform_buffer/uniform_buffer_v.spv");
 
         // create the fragment shader from a pre compiled SPIR-V file
-        auto * fragment_shader = C.new_shader_module("fs");
+        vka::shader* fragment_shader = C.new_shader_module("fs");
         fragment_shader->load_from_file("../resources/shaders/uniform_buffer/uniform_buffer_f.spv");
 
-        auto * pipeline = C.new_pipeline("triangle");
+        vka::pipeline* pipeline = C.new_pipeline("triangle");
 
         // Create the graphics Pipeline
           pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
@@ -326,12 +332,12 @@ int main(int argc, char ** argv)
 //   The pipline object can generate a descriptor set for you.
 //==============================================================================
     // we want a descriptor set for set #0 in the pipeline.
-    auto * texture_descriptor = pipeline->create_new_descriptor_set(0, descriptor_pool);
+    vka::descriptor_set * texture_descriptor = pipeline->create_new_descriptor_set(0, descriptor_pool);
     //  attach our texture to binding 0 in the set.
     texture_descriptor->attach_sampler(0, tex);
     texture_descriptor->update();
 
-    auto * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
+    vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
     ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, 10, 0);
     ubuffer_descriptor->update();
 
@@ -344,13 +350,13 @@ int main(int argc, char ** argv)
         glm::mat4 proj;
     };
 
-    auto staging_buffer_map = staging_buffer->map<uniform_buffer_t>();
+    vka::array_view<uniform_buffer_t> staging_buffer_map = staging_buffer->map<uniform_buffer_t>();
 
-    auto cb = cp->AllocateCommandBuffer();
+    vk::CommandBuffer cb = cp->AllocateCommandBuffer();
 
 
-    auto * image_available_semaphore = C.new_semaphore("image_available_semaphore");
-    auto * render_complete_semaphore = C.new_semaphore("render_complete_semaphore");
+    vka::semaphore * image_available_semaphore = C.new_semaphore("image_available_semaphore");
+    vka::semaphore * render_complete_semaphore = C.new_semaphore("render_complete_semaphore");
 
     uint32_t fb_index=0;
 
