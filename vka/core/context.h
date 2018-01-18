@@ -225,7 +225,7 @@ public:
     //============================================================
     // Get Methods
     //============================================================
-    std::vector<vk::ImageView>& get_swapchain_imageviews() {
+    std::vector<vk::ImageView> & get_swapchain_imageviews() {
         return m_image_views;
     }
     //============================================================
@@ -379,6 +379,8 @@ public:
      */
     vka::texture2d *new_texture2d_host_visible(const std::string &name);
 
+
+    vka::texture *new_depth_texture(const std::string &name, vk::ImageUsageFlags flags = vk::ImageUsageFlagBits::eDepthStencilAttachment);
     //============================================================
     /**
      * @brief new_descriptor_set_layout
@@ -416,6 +418,15 @@ public:
 
 
 
+
+
+    vk::Format find_supported_format(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+    vk::Format find_depth_format();
+
+    vk::PhysicalDeviceLimits const & get_physical_device_limits() const
+    {
+        return m_physical_device_properties.limits;
+    }
 
 private:
 

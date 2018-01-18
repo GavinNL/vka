@@ -187,3 +187,20 @@ vka::descriptor_set * vka::descriptor_set::attach_uniform_buffer(uint32_t index,
     return this;
 }
 
+vka::descriptor_set * vka::descriptor_set::attach_dynamic_uniform_buffer(uint32_t index,
+                     const buffer * buff,
+                     vk::DeviceSize size,
+                     vk::DeviceSize offset)
+{
+
+    DescriptorInfo bufferInfo;
+    bufferInfo.type = DescriptorInfo::DynamicBuffer;
+    bufferInfo.buffer.buffer = *buff;
+    bufferInfo.buffer.offset = offset;
+    bufferInfo.buffer.range  = size;
+
+    m_DescriptorInfos[index] = bufferInfo;
+
+    return this;
+}
+
