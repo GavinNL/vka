@@ -441,6 +441,20 @@ vka::texture2d *vka::context::new_texture2d(const std::string &name)
     return _new<vka::texture2d>(name);
 }
 
+vka::texture * vka::context::new_depth_texture(const std::string & name, vk::ImageUsageFlags flags)
+{
+    auto * t = new_texture(name);
+
+    auto format = find_depth_format();
+
+    t->set_format( format );
+    t->set_usage( flags | vk::ImageUsageFlagBits::eDepthStencilAttachment );
+    t->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal);
+    t->set_tiling( vk::ImageTiling::eOptimal);
+
+    return t;
+}
+
 vk::Format vka::context::find_depth_format()
 {
     return find_supported_format(

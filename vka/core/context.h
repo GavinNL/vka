@@ -379,6 +379,8 @@ public:
      */
     vka::texture2d *new_texture2d_host_visible(const std::string &name);
 
+
+    vka::texture *new_depth_texture(const std::string &name, vk::ImageUsageFlags flags = vk::ImageUsageFlagBits::eDepthStencilAttachment);
     //============================================================
     /**
      * @brief new_descriptor_set_layout
