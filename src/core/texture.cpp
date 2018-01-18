@@ -543,6 +543,20 @@ void vka::texture::convert( vk::CommandBuffer commandBuffer,
 
 }
 
+void vka::texture::convert(vk::ImageLayout new_layout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask)
+{
+    auto cb = get_parent_context()->get_command_pool()->AllocateCommandBuffer();
+
+    cb.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+
+
+    convert( cb, new_layout, srcStageMask, dstStageMask);
+
+    cb.end();
+
+    get_parent_context()->submit_cmd_buffer(cb);
+}
+
 
 void* vka::texture::map_memory()
 {

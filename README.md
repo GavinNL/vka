@@ -42,3 +42,12 @@ using the texture while animating it rotating. This example shows the simple
 concept of the graphics pipeline.
 
 ---
+
+### Example_02 - Depth Testing
+
+<img align="right" width="200"  src="docs/images/example_02.jpeg">
+
+This example demonstrates how to setup a rendering pipeline using depth
+testing. Depth testing is an integral part of almost all rendering pipelines.
+
+---

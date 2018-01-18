@@ -37,12 +37,13 @@ class renderpass : public context_child
     }
 
     void attach_color(vk::Format f = vk::Format::eR8G8B8A8Unorm);
+    void attach_depth(vk::Format f);
 
     void attach(vk::AttachmentDescription a);
 
     void create(context & device);
 
-    private:
+private:
 
     friend class context;
     friend class deleter<renderpass>;
