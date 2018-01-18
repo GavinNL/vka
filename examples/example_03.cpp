@@ -120,14 +120,7 @@ int main(int argc, char ** argv)
     //==========================================================================
 
 
-    //==========================================================================
-    //   _   _ _______        __
-    //  | \ | | ____\ \      / /
-    //  |  \| |  _|  \ \ /\ / /
-    //  | |\  | |___  \ V  V /
-    //  |_| \_|_____|  \_/\_/
-    //
-    //==========================================================================
+
 
     // Create a depth texture which we will use to be store the depths
     // of each pixel.
@@ -169,7 +162,9 @@ int main(int argc, char ** argv)
     vka::descriptor_pool* descriptor_pool = C.new_descriptor_pool("main_desc_pool");
     descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 2);
     descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
+    // [NEW]
     descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
+
     descriptor_pool->create();
 
     vka::command_pool* cp = C.new_command_pool("main_command_pool");
@@ -201,6 +196,8 @@ int main(int argc, char ** argv)
         vka::buffer* vertex_buffer = C.new_vertex_buffer(  "vb", 5*1024 );
         vka::buffer* index_buffer  = C.new_index_buffer(   "ib", 5*1024 );
         vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 5*1024);
+
+        // [NEW]
         vka::buffer* du_buffer     = C.new_uniform_buffer( "dub", 5*1024);
 
 
@@ -233,8 +230,8 @@ int main(int argc, char ** argv)
         copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
         // write the commands to copy each of the buffer data
-        const vk::DeviceSize vertex_offset = 0;
-        const vk::DeviceSize vertex_size   = vertices.size()*sizeof(Vertex);
+        const vk::DeviceSize vertex_offset   = 0;
+        const vk::DeviceSize vertex_size     = vertices.size()*sizeof(Vertex);
 
         const vk::DeviceSize index_offset    = vertices.size()*sizeof(Vertex);
         const vk::DeviceSize index_size      = indices.size()*sizeof(uint16_t);
@@ -446,7 +443,7 @@ int main(int argc, char ** argv)
 
 
 
-
+      #define MAX_OBJECTS 2
       // Copy the uniform buffer data into the staging buffer
       const float AR = WIDTH / ( float )HEIGHT;
       staging_buffer_map[0].view        = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -475,13 +472,12 @@ int main(int argc, char ** argv)
       // +-------------+---------------------------------------+
       // |<-alignment->|
 
-      for(uint32_t i=0; i < 2;i++)
+      for(uint32_t j=0; j < MAX_OBJECTS; j++)
       {
-          uint32_t index = i;
           // byte offset within the staging buffer where teh data resides
-          auto srcOffset = sizeof(uniform_buffer_t) + index * sizeof(dynamic_uniform_buffer_t);
+          auto srcOffset = sizeof(uniform_buffer_t) + j * sizeof(dynamic_uniform_buffer_t);
           // byte offset within the dynamic uniform buffer where to copy the data
-          auto dstOffset = i * alignment;
+          auto dstOffset = j * alignment;
           // number of bytes to copy
           auto size      = sizeof(dynamic_uniform_buffer_t);
 
@@ -513,35 +509,36 @@ int main(int argc, char ** argv)
 
 
       // bind the pipeline that we want to use next
-            cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
+        cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
 
       // bind the two descriptor sets that we need to that pipeline
-            cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
+       cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
                                                     pipeline->get_layout(),
                                                     0,
                                                     vk::ArrayProxy<const vk::DescriptorSet>( texture_descriptor->get()),
                                                     nullptr );
 
-            cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                                    pipeline->get_layout(),
-                                                    1,
-                                                    vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
-                                                    nullptr );
+        cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
+                                                pipeline->get_layout(),
+                                                1,
+                                                vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
+                                                nullptr );
 
-            // bind the vertex/index buffers
-                   cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );// ( m_VertexBuffer, 0);
-                   cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
+    // bind the vertex/index buffers
+        cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );
+        cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
 
       //========================================================================
-      // Drawthe first object
+      // Draw all the objects while binding the dynamic uniform buffer
+      // to
       //========================================================================
-      for(uint32_t i=0;i<2;i++)
+      for(uint32_t j=0 ; j < MAX_OBJECTS; j++)
       {
             cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
                                                     pipeline->get_layout(),
                                                     2,
                                                     vk::ArrayProxy<const vk::DescriptorSet>( dubuffer_descriptor->get()),
-                                                    vk::ArrayProxy<const uint32_t>(i*alignment) );
+                                                    vk::ArrayProxy<const uint32_t>(j*alignment) );
 
 
 
