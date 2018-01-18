@@ -92,6 +92,7 @@ public:
     void update();
     vka::descriptor_set * attach_sampler(uint32_t index, vka::texture *texture);
     vka::descriptor_set * attach_uniform_buffer(uint32_t index, const buffer *buff, vk::DeviceSize size, vk::DeviceSize offset);
+    vka::descriptor_set * attach_dynamic_uniform_buffer(uint32_t index, const buffer *buff, vk::DeviceSize size, vk::DeviceSize offset);
 private:
     vk::DescriptorSet     m_descriptor_set;
     vka::descriptor_pool *m_parent_pool = nullptr;
