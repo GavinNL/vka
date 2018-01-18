@@ -1,21 +1,8 @@
 /*
- * Example 1:
+ * Example 2: Hello Depth Testing!
  *
- * This example outlines a very basic usage of vka which demonstrates
- * the essentials of graphics rendering.   It is broken down into a number of
- * steps
- *
- * 1. Initialize the Library and create a window
- * 2. Create vertex/index buffers to store geometry
- * 3. Load a texture into the GPU
- * 4. Create a rendering pipeline
- * 5. Start rendering
- *
- *
- *
- *
- *
- *
+ * This example demonstrates how to setup a rendering pipeline using depth
+ * testing. Depth testing is an integral part of most rendering pipelines.
  *
  */
 
@@ -79,12 +66,14 @@ float get_elapsed_time()
 
 /**
  * @brief create_box_mesh
- * @param dx
- * @param dy
- * @param dz
+ * @param dx - dimension of the box
+ * @param dy - dimension of the box
+ * @param dz - dimension of the box
  * @param vertices
  * @param indices
- * Create a box mesh and save the vertices and indices in the input vectors
+ *
+ * Create a box mesh and save the vertices and indices in the input vectors.
+ * The vertices/indices will then be copied into the graphics's buffers
  */
 void create_box_mesh(float dx , float dy , float dz , std::vector<Vertex> & vertices, std::vector<uint16_t> & indices );
 
@@ -126,16 +115,34 @@ int main(int argc, char ** argv)
     //
     // All objects created by the context requires a unique name
     //==========================================================================
+
+
+    //==========================================================================
+    //   _   _ _______        __
+    //  | \ | | ____\ \      / /
+    //  |  \| |  _|  \ \ /\ / /
+    //  | |\  | |___  \ V  V /
+    //  |_| \_|_____|  \_/\_/
+    //
+    //==========================================================================
+
+    // Create a depth texture which we will use to be store the depths
+    // of each pixel.
     auto * depth = C.new_depth_texture("depth_texture");
     depth->set_size( WIDTH, HEIGHT, 1);
     depth->create();
     depth->create_image_view( vk::ImageAspectFlagBits::eDepth);
 
+    // Convert the depth texture into the proper image layout.
+    // This method will automatically allocate a a command buffer and
+    // and then submit it.  Alternatively, passing in a command buffer
+    // as the first argument simply writes the command to the buffer
+    // but does not submit it.
     depth->convert(vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
     vka::renderpass * R = C.new_renderpass("main_renderpass");
     R->attach_color(vk::Format::eB8G8R8A8Unorm);
-    R->attach_depth( depth->get_format() );
+    R->attach_depth( depth->get_format() );  // [NEW] we will now be using a depth attachment
     R->create(C);
 
 
@@ -146,7 +153,8 @@ int main(int argc, char ** argv)
     for(auto & view : iv)
     {
         framebuffers.push_back(  C.new_framebuffer( std::string("fb_") + std::to_string(i++) ) );
-        framebuffers.back()->create( *R, vk::Extent2D{WIDTH,HEIGHT}, view, depth->get_image_view());
+        framebuffers.back()->create( *R, vk::Extent2D{WIDTH,HEIGHT}, view,
+                                     depth->get_image_view()); // [NEW]
     }
     //==========================================================================
 
