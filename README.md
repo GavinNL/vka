@@ -35,7 +35,10 @@ These libraries are set as submodules.
 
 ### Example_01 - Hello Rotating Textured Triangle
 
+<img align="right" width="200"  src="doc/images/example_01.jpeg">
+
 This example sets up a vulkan window, loads a texture and then draws a triangle
 using the texture while animating it rotating. This example shows the simple
 concept of the graphics pipeline.
 
+---
