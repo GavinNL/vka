@@ -35,7 +35,7 @@ These libraries are set as submodules.
 
 ### Example_01 - Hello Rotating Textured Triangle
 
-<img align="right" width="200"  src="doc/images/example_01.jpeg">
+<img align="right" width="200"  src="docs/images/example_01.jpeg">
 
 This example sets up a vulkan window, loads a texture and then draws a triangle
 using the texture while animating it rotating. This example shows the simple
@@ -49,5 +49,14 @@ concept of the graphics pipeline.
 
 This example demonstrates how to setup a rendering pipeline using depth
 testing. Depth testing is an integral part of almost all rendering pipelines.
+
+---
+
+### Example_03 - Dynamic Uniform Buffers
+
+<img align="right" width="200"  src="docs/images/example_03.jpeg">
+
+This example demonstrates how to use dynamic uniform buffers to pass data to
+each object drawn.
 
 ---
