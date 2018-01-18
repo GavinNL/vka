@@ -1,5 +1,7 @@
 # VKA - Vulkan Assistant
 
+License: MIT
+
 VKA (Vulkan assistant) is a vulkan helper library to assist in working with
 vulkan objects. It is very much a work in progress as I continue to teach myself
 to use vulkan.
@@ -19,6 +21,15 @@ tex->create();
 tex->create_image_view(vk::ImageAspectFlagBits::eColor);
 ```
 
+
+
+## Dependencies
+
+VKA uses the following libraries.
+ * GLM - for linear algebra
+ * STB - for image loading
+
+These libraries are set as submodules.
 
 ## Examples
 
