@@ -8,6 +8,7 @@
 #include <vka/core/semaphore.h>
 #include <vka/core/texture.h>
 #include <vka/core/texture2d.h>
+#include <vka/core/texture2darray.h>
 #include <vka/core/descriptor_pool.h>
 #include <vka/core/descriptor_set.h>
 #include <vulkan/vulkan.hpp>
@@ -439,6 +440,12 @@ vka::texture *vka::context::new_texture(const std::string &name)
 vka::texture2d *vka::context::new_texture2d(const std::string &name)
 {
     return _new<vka::texture2d>(name);
+}
+
+
+vka::texture2darray *vka::context::new_texture2darray(const std::string &name)
+{
+    return _new<vka::texture2darray>(name);
 }
 
 vka::texture * vka::context::new_depth_texture(const std::string & name, vk::ImageUsageFlags flags)

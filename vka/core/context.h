@@ -369,6 +369,8 @@ public:
 
     vka::texture2d* new_texture2d(const std::string &name);
 
+    vka::texture2darray* new_texture2darray(const std::string &name);
+
     /**
      * @brief new_texture2d_host_visible
      * @param name

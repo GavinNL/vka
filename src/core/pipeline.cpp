@@ -97,6 +97,12 @@ vka::pipeline *vka::pipeline::add_dynamic_uniform_layout_binding(uint32_t set, u
     return this;
 }
 
+vka::pipeline * vka::pipeline::add_push_constant(uint32_t size, uint32_t offset, vk::ShaderStageFlags stages)
+{
+    m_PushConstantRange.push_back( vk::PushConstantRange(stages, offset, size) );
+    return this;
+}
+
 vka::descriptor_set* vka::pipeline::create_new_descriptor_set(uint32_t set, descriptor_pool * pool)
 {
     descriptor_set * S = pool->allocate_descriptor_set();

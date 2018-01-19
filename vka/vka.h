@@ -7,6 +7,7 @@
 #include "core/pipeline.h"
 #include "core/texture.h"
 #include "core/texture2d.h"
+#include "core/texture2darray.h"
 #include "core/descriptor_pool.h"
 #include "core/descriptor_set.h"
 
