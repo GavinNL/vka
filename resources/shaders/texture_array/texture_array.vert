@@ -11,9 +11,11 @@ layout(set=1, binding = 0) uniform UniformBufferObject {
 
 layout(set = 2, binding = 0) uniform DynamicUniformBufferObject {
     mat4 model;
-    int  layer;
 } modelData;
 
+layout(push_constant) uniform PushConsts {
+        int index;
+} pushConsts;
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inTexCoord;
@@ -29,5 +31,5 @@ out gl_PerVertex {
 void main() {
     gl_Position   = cameraData.proj * cameraData.view * modelData.model * vec4(inPosition, 1.0);
 
-    fragTexCoord = vec3(inTexCoord.xy, modelData.layer);
+    fragTexCoord = vec3(inTexCoord.xy, pushConsts.index);
 }

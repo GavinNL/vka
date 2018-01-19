@@ -1,13 +1,17 @@
 /*
- * Example 4: Texture Arrays
+ * Example 4: Texture Arrays and Push Constants
  *
  * Texture arrays have many uses. A typical 3d scene has mulitple objects
  * each having different textures. It is unwise to use a single texture
  * for each object and then bind the texture when we are going to draw that
  * object. Instead a texture array can hold a vast number of textures, and
  * we can tell the object which layer in the array to use by passing it
- * the data through the dynamic uniform buffer.
+ * the data through the dynamic uniform buffer or using push constants.
  *
+ * Push Constants are data which can be passed to the shader by directly writing
+ * to the command buffer. Push constants have a maximum size but is garanteed
+ * to be at least 128 bits. Push Constants are ideal when you need to send
+ * small bits of data such as a simple index into an array.
  *
  */
 
@@ -30,7 +34,7 @@
 
 #define WIDTH 1024
 #define HEIGHT 768
-#define APP_TITLE "Example_04 - Texture Arrays"
+#define APP_TITLE "Example_04 - Texture Arrays and Push Constants"
 
 // This is the vertex structure we are going to use
 // it contains a position and a UV coordates field
@@ -54,7 +58,13 @@ struct uniform_buffer_t
 struct dynamic_uniform_buffer_t
 {
     glm::mat4 model;
-    int       index; // which layer in the texture array to use
+};
+
+// This data will be written directly to the command buffer to
+// be passed to the shader as a push constant.
+struct push_constants_t
+{
+    int index; // index into the texture array layer
 };
 
 /**
@@ -378,7 +388,7 @@ int main(int argc, char ** argv)
                   ->set_front_face(vk::FrontFace::eCounterClockwise)
 
                   // Cull all back facing triangles.
-                  ->set_cull_mode(vk::CullModeFlagBits::eNone)
+                  ->set_cull_mode(vk::CullModeFlagBits::eBack)
 
                   // Tell the shader that we are going to use a texture
                   // in Set #0 binding #0
@@ -391,6 +401,10 @@ int main(int argc, char ** argv)
                   // Tell teh shader that we are going to use a uniform buffer
                   // in Set #0 binding #0
                   ->add_dynamic_uniform_layout_binding(2, 0, vk::ShaderStageFlagBits::eVertex)
+
+                  // Add a push constant to the layout. It is accessable in the vertex shader
+                  // stage only.
+                  ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
                   //
                   ->set_render_pass( R )
                   ->create();
@@ -480,8 +494,6 @@ int main(int argc, char ** argv)
       staging_dbuffer_map[0].model       =  glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
       staging_dbuffer_map[1].model       =  glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
 
-      staging_dbuffer_map[0].index = 0;
-      staging_dbuffer_map[1].index = 1;
       // +------------------------------------------------------+
       // | uniform_data |                                       | Uniform Buffer
       // +------------------------------------------------------+
@@ -561,11 +573,17 @@ int main(int argc, char ** argv)
       //========================================================================
       for(uint32_t j=0 ; j < MAX_OBJECTS; j++)
       {
-            cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                                    pipeline->get_layout(),
-                                                    2,
-                                                    vk::ArrayProxy<const vk::DescriptorSet>( dubuffer_descriptor->get()),
-                                                    vk::ArrayProxy<const uint32_t>(j*alignment) );
+          // Here we write the data to the command buffer.
+          push_constants_t push;
+          push.index = j%2;
+
+          cb.pushConstants( pipeline->get_layout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(push_constants_t), &push);
+
+          cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
+                                                  pipeline->get_layout(),
+                                                  2,
+                                                  vk::ArrayProxy<const vk::DescriptorSet>( dubuffer_descriptor->get()),
+                                                  vk::ArrayProxy<const uint32_t>(j*alignment) );
 
 
 

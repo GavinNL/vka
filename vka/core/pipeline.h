@@ -188,11 +188,6 @@ public:
         return this;
     }
 
-    pipeline * add_push_constant(uint32_t size, uint32_t offset, vk::ShaderStageFlags stages)
-    {
-        m_PushConstantRange.push_back( vk::PushConstantRange(stages, offset, size) );
-        return this;
-    }
 
     pipeline* set_render_pass( vka::renderpass * p);
 
@@ -206,6 +201,9 @@ public:
     pipeline* add_texture_layout_binding(        uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
     pipeline* add_uniform_layout_binding(        uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
     pipeline* add_dynamic_uniform_layout_binding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
+    pipeline* add_push_constant(uint32_t size, uint32_t offset, vk::ShaderStageFlags stages);
+
+
 
 
     /**
