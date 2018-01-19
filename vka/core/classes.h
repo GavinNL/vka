@@ -11,6 +11,7 @@ X_MACRO( pipeline              )\
 X_MACRO( semaphore             )\
 X_MACRO( texture               )\
 X_MACRO( texture2d             )\
+X_MACRO( texture2darray        )\
 X_MACRO( descriptor_pool       )\
 X_MACRO( descriptor_set_layout )\
 X_MACRO( descriptor_set        )\

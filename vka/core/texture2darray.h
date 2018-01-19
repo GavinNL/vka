@@ -14,10 +14,9 @@ class texture2darray : public texture
 
 public:
 
-    void set_size(vk::DeviceSize w, vk::DeviceSize h, uint32_t layers)
+    void set_size(vk::DeviceSize w, vk::DeviceSize h)
     {
         texture::set_size(w,h,1);
-        texture::set_layers(layers);
     }
 
 
@@ -40,6 +39,7 @@ protected:
         set_format(vk::Format::eR8G8B8A8Unorm);
         set_view_type(vk::ImageViewType::e2DArray);
         set_usage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc);
+        set_layers(1u);
     }
 
     using texture::set_size;
