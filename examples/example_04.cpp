@@ -294,6 +294,8 @@ int main(int argc, char ** argv)
 
 
 
+
+
     // 3. Map the buffer to memory and copy the the two images to it
     //    one right after the other.
     //

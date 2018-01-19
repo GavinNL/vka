@@ -13,6 +13,7 @@ FILE(GLOB_RECURSE SourceFiles
                                 )
 
 FILE(GLOB  TextFiles           "README.md"
+                               "TO_DO.md"
                                 "Doxygen.cfg"
                                 ".gitignore"
                                 )
