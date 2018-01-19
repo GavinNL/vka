@@ -107,3 +107,14 @@ This example demonstrates how to use dynamic uniform buffers to pass data to
 each object drawn.
 
 ---
+
+### Example_04 - Texture Arrays
+
+<img align="right" width="200"  src="docs/images/example_04.jpeg">
+
+Single textures can only get you so far. This example uses texture arrays to
+draw two objects with different textures. The textures are loaded onto two
+separate layers and the shader is told which layer to use via a parameter in
+its dynamic uniform buffer.
+
+---

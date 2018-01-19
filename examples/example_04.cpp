@@ -1,22 +1,12 @@
 /*
  * Example 4: Texture Arrays
  *
- * Dynamic uniform buffers are used to object data to the shader.
- *
- * In the previous example we used a uniform buffer to pass the Model, View
- * and Projection matrices to the shader so that we can render a perspective
- * camera.
- *
- * The View and Projection matrices are camera specific and generally only
- * change once per frame.
- *
- * The Model matrix determines the transformation of an object and is different
- * for each object in the scene. Each object rendered will have a different
- * model matrix, while every object will have the same View and Projection matrix
- *
- * We will use a regular Uniform Buffer to pass in per frame data
- * (Projection and View matrix) and a Dynamic Uniform Buffer to pass in per
- * object data (model matrix)
+ * Texture arrays have many uses. A typical 3d scene has mulitple objects
+ * each having different textures. It is unwise to use a single texture
+ * for each object and then bind the texture when we are going to draw that
+ * object. Instead a texture array can hold a vast number of textures, and
+ * we can tell the object which layer in the array to use by passing it
+ * the data through the dynamic uniform buffer.
  *
  *
  */
@@ -64,7 +54,7 @@ struct uniform_buffer_t
 struct dynamic_uniform_buffer_t
 {
     glm::mat4 model;
-    int index;
+    int       index; // which layer in the texture array to use
 };
 
 /**
@@ -271,7 +261,7 @@ int main(int argc, char ** argv)
 
 
 //==============================================================================
-// Create a texture
+// Create the Texture2dArray
 //
 //==============================================================================
 
@@ -293,8 +283,14 @@ int main(int argc, char ** argv)
         tex->create_image_view(vk::ImageAspectFlagBits::eColor);
 
 
+
     // 3. Map the buffer to memory and copy the the two images to it
-    //    one right after the other
+    //    one right after the other.
+    //
+    //  Because we only have 2 textures to copy, both will easily fit in the
+    //  staging buffer. If you have many textures, you will have to run
+    //  this section multiple times: write to staging buffer, copy to array
+    //   write to staging buffer, copy to array. etc.
         void * image_buffer_data = staging_buffer->map_memory();
         memcpy( image_buffer_data, D.data(), D.size() );
 
@@ -306,11 +302,11 @@ int main(int argc, char ** argv)
 
 
     // 4. Now that the data is on the device. We need to get it from the buffer
-    //    to the texture. To do this we will record a command buffer to do the
+    //    to the texture array. To do this we will record a command buffer to do the
     //    following:
-    //         a. convert the texture2d into a layout which can accept transfer data
-    //         b. copy the data from the buffer to the texture2d.
-    //         c. convert the texture2d into a layout which is good for shader use
+    //         a. Convert the layers in the texture array into a layout which can accept transfer data
+    //         b. copy the data from the buffer to the texture2darray.
+    //         c. convert the layers into a layout which is good for shader use
 
         // allocate the command buffer
         vk::CommandBuffer cb1 = cp->AllocateCommandBuffer();
@@ -318,6 +314,7 @@ int main(int argc, char ** argv)
 
             // a. convert the texture to eTransferDstOptimal
             tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
+            tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,1,0);
 
             // b. copy the data from the buffer to the texture
             vk::BufferImageCopy BIC;
