@@ -149,6 +149,44 @@ void vka::texture::set_mipmap_levels( uint32_t levels)
     m_CreateInfo.mipLevels = levels;
 }
 
+void vka::texture::blit_mipmap( vk::CommandBuffer & cmdBuff,
+                                uint32_t layer,
+                                uint32_t src_miplevel,
+                                uint32_t dst_miplevel)
+{
+    vk::ImageBlit imgBlit;
+
+    // Source
+    imgBlit.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    imgBlit.srcSubresource.layerCount = 1;
+    imgBlit.srcSubresource.baseArrayLayer = layer;
+    imgBlit.srcSubresource.mipLevel   = src_miplevel;
+
+
+    imgBlit.srcOffsets[1].x = int32_t( get_extents().width  >> src_miplevel);
+    imgBlit.srcOffsets[1].y = int32_t( get_extents().height >> src_miplevel);
+    imgBlit.srcOffsets[1].z = std::max( int32_t(1), int32_t( get_extents().depth>>src_miplevel));
+
+    // Destination
+    imgBlit.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    imgBlit.dstSubresource.layerCount = 1;
+    imgBlit.dstSubresource.baseArrayLayer = layer;
+    imgBlit.dstSubresource.mipLevel   = dst_miplevel;
+
+    imgBlit.dstOffsets[1].x = int32_t( get_extents().width  >> dst_miplevel);
+    imgBlit.dstOffsets[1].y = int32_t( get_extents().height >> dst_miplevel);
+    imgBlit.dstOffsets[1].z = std::max( int32_t(1), int32_t( get_extents().depth>>dst_miplevel) );
+
+
+
+
+
+    LOG << "Generating Mipmap Level: " << dst_miplevel << ENDL;
+    cmdBuff.blitImage( get_image(), vk::ImageLayout::eTransferSrcOptimal,
+                       get_image(), vk::ImageLayout::eTransferDstOptimal,
+                       imgBlit, vk::Filter::eLinear);
+}
+
 uint32_t vka::texture::get_mipmap_levels( ) const
 {
     return m_CreateInfo.mipLevels;
