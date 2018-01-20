@@ -8,6 +8,46 @@
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
 #include "catch.hpp"
 
+SCENARIO("Buffer Memory manager with offset specification")
+{
+    using bmm = vka::buffer_memory_manager;
+
+    GIVEN( "LL")
+    {
+        bmm B(128);
+
+
+        THEN("When allocating inside a buffer")
+        {
+        // +----------------------------+
+        // |free  |s1    |free          |
+        // +----------------------------+
+            auto s1 = B.allocate(32,32);
+
+            REQUIRE(s1==32);
+            REQUIRE( B.num_blocks()==3);
+
+        }
+
+        THEN("When allocating at an offset with the same size as the buffer")
+        {
+            // +----------------------------+
+            // |s1                          |
+            // +----------------------------+
+            auto s1 = B.allocate(128,0);
+            REQUIRE( B.num_blocks()==1);
+        }
+
+        THEN("When allocating at an offset with the same size as the buffer")
+        {
+            // +----------------------------+
+            // |s1                          |
+            // +----------------------------+
+            auto s1 = B.allocate(128,5);
+            REQUIRE( s1 == bmm::error);
+        }
+    }
+}
 
 SCENARIO("Buffer Memory manager")
 {

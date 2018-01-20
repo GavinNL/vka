@@ -122,35 +122,86 @@ public:
 
 
 
-
-    size_t allocate(size_t n)
+    /**
+     * @brief allocate
+     * @param n
+     * @param offset
+     * @return
+     *
+     * allocate a block of memeory and return the offset
+     * at which it allocated.
+     *
+     * If providing
+     */
+    size_t allocate(size_t n, size_t offset=error)
     {
-        auto i = m_list.begin();
-        while( i != m_list.end() )
+        if( offset == error)
         {
-            if( i->empty()  )
+            auto i = m_list.begin();
+            while( i != m_list.end() )
             {
-                if( n <= i->m_size )
+                if( i->empty()  )
                 {
-                    info free_block;
+                    if( n <= i->m_size )
+                    {
+                        info free_block;
 
-                    free_block.m_size      = i->m_size - n;
-                    free_block.m_offset    = i->m_offset + n;
-                    free_block.m_allocated = false;
+                        free_block.m_size      = i->m_size - n;
+                        free_block.m_offset    = i->m_offset + n;
+                        free_block.m_allocated = false;
 
-                    i->m_size = n;
-                    i->m_allocated = true;
-                    auto offset = i->m_offset;
+                        i->m_size = n;
+                        i->m_allocated = true;
+                        auto offset = i->m_offset;
 
-                    i++;
-                    if( free_block.m_size != 0)
-                        m_list.insert(i,free_block);
-                    return offset;
+                        i++;
+                        if( free_block.m_size != 0)
+                            m_list.insert(i,free_block);
+                        return offset;
+                    }
                 }
+                ++i;
             }
-            ++i;
+            return error;
         }
-        return error;
+        else
+        {
+            auto i = m_list.begin();
+            while( i != m_list.end() )
+            {
+                if(i->empty() )
+                {
+                    if( offset >= i->m_offset && offset+n <= i->m_offset+i->m_size)
+                    {
+                        info left_empty;
+                        left_empty.m_size = offset - i->m_offset;
+                        left_empty.m_offset = offset;
+                        left_empty.m_allocated = false;
+
+                        info middle_full;
+                        middle_full.m_size   = n;
+                        middle_full.m_offset = offset;
+                        middle_full.m_allocated = true;
+
+                        info right_empty;
+                        right_empty.m_size   = i->m_size - left_empty.m_size - n;
+                        right_empty.m_offset = middle_full.m_offset + middle_full.m_size;
+                        right_empty.m_allocated = false;
+
+
+                        if(left_empty.m_size!=0) m_list.insert(i, left_empty);
+                        m_list.insert(i, middle_full);
+                        *i = right_empty;
+
+                        if(i->m_size==0)
+                            m_list.erase(i);
+                        return offset;
+                    }
+                }
+                i++;
+            }
+            return error;
+        }
     }
 
 private:

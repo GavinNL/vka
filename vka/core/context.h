@@ -132,8 +132,6 @@ private:
 
 
     vk::Fence     m_render_fence;
-    //vk::Semaphore m_image_available_smaphore;
-    //vk::Semaphore m_render_finished_smaphore;
 
     vk::DebugReportCallbackEXT  m_callback;
 
