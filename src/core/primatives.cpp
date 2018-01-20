@@ -75,3 +75,83 @@ vka::mesh_t vka::box_mesh(float dx , float dy , float dz )
 
 }
 
+
+
+vka::mesh_t vka::sphere_mesh(float radius , uint32_t rings, uint32_t sectors)
+{
+
+    using namespace glm;
+    vka::mesh_t M;
+
+    using namespace glm;
+
+    M.add_attribute(vka::VertexAttribute::ePosition, vk::Format::eR32G32B32Sfloat, sizeof(glm::vec3));
+    M.add_attribute(vka::VertexAttribute::eUV,       vk::Format::eR32G32Sfloat, sizeof(glm::vec2));
+    M.add_attribute(vka::VertexAttribute::eNormal,   vk::Format::eR32G32B32Sfloat, sizeof(glm::vec3));
+
+    M.reserve_vertices(36);
+    M.reserve_indices(36);
+
+
+    std::vector<vec3> positions;
+    std::vector<vec2> uv;
+    std::vector<vec3> normals;
+
+    float const R = 1.0f / (float)(rings-1);
+    float const S = 1.0f / (float)(sectors-1);
+    unsigned int r, s;
+
+
+    std::vector<uint16_t> I;
+
+    for(r = 0; r < rings; r++)
+        for(s = 0; s < sectors; s++) {
+            float const y = std::sin( -3.141592653589f*0.5f + 3.141592653589f * r * R );
+            float const x = std::cos(2*3.141592653589f * s * S) * std::sin( 3.141592653589f * r * R );
+            float const z = std::sin(2*3.141592653589f * s * S) * std::sin( 3.141592653589f * r * R );
+
+            positions.push_back( { radius*x ,radius*y ,radius*z} );
+
+            uv.push_back( {s*S, r*R} );
+
+            normals.push_back( {x,y,z} );
+    }
+
+    for(r = 0 ; r < rings   - 1 ; r++)
+    for(s = 0 ; s < sectors - 1 ; s++)
+    {
+        I.push_back(  (r+1) * sectors + s ); //0
+        I.push_back(  (r+1) * sectors + (s+1)  ); //1
+        I.push_back(   r * sectors + (s+1) ); //2
+
+        I.push_back(  (r+1) * sectors + s ); //0
+        I.push_back(   r * sectors + (s+1) ); //2
+        I.push_back(    r * sectors + s ); //3
+    }
+
+
+    //=========================
+
+    M.reserve_indices(I.size());
+
+    auto _I = M.get_index_view<uint16_t>();
+    for(uint32_t i=0;i<I.size();i++)
+        _I[i] = I[i];
+
+
+
+    M.reserve_vertices(positions.size());
+    auto _P = M.get_attribute_view<vec3>(vka::VertexAttribute::ePosition);
+    auto _U = M.get_attribute_view<vec2>(vka::VertexAttribute::eUV);
+    auto _N = M.get_attribute_view<vec3>(vka::VertexAttribute::eNormal);
+    for(uint32_t i=0;i<positions.size();i++)
+    {
+        _P[i] = positions[i];
+        _U[i] = uv[i];
+        _N[i] = normals[i];
+    }
+    return M;
+
+
+    return M;
+}

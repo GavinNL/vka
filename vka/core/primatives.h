@@ -7,6 +7,7 @@ namespace vka
 {
 
 mesh_t box_mesh( float dx, float dy, float dz);
+mesh_t sphere_mesh(float radius , uint32_t rings, uint32_t sectors);
 
 }
 #endif
