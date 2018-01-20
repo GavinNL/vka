@@ -1,3 +1,5 @@
+## BUFFERS
+
 Create method for buffers: Copies data to the buffer in a free spot and returns
 the offset at which it was copied.
 
@@ -12,4 +14,10 @@ bool        clear_data(size_t offset)
 ```
 
 
+
+
+
+## Primatives
+
+Create methods for generating primatives: Sphere, box, cone, cylinder, etc
 
