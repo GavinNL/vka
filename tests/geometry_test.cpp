@@ -49,6 +49,43 @@ SCENARIO("Buffer Memory manager with offset specification")
     }
 }
 
+SCENARIO("Large Buffer")
+{
+    using bmm = vka::buffer_memory_manager;
+
+    GIVEN( "LL")
+    {
+        bmm B(1024*1024*10);
+
+        std::vector<size_t> mem;
+        size_t n=0;
+        while( n != bmm::error )
+        {
+            n = B.allocate(  (random() % 5+1) * 1024  );
+            if( n != bmm::error ) mem.push_back(n);
+        }
+
+        B.print(1024);
+
+        THEN("...")
+        {
+            std::random_device rd;
+            std::mt19937 g(rd());
+
+            std::shuffle(mem.begin(), mem.end(),g);
+
+            while(mem.size() )
+            {
+              B.free( mem.back() );
+              mem.pop_back();
+            }
+            B.print(1024);
+        }
+
+
+    }
+}
+
 SCENARIO("Buffer Memory manager")
 {
     using bmm = vka::buffer_memory_manager;

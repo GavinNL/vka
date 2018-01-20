@@ -29,6 +29,15 @@ class buffer_memory_manager
       size_t m_offset    = 0;
       bool   m_allocated = false;
 
+      std::string to_string(char c, size_t block_size=1)
+      {
+          if( empty() )
+              return std::string(m_size/block_size, '.');
+          else
+          {
+              return std::string(m_size/block_size, c);
+          }
+      }
 
       bool empty()
       {
@@ -100,22 +109,29 @@ public:
         throw std::runtime_error("Bad free");
     }
 
-    void print(size_t block_size=8)
+    void print(size_t block_size=1)
     {
-        static int i=0;
+        static size_t i=0;
         char s[] = {'#','&','@'};
+
+        size_t lc=0;
+
+        size_t L = 64;
+
+        std::string str;
+        str.reserve(10000);
 
         for(auto & f : m_list)
         {
-            if( f.empty() )
-            {
-                std::cout << std::string(f.m_size/block_size, '.');
-            }
-            else
-            {
-                std::cout << std::string(f.m_size/block_size, s[i%sizeof(s)]);
-                i++;
-            }
+           str += f.to_string( s[i%sizeof(s)], block_size) ;
+           i++;
+        }
+
+        i=0;
+        while(i < str.size() )
+        {
+            std::cout << str.substr(i,L) << std::endl;
+            i += L;
         }
         std::cout << std::endl;
     }
