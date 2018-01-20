@@ -1,6 +1,7 @@
 #include <vka/core/mesh.h>
 #include <vka/core/primatives.h>
 #include <glm/glm.hpp>
+#include <iostream>
 
 vka::mesh_t vka::box_mesh(float dx , float dy , float dz )
 {
@@ -68,8 +69,8 @@ vka::mesh_t vka::box_mesh(float dx , float dy , float dz )
 
     //=========================
         auto I = vertices.get_index_view<uint16_t>();
-    for(uint16_t i=0;i<36;i++)
-        I[i] = i;
+    for( j=0;j<36;j++)
+        I[j] = j;
 
     return vertices;
 
@@ -155,3 +156,70 @@ vka::mesh_t vka::sphere_mesh(float radius , uint32_t rings, uint32_t sectors)
 
     return M;
 }
+
+
+vka::mesh_t vka::plane_mesh(uint32_t Nx, uint32_t Nz)
+{
+    mesh_t vertices;
+
+    using namespace glm;
+
+    vertices.add_attribute(vka::VertexAttribute::ePosition, vk::Format::eR32G32B32Sfloat, sizeof(glm::vec3));
+    vertices.add_attribute(vka::VertexAttribute::eUV,       vk::Format::eR32G32Sfloat, sizeof(glm::vec2));
+    vertices.add_attribute(vka::VertexAttribute::eNormal,   vk::Format::eR32G32B32Sfloat, sizeof(glm::vec3));
+
+    uint32_t total_indices  = (Nx*Nz*2)*3;
+    uint32_t total_vertices = (Nx+1)*(Nz+1);
+
+    vertices.reserve_vertices( total_vertices );
+    vertices.reserve_indices(  total_indices );
+
+    auto P = vertices.get_attribute_view<glm::vec3>(vka::VertexAttribute::ePosition);
+    auto N = vertices.get_attribute_view<glm::vec3>(vka::VertexAttribute::eNormal);
+    auto U = vertices.get_attribute_view<glm::vec2>(vka::VertexAttribute::eUV);
+
+    auto I = vertices.get_index_view<uint16_t>();
+
+    assert( P.size() == total_vertices);
+    assert( U.size() == total_vertices);
+    assert( N.size() == total_vertices);
+
+    assert( I.size() == total_indices);
+    uint32_t i=0;
+    const float Xm = Nx / 2.0;
+    const float Zm = Nz / 2.0;
+    for(uint32_t z=0 ;z <= Nz ; z++)
+    {
+        for(uint32_t x=0 ; x <= Nx ; x++)
+        {
+            P[i] = glm::vec3(x-Xm,0,z-Zm);
+            N[i] = glm::vec3(0,1,0);
+            U[i] = glm::vec2(x,z);
+            i++;
+        }
+    }
+
+    i=0;
+    for(uint32_t z=0 ;z < Nz ; z++)
+    {
+        for(uint32_t x=0 ; x < Nx ; x++)
+        {
+            #define to_index(x,z) ((z)*(Nx+1)+(x))
+
+            I[i] = to_index(x+1,z+1);   std::cout << I[i] << std::endl;; i++;
+            I[i] = to_index(x+1,z);     std::cout << I[i] << ","; i++;
+            I[i] = to_index(x,z);       std::cout << I[i] << ","; i++;
+
+            I[i] = to_index(x , z+1);   std::cout << I[i] << std::endl;; i++;
+            I[i] = to_index(x+1 , z+1); std::cout << I[i] << "," ; i++;
+            I[i] = to_index(x , z);     std::cout << I[i] << "," ; i++;
+        }
+
+    }
+
+
+
+    return vertices;
+
+}
+
