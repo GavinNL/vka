@@ -168,12 +168,12 @@ public:
 
                         i->m_size = n;
                         i->m_allocated = true;
-                        auto offset = i->m_offset;
+                        auto o = i->m_offset;
 
                         i++;
                         if( free_block.m_size != 0)
                             m_list.insert(i,free_block);
-                        return offset;
+                        return o;
                     }
                 }
                 ++i;
