@@ -28,7 +28,6 @@
 
 #include <glm/glm.hpp>
 #include <chrono>
-#include "glfw_window.h"
 #include "transform.h"
 #include <functional>
 
@@ -41,11 +40,9 @@ class camera
 
         camera()
         {
-            _xMouse  = _yMouse = 0.0;
             _acc     = 100.0f;
             _drag    = 3.30f;
             mSpeed   = glm::vec3(0.0f);
-            mLooking = false;
         }
 
 
@@ -96,7 +93,6 @@ class camera
 
             mEulerAngles = glm::clamp( mEulerAngles, glm::vec3( -3.14159f/180.0f*89 ,-INFINITY, 0), glm::vec3(3.14159f/180.0f*89, INFINITY, 0) );
 
-            glm::radians(3);
             m_transform.set_euler( mEulerAngles);
         }
 
@@ -121,11 +117,15 @@ class camera
         //     }
         // }
 
-        void lookat(  glm::vec3 const & at)
+        void set_position( glm::vec3 const & p)
+        {
+            m_transform.set_position(p);
+        }
+        void lookat(  glm::vec3 const & at, glm::vec3 const & up = glm::vec3(0,1,0) )
         {
            // m_transform.lookat(  m_transform.get_position() - at, up);
 
-            glm::quat orientation = glm::conjugate( glm::quat_cast( glm::lookAt(m_transform.get_position(), at, {0,1,0})));
+            glm::quat orientation = glm::conjugate( glm::quat_cast( glm::lookAt(m_transform.get_position(), at, up)));
 
             mEulerAngles = glm::eulerAngles(  orientation );
             m_transform.set_orientation(orientation);
@@ -135,6 +135,24 @@ class camera
         void set_acceleration( glm::vec3 const & a)
         {
             mAcc = a;
+        }
+
+        void set_fov(float f)
+        {
+            m_fov = f;
+        }
+
+        void set_aspect_ratio(float ar)
+        {
+            m_aspect_ratio =ar;
+        }
+        void set_near_plane(float p)
+        {
+            m_near = p;
+        }
+        void set_far_plane(float p)
+        {
+            m_far = p;
         }
        // void insert_key( vka::Key KeyCode, bool Down )
        // {
@@ -159,6 +177,15 @@ class camera
        // }
        //
 
+        glm::mat4 get_view_matrix() const
+        {
+            return glm::inverse( m_transform.get_matrix() );
+        }
+
+        glm::mat4 get_proj_matrix() const
+        {
+            return glm::perspective(m_fov,m_aspect_ratio,m_near, m_far);
+        }
         public:
             float _drag;
             float _acc;
@@ -166,13 +193,18 @@ class camera
             vka::transform m_transform;
 
         private:
-            glm::mat4 m_proj;
-            glm::mat4 m_view;
+            //glm::mat4 m_proj;
+            //glm::mat4 m_view;
 
             glm::vec3 mAcc;
             glm::vec3 mSpeed;
 
             glm::vec3 mEulerAngles;
+
+            float m_fov=45.f;
+            float m_aspect_ratio=1.0;
+            float m_near=0.1f;
+            float m_far=100.0f;
 
             std::chrono::high_resolution_clock::time_point startTime;
 };
