@@ -149,8 +149,26 @@ void vka::texture::set_mipmap_levels( uint32_t levels)
     m_CreateInfo.mipLevels = levels;
 }
 
+void vka::texture::generate_mipmaps(vk::CommandBuffer cmdBuff ,
+                                    uint32_t layer)
+{
+    auto L = get_mipmap_levels();
+
+    for(uint32_t m = 0; m < L-1; m++)
+    {
+        convert_layer(cmdBuff, vk::ImageLayout::eTransferSrcOptimal, layer, m);
+        convert_layer(cmdBuff, vk::ImageLayout::eTransferDstOptimal, layer, m+1);
+
+        blit_mipmap(cmdBuff, layer, layer, m, m+1);
+
+        convert_layer(cmdBuff, vk::ImageLayout::eShaderReadOnlyOptimal, layer, m);
+    }
+}
+
+
 void vka::texture::blit_mipmap( vk::CommandBuffer & cmdBuff,
-                                uint32_t layer,
+                                uint32_t srcLayer,
+                                uint32_t dstLayer,
                                 uint32_t src_miplevel,
                                 uint32_t dst_miplevel)
 {
@@ -159,7 +177,7 @@ void vka::texture::blit_mipmap( vk::CommandBuffer & cmdBuff,
     // Source
     imgBlit.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
     imgBlit.srcSubresource.layerCount = 1;
-    imgBlit.srcSubresource.baseArrayLayer = layer;
+    imgBlit.srcSubresource.baseArrayLayer = srcLayer;
     imgBlit.srcSubresource.mipLevel   = src_miplevel;
 
 
@@ -170,7 +188,7 @@ void vka::texture::blit_mipmap( vk::CommandBuffer & cmdBuff,
     // Destination
     imgBlit.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
     imgBlit.dstSubresource.layerCount = 1;
-    imgBlit.dstSubresource.baseArrayLayer = layer;
+    imgBlit.dstSubresource.baseArrayLayer = dstLayer;
     imgBlit.dstSubresource.mipLevel   = dst_miplevel;
 
     imgBlit.dstOffsets[1].x = int32_t( get_extents().width  >> dst_miplevel);

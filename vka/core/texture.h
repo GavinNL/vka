@@ -148,13 +148,16 @@ public:
                        vk::PipelineStageFlags dstStageMask=vk::PipelineStageFlagBits::eTopOfPipe);
 
 
-    void blit_mipmap(vk::CommandBuffer &cmdBuff, uint32_t layer, uint32_t src_miplevel, uint32_t dst_miplevel);
+    void blit_mipmap(vk::CommandBuffer &cmdBuff, uint32_t srclayer, uint32_t dstLayer, uint32_t src_miplevel, uint32_t dst_miplevel);
+
+    void generate_mipmaps(vk::CommandBuffer cmdBuff, uint32_t layer);
 
     // get the layout of a specific layer and mipmap level
     vk::ImageLayout get_layout(uint32_t layer=0, uint32_t mip_level=0) const;
 
     void* map_memory();
     void  unmap_memory();
+
 
 
 
