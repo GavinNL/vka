@@ -81,7 +81,7 @@ class camera
 
         void yaw(double dx)
         {
-            mEulerAngles.y -= dx * 0.0025f;
+            mEulerAngles.y -= dx;
 
             mEulerAngles = glm::clamp( mEulerAngles, glm::vec3( -3.14159f/180.0f*89 ,-INFINITY, 0), glm::vec3(3.14159f/180.0f*89, INFINITY, 0) );
 
@@ -89,7 +89,7 @@ class camera
         }
         void pitch(double dy)
         {
-            mEulerAngles.x += dy * 0.0025f;
+            mEulerAngles.x += dy;
 
             mEulerAngles = glm::clamp( mEulerAngles, glm::vec3( -3.14159f/180.0f*89 ,-INFINITY, 0), glm::vec3(3.14159f/180.0f*89, INFINITY, 0) );
 
@@ -135,6 +135,16 @@ class camera
         void set_acceleration( glm::vec3 const & a)
         {
             mAcc = a;
+        }
+
+        glm::vec3 get_acceleration() const
+        {
+            return mAcc;
+        }
+
+        glm::vec3 get_velocity() const
+        {
+            return mSpeed;
         }
 
         void set_fov(float f)
