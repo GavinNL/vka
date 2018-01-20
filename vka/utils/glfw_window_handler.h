@@ -370,19 +370,23 @@ public:
 
     static void __OnMouseButton(GLFWwindow* window,int button, int action, int mods)
     {
+        auto * THIS = static_cast<GLFW_Window_Handler*>( glfwGetWindowUserPointer(window) );
+        THIS->m_button[ static_cast<Button>(button) ] = action;
         static_cast<GLFW_Window_Handler*>(glfwGetWindowUserPointer(window))->onMouseButton( static_cast<Button>(button) ,action);
     }
 
     static void __OnMousePosition(GLFWwindow* window,double x, double y)
     {
         auto * THIS = static_cast<GLFW_Window_Handler*>( glfwGetWindowUserPointer(window) );
+        static_cast<GLFW_Window_Handler*>(glfwGetWindowUserPointer(window))->onMouseMove(x,y);
         THIS->m_mouse_x = x;
         THIS->m_mouse_y = y;
-        static_cast<GLFW_Window_Handler*>(glfwGetWindowUserPointer(window))->onMouseMove(x,y);
     }
 
     static void __OnKey(GLFWwindow* window,int key, int scancode, int action, int mods)
     {
+        auto * THIS = static_cast<GLFW_Window_Handler*>( glfwGetWindowUserPointer(window) );
+        THIS->m_key[ static_cast<Key>(key) ] = action;
         static_cast<GLFW_Window_Handler*>(glfwGetWindowUserPointer(window))->onKey( static_cast<Key>(key) , action);
     }
 
@@ -444,6 +448,20 @@ public:
         glfwSetInputMode(m_Window, GLFW_CURSOR, b ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
     }
 
+    bool is_pressed(Button b) const
+    {
+        auto f = m_button.find(b);
+        if( f == m_button.end() ) return false;
+        return f->second;
+    }
+
+    bool is_pressed(Key k) const
+    {
+        auto f = m_key.find(k);
+        if( f == m_key.end() ) return false;
+        return f->second;
+    }
+
     signal<void(double  , double)>    onMouseMove;
     signal<void(Button  , int   )>    onMouseButton;
     signal<void(Key,      int   )>    onKey;
@@ -452,6 +470,8 @@ public:
 
 
     private:
+        std::map< Key, bool>    m_key;
+        std::map< Button, bool> m_button;
 
         double m_mouse_x;
         double m_mouse_y;
