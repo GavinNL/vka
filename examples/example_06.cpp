@@ -284,60 +284,17 @@ int main(int argc, char ** argv)
         // [NEW]
         vka::buffer* du_buffer     = C.new_uniform_buffer( "dub", 5*1024);
 
-
-
         // allocate a staging buffer of 10MB
         vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
 
-        // using the map< > method, we can return an array_view into the
-        // memory. We are going to place them in their own scope so that
-        // the array_view is destroyed after exiting the scope. This is
-        // so we do not accidenty access the array_view after the
-        // staging_buffer has been unmapped.
-        {
-            void * vertex_map =  staging_buffer->map_memory();
-            memcpy( vertex_map, vertices.data(), vertices.size()*sizeof(Vertex));
 
-            LOG << "Size of Vertices: " << vertices.size()*sizeof(Vertex) << ENDL;
-
-            void * index_map = static_cast<char*>(vertex_map) + vertices.size()*sizeof(Vertex);
-
-            memcpy( index_map, indices.data(), indices.size()*sizeof(uint16_t));
-
-            LOG << "Size of Indices: " << indices.size()*sizeof(uint16_t) << ENDL;
-        }
-
-        // 2. Copy the data from the host-visible buffer to the vertex/index buffers
-
-        // allocate a comand buffer
-        vk::CommandBuffer copy_cmd = cp->AllocateCommandBuffer();
-        copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-
-        // write the commands to copy each of the buffer data
-        const vk::DeviceSize vertex_offset   = 0;
-        const vk::DeviceSize vertex_size     = vertices.size()*sizeof(Vertex);
-
-        const vk::DeviceSize index_offset    = vertices.size()*sizeof(Vertex);
-        const vk::DeviceSize index_size      = indices.size()*sizeof(uint16_t);
-
-
-        copy_cmd.copyBuffer( *staging_buffer , *vertex_buffer, vk::BufferCopy{ vertex_offset    , 0 , vertex_size } );
-        copy_cmd.copyBuffer( *staging_buffer , *index_buffer , vk::BufferCopy{ index_offset     , 0 , index_size  } );
-
-        copy_cmd.end();
-        C.submit_cmd_buffer(copy_cmd);
-        ////===============
-        //
-        cp->FreeCommandBuffer(copy_cmd);
-
-        // Unmap the memory.
-        //   WARNING: DO NOT ACCESS the vertex and index array_views as these
-        //            now point to unknown memory spaces
-        staging_buffer->unmap_memory();
-
+        // Use the built in functions to copy data to the device.
+        // Each of these functions
+        vertex_buffer->copy( vertices.data(), vertices.size()*sizeof(Vertex), 0);
+        index_buffer->copy(  indices.data(), indices.size()*sizeof(uint16_t), 0);
 
         mesh_info_t m_box_mesh;
-        m_box_mesh.count = 36;
+        m_box_mesh.count = indices.size();
         m_box_mesh.offset=0;
 //==============================================================================
 // Create the Texture2dArray
@@ -345,8 +302,10 @@ int main(int argc, char ** argv)
 //==============================================================================
 
     // 1. First load host_image into memory, and specifcy we want 4 channels.
-        vka::host_image D("resources/textures/Brick-2852a.jpg",4);
-        vka::host_image D2("resources/textures/noise.jpg",4);
+        std::vector<std::string> image_paths = {
+            "resources/textures/Brick-2852a.jpg",
+            "resources/textures/noise.jpg"
+        };
 
 
 
@@ -354,7 +313,7 @@ int main(int argc, char ** argv)
     //    We will be using a texture2d which is a case specific version of the
     //    generic texture
         vka::texture2darray * tex = C.new_texture2darray("test_texture");
-        tex->set_size( D.width() , D.height() );
+        tex->set_size( 512 , 512 );
         tex->set_format(vk::Format::eR8G8B8A8Unorm);
         tex->set_mipmap_levels(8);
         tex->set_layers(10);
@@ -362,9 +321,13 @@ int main(int argc, char ** argv)
         tex->create_image_view(vk::ImageAspectFlagBits::eColor);
 
 
-
-        tex->copy_image( D , 0, vk::Offset2D(0,0) );
-        tex->copy_image( D2, 1, vk::Offset2D(0,0) );
+        uint32_t layer=0;
+        for(auto & img : image_paths)
+        {
+            vka::host_image D(img, 4);
+            assert( D.width() == 512 && D.height()==512);
+            tex->copy_image( D , layer++, vk::Offset2D(0,0) );
+        }
 
 //==============================================================================
 
@@ -471,7 +434,7 @@ for(uint32_t j=0;j<MAX_OBJECTS;j++)
     vka::array_view<uniform_buffer_t> staging_buffer_map        = staging_buffer->map<uniform_buffer_t>();
     vka::array_view<dynamic_uniform_buffer_t> staging_dbuffer_map = staging_buffer->map<dynamic_uniform_buffer_t>(sizeof(uniform_buffer_t));
 
-    vk::CommandBuffer cb = cp->AllocateCommandBuffer();
+
 
 
     vka::semaphore * image_available_semaphore = C.new_semaphore("image_available_semaphore");
@@ -485,7 +448,10 @@ for(uint32_t j=0;j<MAX_OBJECTS;j++)
     // we are going to use a lamda function to determine whenever a key was pressed
     // and then change the Camera's acceleration based on what key was pressed
     //
-    // We are going to create a general FPS controller
+    // We are going to create a general FPS controller.
+
+    // must save the returned slot otherwise, the signal will be
+    // unregistered
     auto keyslot = m_Window.onKey << [&] (vka::Key k, bool down)
     {
         float x=0;
@@ -539,6 +505,7 @@ for(uint32_t j=0;j<MAX_OBJECTS;j++)
     // In most case the alignment is 256 bytes.
     auto alignment = C.get_physical_device_limits().minUniformBufferOffsetAlignment;
 
+    vk::CommandBuffer cb = cp->AllocateCommandBuffer();
     while (!glfwWindowShouldClose(window) )
     {
        float t = get_elapsed_time();
@@ -764,3 +731,4 @@ void create_box_mesh(float dx , float dy , float dz , std::vector<Vertex> & vert
 
 
 }
+

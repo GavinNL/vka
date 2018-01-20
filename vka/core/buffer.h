@@ -12,6 +12,7 @@ namespace vka
 
 class context;
 
+
 class buffer : public context_child
 {
 private:
@@ -67,6 +68,21 @@ public:
     void * map_memory();
     void   unmap_memory();
 
+    /**
+     * @brief copy
+     * @param data
+     * @param size
+     * @param offset
+     * @return
+     *
+     * Copy data into the buffer. If this buffer is host_visible.
+     * it will map the buffer, copy the data, and then unmap it.
+     *
+     * If the buffer is not visible to the host it will copy the data
+     * to a staging buffer, then copy it to the buffer. It will allocate
+     * construct and free the command buffer needed
+     */
+    bool copy( void const * data, size_t size, size_t offset);
 protected:
 
     vk::Buffer              m_buffer;

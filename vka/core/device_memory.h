@@ -46,6 +46,12 @@ class device_memory : public context_child
     bool allocate(vk::MemoryRequirements requirements);
     void free();
 
+    bool is_mapped()
+    {
+        if(m_mapped)
+            return true;
+        return false;
+    }
     void * map()
     {
         if( m_memory_properties & vk::MemoryPropertyFlagBits::eHostVisible )
