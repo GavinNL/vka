@@ -96,6 +96,8 @@ concept of the graphics pipeline.
 
 This example demonstrates how to setup a rendering pipeline using depth
 testing. Depth testing is an integral part of almost all rendering pipelines.
+It allows objects closer to the camera to occulude objects farther from the
+camera without having to pre-sort the triangles.
 
 ---
 
@@ -103,18 +105,66 @@ testing. Depth testing is an integral part of almost all rendering pipelines.
 
 <img align="right" width="200"  src="docs/images/example_03.jpeg">
 
-This example demonstrates how to use dynamic uniform buffers to pass data to
-each object drawn.
+Dynamic uniform buffers are used to send object data to the shader, simlarly
+to how regular Uniform buffers work, but instead of binding the entire buffer
+we bind a small portion of it which is visible to the shader.
+
+In the previous example we used a uniform buffer to pass the Model, View
+and Projection matrices to the shader so that we can render a perspective
+camera. The View and Projection matrices are camera specific and generally only
+change once per frame. The Model matrix determines the transformation of
+an object and is different for each object in the scene. Each object rendered
+will have a different model matrix, while every object will have the same
+View and Projection matrix.
+
+In this example wee will use a regular Uniform Buffer to pass in per frame data
+(Projection and View matrix) and a Dynamic Uniform Buffer to pass in per
+object data (model matrix)
 
 ---
 
-### Example_04 - Texture Arrays
+### Example_04 - Texture Arrays and Push Constants
 
 <img align="right" width="200"  src="docs/images/example_04.jpeg">
 
-Single textures can only get you so far. This example uses texture arrays to
-draw two objects with different textures. The textures are loaded onto two
-separate layers and the shader is told which layer to use via a parameter in
-its dynamic uniform buffer.
+Texture arrays have many uses. A typical 3d scene has mulitple objects
+each having different textures. It is unwise to use a single texture
+for each object and then bind the texture when we are going to draw that
+object. Instead a texture array can hold a vast number of textures, and
+we can tell the object which layer in the array to use by passing it
+the data through the dynamic uniform buffer or using push constants.
+
+Push Constants are data which can be passed to the shader by directly writing
+to the command buffer. Push constants have a maximum size but is garanteed
+to be at least 128 bytes. Push Constants are ideal when you need to send
+small bits of data such as a simple index into an array.
+
+In this example, we are going to create a texture array with 2 textures and then
+use Push Constants to tell the shader what layer to use when rendering the object.
+
+---
+
+### Example_05 - Mipmaps
+
+<img align="right" width="200"  src="docs/images/example_05.jpeg">
+
+Mipmaps are a downsampled version of a texture. If a square texture has
+dimensions 512x512, then a level 1 mipmap would be 256x256, a level 2 would
+be 128x128, and so forth all the way down to 1x1.
+
+Mipmaps are used when rendering objects far from the camera, if the texture
+is too detailed, then when an object is far away, two pixels close together on
+the screen might actually be very far apart on the texture. This creates large colour
+variances in objects farther away. The mipmap level is chosen dynamically based
+on how far away the pixel is on the screen.
+
+The a specific mipmap level can also be chosen by using the textureLod( )
+GLSL function.
+
+This example demonstrates how to generate mipmaps for a texture array. The
+mipmaps are generated in two ways; manually and one automatically with a single
+function call.
+
+
 
 ---
