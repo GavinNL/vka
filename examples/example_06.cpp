@@ -92,6 +92,7 @@ struct mesh_info_t
 {
     uint32_t offset;
     uint32_t count; // number of indices
+    uint32_t vertex_offset;
 };
 
 
@@ -260,10 +261,9 @@ int main(int argc, char ** argv)
 //    2. copy the memory-mapped buffer to the vertex/index buffers
 //==============================================================================
 
-       // std::vector<Vertex>   vertices;
-       // std::vector<uint16_t> indices;
-
         vka::mesh_t M = vka::box_mesh(1,1,1);
+        vka::mesh_t P = vka::plane_mesh(10,10);
+
 
 
         // Create two buffers, one for vertices and one for indices. THey
@@ -284,9 +284,19 @@ int main(int argc, char ** argv)
         vertex_buffer->copy( M.vertex_data(), M.vertex_data_size() , 0);
         index_buffer->copy(  M.index_data() , M.index_data_size()  , 0);
 
+
+        vertex_buffer->copy( P.vertex_data(), P.vertex_data_size() , M.vertex_data_size());
+        index_buffer->copy(  P.index_data() , P.index_data_size()  , M.index_data_size());
+
         mesh_info_t m_box_mesh;
-        m_box_mesh.count = M.num_indices();
-        m_box_mesh.offset=0;
+        m_box_mesh.count  = M.num_indices();
+        m_box_mesh.offset = 0;
+        m_box_mesh.vertex_offset = 0;
+
+        mesh_info_t m_plane_mesh;
+        m_plane_mesh.count  = P.num_indices();
+        m_plane_mesh.offset = M.num_indices();
+        m_plane_mesh.vertex_offset = M.num_vertices();
 //==============================================================================
 // Create the Texture2dArray
 //
@@ -398,6 +408,10 @@ for(uint32_t j=0;j<MAX_OBJECTS;j++)
     m_Objects[j].m_transform.set_position(  1.5f*glm::vec3( cos(a), 0, sin(a) ));
 }
 
+m_Objects[1].m_mesh = m_plane_mesh;
+m_Objects[0].m_transform.set_position( glm::vec3(3,0,0));
+m_Objects[1].m_transform.set_position( glm::vec3(0,2,0));
+m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
 
 //==============================================================================
@@ -635,7 +649,7 @@ for(uint32_t j=0;j<MAX_OBJECTS;j++)
             cb.drawIndexed(m_Objects[j].m_mesh.count,
                            1,
                            m_Objects[j].m_mesh.offset,
-                           0,
+                           m_Objects[j].m_mesh.vertex_offset,
                            0);
       }
 
