@@ -75,7 +75,24 @@ public:
             if( i->m_offset == offset )
             {
                 i->m_allocated = false;
+
+
+                //======== loop back until we are the first free block;
+
+                while( i != m_list.begin() )
+                {
+                    i--;
+                    if( !i->empty() )
+                    {
+                        i++;
+                        forward_merge(i);
+                        return;
+                    }
+                }
+
                 forward_merge(i);
+
+
                 return;
             }
             ++i;
@@ -137,10 +154,6 @@ public:
     }
 
 private:
-    size_t m_size;
-    size_t m_used=0;
-    size_t m_offset=0;
-
     std::list<info> m_list;
 
     void forward_merge(  std::list<info>::iterator iterator)
@@ -155,8 +168,8 @@ private:
                 iterator->m_size += next->m_size;
                 m_list.erase(next);
                 forward_merge(iterator);
-                iterator--;
-                forward_merge( iterator );
+                //iterator--;
+                //forward_merge( iterator );
             }
         }
     }
