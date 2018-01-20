@@ -12,7 +12,8 @@ namespace vka
 
 class context;
 class buffer;
-
+class image;
+using host_image = image;
 class texture : public context_child
 {
 
@@ -95,6 +96,8 @@ public:
     void copy_buffer( vka::buffer const * b , vk::BufferImageCopy);
 
 
+
+    void copy_image( vka::host_image & I, uint32_t layer, vk::Offset2D E);
     /**
      * @brief convert
      * @param commandBuffer

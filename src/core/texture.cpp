@@ -3,7 +3,7 @@
 #include <vka/core/texture2d.h>
 #include <vka/core/command_pool.h>
 #include <vka/core/buffer.h>
-
+#include <vka/core/image.h>
 
 vka::texture::texture(vka::context *parent) : context_child(parent), m_Memory(parent)
 {
@@ -132,6 +132,42 @@ void vka::texture::copy_buffer(vk::CommandBuffer cb,
                                vk::BufferImageCopy region)
 {
     cb.copyBufferToImage( b->get(), m_Image, vk::ImageLayout::eTransferDstOptimal, region);
+}
+
+
+
+void vka::texture::copy_image(vka::host_image & D, uint32_t layer, vk::Offset2D E)
+{
+    auto * b = get_parent_context()->get_staging_buffer();
+
+    void * image_buffer_data = b->map_memory();
+    memcpy( image_buffer_data, D.data(), D.size() );
+    b->unmap_memory();
+
+    auto cb = get_parent_context()->get_command_pool()->AllocateCommandBuffer();
+
+    cb.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+
+        // a. convert the texture to eTransferDstOptimal
+        convert_layer(cb, vk::ImageLayout::eTransferDstOptimal, layer,0);
+
+        // b. copy the data from the buffer to the texture
+        vk::BufferImageCopy BIC;
+        BIC.setBufferImageHeight(  D.height() )
+           .setBufferOffset(0) // the image data starts at the start of the buffer
+           .setImageExtent( vk::Extent3D( D.width() , D.height(), 1) ) // size of the image
+           .setImageOffset( vk::Offset3D( E.x,E.y,0)) // where in the texture we want to paste the image
+           .imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
+                            .setBaseArrayLayer(layer) // the layer to copy
+                            .setLayerCount(1) // only copy 2 layers
+                            .setMipLevel(0);  // only the first mip-map level
+
+        copy_buffer( cb, b, BIC);
+
+        generate_mipmaps(cb , layer);
+    cb.end();
+    get_parent_context()->submit_cmd_buffer(cb);
+    get_parent_context()->get_command_pool()->FreeCommandBuffer(cb);
 }
 
 

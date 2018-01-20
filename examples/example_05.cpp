@@ -93,6 +93,15 @@ float get_elapsed_time()
 }
 
 
+uint32_t tick()
+{
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    return std::chrono::duration_cast<std::chrono::microseconds>(currentTime - startTime).count();
+
+    //return time;
+}
 /**
  * @brief create_box_mesh
  * @param dx - dimension of the box
@@ -301,9 +310,13 @@ int main(int argc, char ** argv)
         tex->create_image_view(vk::ImageAspectFlagBits::eColor);
 
 
+#if 0
+        auto t1 = tick();
+        tex->copy_image( D , 0, vk::Offset2D(0,0) );
+        tex->copy_image( D2, 1, vk::Offset2D(0,0) );
 
-
-
+        LOG << "Time to copy image: " << (tick()-t1) << ENDL;
+#else
     // 3. Map the buffer to memory and copy the the two images to it
     //    one right after the other.
     //
@@ -311,6 +324,7 @@ int main(int argc, char ** argv)
     //  staging buffer. If you have many textures, you will have to run
     //  this section multiple times: write to staging buffer, copy to array
     //   write to staging buffer, copy to array. etc.
+        auto t1 = tick();
         void * image_buffer_data = staging_buffer->map_memory();
         memcpy( image_buffer_data, D.data(), D.size() );
 
@@ -332,6 +346,7 @@ int main(int argc, char ** argv)
         vk::CommandBuffer cb1 = cp->AllocateCommandBuffer();
         cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
+
             // a. convert the texture to eTransferDstOptimal
             tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
             tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,1,0);
@@ -348,6 +363,7 @@ int main(int argc, char ** argv)
                                 .setMipLevel(0);  // only the first mip-map level
 
             tex->copy_buffer( cb1, staging_buffer, BIC);
+
 
 
             //==================================================================
@@ -387,6 +403,8 @@ int main(int argc, char ** argv)
         C.submit_cmd_buffer(cb1);
         // free the command buffer
         cp->FreeCommandBuffer(cb1);
+        LOG << "Time to copy image: " << (tick()-t1) << ENDL;
+#endif
 //==============================================================================
 
 

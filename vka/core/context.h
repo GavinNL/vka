@@ -428,6 +428,12 @@ public:
         return m_physical_device_properties.limits;
     }
 
+    vka::buffer * get_staging_buffer()
+    {
+        return m_staging_buffer;
+    }
+
+
 private:
 
     template<typename T>
