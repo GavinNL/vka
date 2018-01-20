@@ -1,7 +1,4 @@
-#include <vka/geometry/point3d.h>
-#include <vka/geometry/line3d.h>
-#include <vka/geometry/plane3d.h>
-
+#include <vka/core/primatives.h>
 #include <vka/geometry/boundingbox.h>
 
 #include <vka/utils/buffer_memory_manager.h>
@@ -51,5 +48,29 @@ SCENARIO("mesh_t")
 
         P[0] = glm::vec3(1,1,1);
     }
+
+}
+
+
+SCENARIO("Merging Meshs")
+{
+    auto M = vka::box_mesh(1,1,1);
+    auto S = vka::sphere_mesh(0.5,10,10);
+
+    auto v = M.num_vertices() + S.num_vertices();
+    auto i = M.num_indices()  + S.num_indices() ;
+
+    THEN("Merging two meshs results in a single mesh")
+    {
+
+        REQUIRE( M.merge(S) );
+
+        REQUIRE( M.num_vertices() == v);
+        REQUIRE( M.num_indices()  == i);
+
+
+    }
+
+
 
 }

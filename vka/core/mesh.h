@@ -26,6 +26,11 @@ class mesh_t
             uint32_t   offset;
             uint32_t   size;
             vk::Format format;
+            bool operator==(const attr_info & other) const
+            {
+                return other.offset==offset && size==other.size && format==other.format;
+            }
+
         };
 
         template<typename T>
@@ -173,14 +178,60 @@ class mesh_t
             return m_index.size();
         }
 
-        void set_index_type() const
+        void set_index_type(vk::IndexType t)
         {
-
+            m_index_type = t;
         }
         vk::IndexType index_type() const
         {
             return m_index_type;
         }
+
+
+        bool merge( mesh_t const & other )
+        {
+            if( other.num_attributes() != num_attributes() ) return false;
+            if( other.index_type()     != index_type() ) return false;
+
+            auto i = other.m_attributes.begin();
+            for(auto & a : m_attributes)
+            {
+                if( !(i->second == a.second) )
+                {
+                    return false;
+                }
+                i++;
+            }
+
+
+            auto N = num_vertices();
+            auto n = num_indices();
+
+            std::copy(other.m_data.begin(), other.m_data.end(), std::back_inserter(m_data));
+            std::copy(other.m_index.begin(), other.m_index.end(), std::back_inserter(m_index));
+
+            if( m_index_type == vk::IndexType::eUint16)
+            {
+                auto I = get_index_view<uint16_t>();
+                const auto s = num_indices();
+                for(uint32_t j=n; j < s; j++)
+                {
+                    I[j] += N;
+                }
+            }
+            else {
+                auto I = get_index_view<uint32_t>();
+                const auto s = num_indices();
+                for(uint32_t j=n; j < s; j++)
+                {
+                    I[j] += N;
+                }
+            }
+
+            return true;
+        }
+
+
     private:
         std::vector<uint8_t>                 m_data;
         std::vector<uint8_t>                 m_index;
