@@ -268,7 +268,7 @@ int main(int argc, char ** argv)
         std::vector< mesh_info_t > m_mesh_info;
 
         meshs.push_back( vka::box_mesh(1,1,1) );
-        meshs.push_back( vka::plane_mesh(1,1) );
+        meshs.push_back( vka::sphere_mesh(0.5,20,20) );
 
 #if 0
         // Create two buffers, one for vertices and one for indices. THey
@@ -306,8 +306,8 @@ int main(int argc, char ** argv)
 #else
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
-        vka::managed_buffer* vertex_buffer = C.new_managed_vertex_buffer(  "vb", 5*1024 );
-        vka::managed_buffer* index_buffer  = C.new_managed_index_buffer(   "ib", 5*1024 );
+        vka::managed_buffer* vertex_buffer = C.new_managed_vertex_buffer(  "vb", 5*1024*1024 );
+        vka::managed_buffer* index_buffer  = C.new_managed_index_buffer(   "ib", 5*1024*1024 );
 
         vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 5*1024);
 
@@ -324,6 +324,9 @@ int main(int argc, char ** argv)
             // Each of these functions
             auto m1v = vertex_buffer->copy( M.vertex_data(), M.vertex_data_size() , M.vertex_size() );
             auto m1i = index_buffer->copy(  M.index_data() , M.index_data_size()  , M.index_size()  );
+
+            assert( m1v != -1);
+            assert( m1i != -1);
 
             mesh_info_t m_box_mesh;
             m_box_mesh.count         = M.num_indices();
