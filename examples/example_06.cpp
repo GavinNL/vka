@@ -48,6 +48,8 @@
 #include <vka/core/transform.h>
 #include <vka/core/primatives.h>
 
+#include <vka/utils/buffer_memory_manager.h>
+
 #include <vka/utils/glfw_window_handler.h>
 
 
@@ -261,15 +263,21 @@ int main(int argc, char ** argv)
 //    2. copy the memory-mapped buffer to the vertex/index buffers
 //==============================================================================
 
-        vka::mesh_t M = vka::box_mesh(1,1,1);
-        vka::mesh_t P = vka::plane_mesh(10,10);
+        std::vector<vka::mesh_t> meshs;
+        std::vector< mesh_info_t > m_mesh_info;
 
+        meshs.push_back( vka::box_mesh(1,1,1) );
+        meshs.push_back( vka::plane_mesh(1,1) );
 
 
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
         vka::buffer* vertex_buffer = C.new_vertex_buffer(  "vb", 5*1024 );
+        vka::buffer_memory_manager vertex_buffer_manager(5*1024);
+
         vka::buffer* index_buffer  = C.new_index_buffer(   "ib", 5*1024 );
+        vka::buffer_memory_manager index_buffer_manager(5*1024);
+
         vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 5*1024);
 
         // [NEW]
@@ -279,24 +287,33 @@ int main(int argc, char ** argv)
         vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
 
 
-        // Use the built in functions to copy data to the device.
-        // Each of these functions
-        vertex_buffer->copy( M.vertex_data(), M.vertex_data_size() , 0);
-        index_buffer->copy(  M.index_data() , M.index_data_size()  , 0);
+        for( auto & M : meshs)
+        {
+            // Use the built in functions to copy data to the device.
+            // Each of these functions
+            auto m1v = vertex_buffer_manager.allocate( M.vertex_data_size() );
+            auto m1i = index_buffer_manager.allocate( M.index_data_size() );
+            vertex_buffer->copy( M.vertex_data(), M.vertex_data_size() , m1v);
+            index_buffer->copy(  M.index_data() , M.index_data_size()  , m1i);
 
+            mesh_info_t m_box_mesh;
+            m_box_mesh.count         = M.num_indices();
+            m_box_mesh.offset        = m1i / M.index_size();
+            m_box_mesh.vertex_offset = m1v / M.vertex_size();
+            m_mesh_info.push_back(m_box_mesh);
+        }
 
-        vertex_buffer->copy( P.vertex_data(), P.vertex_data_size() , M.vertex_data_size());
-        index_buffer->copy(  P.index_data() , P.index_data_size()  , M.index_data_size());
-
-        mesh_info_t m_box_mesh;
-        m_box_mesh.count  = M.num_indices();
-        m_box_mesh.offset = 0;
-        m_box_mesh.vertex_offset = 0;
-
-        mesh_info_t m_plane_mesh;
-        m_plane_mesh.count  = P.num_indices();
-        m_plane_mesh.offset = M.num_indices();
-        m_plane_mesh.vertex_offset = M.num_vertices();
+      //  auto m2v = vertex_buffer_manager.allocate( P.vertex_data_size() );
+      //  auto m2i = index_buffer_manager.allocate(  P.index_data_size() );
+      //  vertex_buffer->copy( P.vertex_data(), P.vertex_data_size() , m2v);
+      //  index_buffer->copy(  P.index_data() , P.index_data_size()  , m2i);
+      //
+      //
+      //
+      //  mesh_info_t m_plane_mesh;
+      //  m_plane_mesh.count         = P.num_indices();
+      //  m_plane_mesh.offset        = m2i / P.index_size();
+      //  m_plane_mesh.vertex_offset = m2v / P.vertex_size();
 //==============================================================================
 // Create the Texture2dArray
 //
@@ -347,6 +364,7 @@ int main(int argc, char ** argv)
 
         vka::pipeline* pipeline = C.new_pipeline("triangle");
 
+        auto & M = meshs.front();
         // Create the graphics Pipeline
           pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                   ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
@@ -401,14 +419,14 @@ m_Objects.resize(MAX_OBJECTS);
 for(uint32_t j=0;j<MAX_OBJECTS;j++)
 {
     double a = (j / (double)MAX_OBJECTS) * 2.0 * 3.14159;
-    m_Objects[j].m_mesh          = m_box_mesh;
+    m_Objects[j].m_mesh          = m_mesh_info[0];
     m_Objects[j].m_pipeline      = pipeline;
     m_Objects[j].m_push.index    = j%2;
     m_Objects[j].m_push.miplevel = -1;
     m_Objects[j].m_transform.set_position(  1.5f*glm::vec3( cos(a), 0, sin(a) ));
 }
 
-m_Objects[1].m_mesh = m_plane_mesh;
+m_Objects[1].m_mesh = m_mesh_info[1];
 m_Objects[0].m_transform.set_position( glm::vec3(3,0,0));
 m_Objects[1].m_transform.set_position( glm::vec3(0,2,0));
 m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));

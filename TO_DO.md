@@ -19,5 +19,9 @@ bool        clear_data(size_t offset)
 
 ## Primatives
 
-Create methods for generating primatives: Sphere, box, cone, cylinder, etc
+Create methods for generating primatives:
+* cone
+* cylinder
+* torus
+* axis
 
