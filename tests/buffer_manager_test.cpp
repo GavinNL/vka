@@ -3,6 +3,24 @@
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
 #include "catch.hpp"
 
+SCENARIO("Aligned allocations")
+{
+    using bmm = vka::buffer_memory_manager;
+
+    GIVEN("buffer")
+    {
+        bmm B(128);
+
+        B.allocate(10);
+
+        THEN("Allocating with an alignment")
+        {
+            auto r =B.allocate(8, 4);
+
+            REQUIRE(r==12);
+        }
+    }
+}
 
 SCENARIO("Buffer Memory manager with offset specification")
 {
@@ -18,7 +36,7 @@ SCENARIO("Buffer Memory manager with offset specification")
         // +----------------------------+
         // |free  |s1    |free          |
         // +----------------------------+
-            auto s1 = B.allocate(32,32);
+            auto s1 = B.allocate_at(32,32);
 
             REQUIRE(s1==32);
             REQUIRE( B.num_blocks()==3);
@@ -30,7 +48,7 @@ SCENARIO("Buffer Memory manager with offset specification")
             // +----------------------------+
             // |s1                          |
             // +----------------------------+
-            auto s1 = B.allocate(128,0);
+            auto s1 = B.allocate_at(128,0);
             REQUIRE( B.num_blocks()==1);
         }
 
@@ -39,7 +57,7 @@ SCENARIO("Buffer Memory manager with offset specification")
             // +----------------------------+
             // |s1                          |
             // +----------------------------+
-            auto s1 = B.allocate(128,5);
+            auto s1 = B.allocate_at(128,5);
             REQUIRE( s1 == bmm::error);
         }
     }

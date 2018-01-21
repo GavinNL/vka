@@ -28,6 +28,8 @@ class buffer_memory_manager
       size_t m_size      = 0;
       size_t m_offset    = 0;
       bool   m_allocated = false;
+      info * m_next = nullptr;
+      info * m_prev = nullptr;
 
       std::string to_string(char c, size_t block_size=1)
       {
@@ -43,6 +45,9 @@ class buffer_memory_manager
       {
         return !m_allocated;
       }
+
+
+
     };
 public:
 
@@ -137,7 +142,49 @@ public:
     }
 
 
+    size_t allocate_at(size_t n, size_t offset)
+    {
+        return allocate_at( m_list.begin(), n, offset);
+    }
 
+    size_t allocate_at(std::list<info>::iterator i, size_t n, size_t offset)
+    {
+      //  auto i = m_list.begin();
+        while( i != m_list.end() )
+        {
+            if(i->empty() )
+            {
+                if( offset >= i->m_offset && offset+n <= i->m_offset+i->m_size)
+                {
+                    info left_empty;
+                    left_empty.m_size = offset - i->m_offset;
+                    left_empty.m_offset = offset;
+                    left_empty.m_allocated = false;
+
+                    info middle_full;
+                    middle_full.m_size   = n;
+                    middle_full.m_offset = offset;
+                    middle_full.m_allocated = true;
+
+                    info right_empty;
+                    right_empty.m_size   = i->m_size - left_empty.m_size - n;
+                    right_empty.m_offset = middle_full.m_offset + middle_full.m_size;
+                    right_empty.m_allocated = false;
+
+
+                    if(left_empty.m_size!=0) m_list.insert(i, left_empty);
+                    m_list.insert(i, middle_full);
+                    *i = right_empty;
+
+                    if(i->m_size==0)
+                        m_list.erase(i);
+                    return offset;
+                }
+            }
+            i++;
+        }
+        return error;
+    }
     /**
      * @brief allocate
      * @param n
@@ -149,76 +196,27 @@ public:
      *
      * If providing
      */
-    size_t allocate(size_t n, size_t offset=error)
+    size_t allocate(size_t n, size_t alignment=1)
     {
-        if( offset == error)
+
+        auto i = m_list.begin();
+        while( i != m_list.end() )
         {
-            auto i = m_list.begin();
-            while( i != m_list.end() )
+            if( i->empty()  )
             {
-                if( i->empty()  )
+                if( n <= i->m_size  + (i->m_offset%alignment) ) // the whole block can fit in this
                 {
-                    if( n <= i->m_size )
-                    {
-                        info free_block;
+                    auto aligned_offset = i->m_offset + (i->m_offset%alignment); // current location to allocate
 
-                        free_block.m_size      = i->m_size - n;
-                        free_block.m_offset    = i->m_offset + n;
-                        free_block.m_allocated = false;
-
-                        i->m_size = n;
-                        i->m_allocated = true;
-                        auto o = i->m_offset;
-
-                        i++;
-                        if( free_block.m_size != 0)
-                            m_list.insert(i,free_block);
-                        return o;
-                    }
+                    auto r = allocate_at(i, n , aligned_offset);
+                    return r;
                 }
-                ++i;
             }
-            return error;
+            ++i;
         }
-        else
-        {
-            auto i = m_list.begin();
-            while( i != m_list.end() )
-            {
-                if(i->empty() )
-                {
-                    if( offset >= i->m_offset && offset+n <= i->m_offset+i->m_size)
-                    {
-                        info left_empty;
-                        left_empty.m_size = offset - i->m_offset;
-                        left_empty.m_offset = offset;
-                        left_empty.m_allocated = false;
-
-                        info middle_full;
-                        middle_full.m_size   = n;
-                        middle_full.m_offset = offset;
-                        middle_full.m_allocated = true;
-
-                        info right_empty;
-                        right_empty.m_size   = i->m_size - left_empty.m_size - n;
-                        right_empty.m_offset = middle_full.m_offset + middle_full.m_size;
-                        right_empty.m_allocated = false;
-
-
-                        if(left_empty.m_size!=0) m_list.insert(i, left_empty);
-                        m_list.insert(i, middle_full);
-                        *i = right_empty;
-
-                        if(i->m_size==0)
-                            m_list.erase(i);
-                        return offset;
-                    }
-                }
-                i++;
-            }
-            return error;
-        }
+        return error;
     }
+
 
 private:
     std::list<info> m_list;
