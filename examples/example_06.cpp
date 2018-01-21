@@ -49,6 +49,7 @@
 #include <vka/core/primatives.h>
 
 #include <vka/utils/buffer_memory_manager.h>
+#include <vka/core/managed_buffer.h>
 
 #include <vka/utils/glfw_window_handler.h>
 
@@ -269,7 +270,7 @@ int main(int argc, char ** argv)
         meshs.push_back( vka::box_mesh(1,1,1) );
         meshs.push_back( vka::plane_mesh(1,1) );
 
-
+#if 0
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
         vka::buffer* vertex_buffer = C.new_vertex_buffer(  "vb", 5*1024 );
@@ -302,18 +303,38 @@ int main(int argc, char ** argv)
             m_box_mesh.vertex_offset = m1v / M.vertex_size();
             m_mesh_info.push_back(m_box_mesh);
         }
+#else
+        // Create two buffers, one for vertices and one for indices. THey
+        // will each be 1024 bytes long
+        vka::managed_buffer* vertex_buffer = C.new_managed_vertex_buffer(  "vb", 5*1024 );
+        vka::managed_buffer* index_buffer  = C.new_managed_index_buffer(   "ib", 5*1024 );
 
-      //  auto m2v = vertex_buffer_manager.allocate( P.vertex_data_size() );
-      //  auto m2i = index_buffer_manager.allocate(  P.index_data_size() );
-      //  vertex_buffer->copy( P.vertex_data(), P.vertex_data_size() , m2v);
-      //  index_buffer->copy(  P.index_data() , P.index_data_size()  , m2i);
-      //
-      //
-      //
-      //  mesh_info_t m_plane_mesh;
-      //  m_plane_mesh.count         = P.num_indices();
-      //  m_plane_mesh.offset        = m2i / P.index_size();
-      //  m_plane_mesh.vertex_offset = m2v / P.vertex_size();
+        vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 5*1024);
+
+        // [NEW]
+        vka::buffer* du_buffer     = C.new_uniform_buffer( "dub", 5*1024);
+
+        // allocate a staging buffer of 10MB
+        vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
+
+
+        for( auto & M : meshs)
+        {
+            // Use the built in functions to copy data to the device.
+            // Each of these functions
+            auto m1v = vertex_buffer->copy( M.vertex_data(), M.vertex_data_size() , M.vertex_size() );
+            auto m1i = index_buffer->copy(  M.index_data() , M.index_data_size()  , M.index_size()  );
+
+            mesh_info_t m_box_mesh;
+            m_box_mesh.count         = M.num_indices();
+            m_box_mesh.offset        = m1i / M.index_size();
+            m_box_mesh.vertex_offset = m1v / M.vertex_size();
+            m_mesh_info.push_back(m_box_mesh);
+        }
+
+#endif
+
+
 //==============================================================================
 // Create the Texture2dArray
 //
