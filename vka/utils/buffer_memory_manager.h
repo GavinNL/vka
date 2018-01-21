@@ -53,9 +53,19 @@ public:
 
     static constexpr size_t error = std::numeric_limits<size_t>::max();
 
+    buffer_memory_manager()
+    {
+        m_list.clear();
+    }
+
     buffer_memory_manager(size_t i)
     {
         reset(i);
+    }
+
+    operator bool() const
+    {
+        return m_list.size()!=0;
     }
 
     void reset(size_t total_bytes)

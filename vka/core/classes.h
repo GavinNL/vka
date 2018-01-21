@@ -5,6 +5,7 @@
 X_MACRO( renderpass            )\
 X_MACRO( command_pool          )\
 X_MACRO( buffer                )\
+X_MACRO( managed_buffer        )\
 X_MACRO( framebuffer           )\
 X_MACRO( shader                )\
 X_MACRO( pipeline              )\

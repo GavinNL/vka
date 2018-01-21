@@ -15,7 +15,7 @@ class context;
 
 class buffer : public context_child
 {
-private:
+protected:
     buffer( context* parent) : context_child(parent)
                               ,m_memory(parent){}
     ~buffer();

@@ -2,6 +2,7 @@
 #include <vka/core/renderpass.h>
 #include <vka/core/command_pool.h>
 #include <vka/core/buffer.h>
+#include <vka/core/managed_buffer.h>
 #include <vka/core/framebuffer.h>
 #include <vka/core/shader.h>
 #include <vka/core/pipeline.h>
@@ -385,6 +386,24 @@ vka::framebuffer* vka::context::new_framebuffer(const std::string & name)
 }
 
 
+vka::managed_buffer*   vka::context::new_managed_buffer(const std::string & name,
+                          size_t size,
+                          vk::MemoryPropertyFlags memory_properties,
+                          vk::BufferUsageFlags usage)
+{
+
+    auto * b = new_managed_buffer(name);
+    if( b )
+    {
+        b->set_memory_properties(memory_properties);
+        b->set_size(size);
+        b->set_usage(usage);
+        b->create();
+        return b;
+    }
+    return nullptr;
+}
+
 vka::buffer*   vka::context::new_buffer(const std::string & name,
                           size_t size,
                           vk::MemoryPropertyFlags memory_properties,
@@ -408,6 +427,10 @@ vka::buffer* vka::context::new_buffer(const std::string & name)
         return _new<vka::buffer>(name);
 }
 
+vka::managed_buffer* vka::context::new_managed_buffer(const std::string & name)
+{
+        return _new<vka::managed_buffer>(name);
+}
 
 vka::shader* vka::context::new_shader_module(const std::string &name)
 {

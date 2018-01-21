@@ -259,6 +259,8 @@ public:
      */
     vka::buffer*   new_buffer(const std::string & name);
 
+
+    vka::managed_buffer*   new_managed_buffer(const std::string & name);
     /**
      * @brief new_buffer
      * @param name - name of the buffer
@@ -273,6 +275,12 @@ public:
                               size_t size,
                               vk::MemoryPropertyFlags memory_properties,
                               vk::BufferUsageFlags usage);
+
+
+    vka::managed_buffer*   new_managed_buffer(const std::string & name,
+                                      size_t size,
+                                      vk::MemoryPropertyFlags memory_properties,
+                                      vk::BufferUsageFlags usage);
 
     /**
      * @brief new_vertex_buffer
@@ -289,6 +297,12 @@ public:
                           vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
     }
 
+    vka::managed_buffer* new_managed_vertex_buffer(const std::string & name, size_t size)
+    {
+        return new_managed_buffer(name , size,
+                          vk::MemoryPropertyFlagBits::eDeviceLocal,
+                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
+    }
     /**
      * @brief new_index_buffer
      * @param name
@@ -300,6 +314,12 @@ public:
     vka::buffer* new_index_buffer(const std::string & name, size_t size)
     {
         return new_buffer(name , size,
+                          vk::MemoryPropertyFlagBits::eDeviceLocal,
+                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
+    }
+    vka::managed_buffer* new_managed_index_buffer(const std::string & name, size_t size)
+    {
+        return new_managed_buffer(name , size,
                           vk::MemoryPropertyFlagBits::eDeviceLocal,
                           vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
     }
@@ -319,6 +339,12 @@ public:
                           vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer);
     }
 
+    vka::managed_buffer* new_managed_uniform_buffer(const std::string & name, size_t size)
+    {
+        return new_managed_buffer(name , size,
+                          vk::MemoryPropertyFlagBits::eDeviceLocal,
+                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer);
+    }
     /**
      * @brief new_multi_buffer
      * @param name
