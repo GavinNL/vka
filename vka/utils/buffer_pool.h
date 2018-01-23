@@ -11,6 +11,12 @@ namespace vka
 
 class buffer_pool;
 
+struct sub_buffer_object
+{
+    vk::DeviceSize m_offset;
+    vk::DeviceSize m_size;
+};
+
 class sub_buffer
 {
 public:
@@ -19,12 +25,48 @@ public:
         return m_buffer;
     }
 
+    vk::Buffer get() const
+    {
+        return m_buffer;
+    }
 
-    void copy(void * data, vk::DeviceSize size, vk::DeviceSize offset);
+    /**
+     * @brief copy
+     * @param data
+     * @param size
+     * @return
+     *
+     * Inserts data into this buffer where there is space. and returns
+     * a sub_bufffer_object. which indicates where in the buffer
+     * this object is. You must keep track of
+     */
+    sub_buffer_object insert(void const * data, vk::DeviceSize size);
+
+    /**
+     * @brief free_buffer_boject
+     * @param obj
+     *
+     * Reclaim the space used by that buffer object.
+     */
+    void free_buffer_boject( const sub_buffer_object & obj);
+
+
+    // do not use this
+    void copy(void const * data, vk::DeviceSize size, vk::DeviceSize offset);
+
+    /**
+     * @brief clear_buffer_objects
+     * Clears all buffer objects that the sub buffer is keeping track of.
+     * The data is still there, but any allocation information about the
+     * blocks are gone.
+     */
+    void clear_buffer_objects();
+
+
 
 protected:
 
-    sub_buffer(){}
+    sub_buffer( buffer_pool * parent) : m_parent(parent){}
     ~sub_buffer() {}
 
     vk::Buffer     m_buffer;
@@ -32,6 +74,8 @@ protected:
     vk::DeviceSize m_offset; // offset from teh start of the parent' memory block
 
     buffer_pool    *m_parent;
+    vka::buffer_memory_manager m_manager;
+
     friend class buffer_pool;
 };
 
@@ -47,7 +91,7 @@ public:
     }
 
     sub_buffer* new_buffer(size_t n);
-    void free_buffer(sub_buffer * b);
+    void        free_buffer(sub_buffer * b);
 
 protected:
     vka::buffer_memory_manager m_manager;
