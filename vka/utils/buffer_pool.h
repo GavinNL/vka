@@ -55,9 +55,6 @@ public:
     void free_buffer_boject( const sub_buffer_object & obj);
 
 
-    // do not use this
-    void copy(void const * data, vk::DeviceSize size, vk::DeviceSize offset);
-
     /**
      * @brief clear_buffer_objects
      * Clears all buffer objects that the sub buffer is keeping track of.
@@ -67,15 +64,16 @@ public:
     void clear_buffer_objects();
 
 
-
+    vk::DeviceSize m_size;
+    vk::DeviceSize m_offset; // offset from teh start of the parent' memory block
 protected:
 
     sub_buffer( buffer_pool * parent) : m_parent(parent){}
     ~sub_buffer() {}
 
     vk::Buffer     m_buffer;
-    vk::DeviceSize m_size;
-    vk::DeviceSize m_offset; // offset from teh start of the parent' memory block
+    //vk::DeviceSize m_size;
+    //vk::DeviceSize m_offset; // offset from teh start of the parent' memory block
 
     buffer_pool    *m_parent;
     vka::buffer_memory_manager m_manager;
@@ -94,7 +92,7 @@ public:
         return this;
     }
 
-    sub_buffer* new_buffer(size_t n);
+    sub_buffer* new_buffer(vk::DeviceSize n, vk::DeviceSize alignment=1);
     void        free_buffer(sub_buffer * b);
 
 protected:

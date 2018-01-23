@@ -288,16 +288,17 @@ int main(int argc, char ** argv)
 
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
-        vka::sub_buffer* vertex_buffer = buf_pool->new_buffer( 5*1024*1024 );
-        vka::sub_buffer* index_buffer  = buf_pool->new_buffer( 5*1024*1024 );
+        vka::sub_buffer* vertex_buffer = buf_pool->new_buffer( 16*1024 );
+        vka::sub_buffer* index_buffer  = buf_pool->new_buffer( 16*1024 );
 
-        vka::sub_buffer* u_buffer      = buf_pool->new_buffer(  5*1024);
+        vka::sub_buffer* u_buffer      = buf_pool-> new_buffer(  16*1024);
+
 
         // [NEW]
-        vka::sub_buffer* du_buffer     =  buf_pool->new_buffer(5*1024);/// C.new_uniform_buffer( "dub", 5*1024);
+        vka::sub_buffer* du_buffer     =  buf_pool->new_buffer(16*1024);/// C.new_uniform_buffer( "dub", 5*1024);
 
         // allocate a staging buffer of 10MB
-        vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
+        vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*16 );
 
 
         for( auto & M : meshs)
@@ -315,8 +316,8 @@ int main(int argc, char ** argv)
 
             // the offset returned is the byte offset, so we need to divide it
             // by the index/vertex size to get the actual index/vertex offset
-            m_box_mesh.offset        = m1i.m_offset / M.index_size();
-            m_box_mesh.vertex_offset = m1v.m_offset / M.vertex_size();
+            m_box_mesh.offset        = ( m1i.m_offset - index_buffer->m_offset) / M.index_size();
+            m_box_mesh.vertex_offset = ( m1v.m_offset - vertex_buffer->m_offset) / M.vertex_size();
             m_mesh_info.push_back(m_box_mesh);
         }
 
@@ -456,11 +457,11 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
     texture_descriptor->update();
 
     vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
-    ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, sizeof(uniform_buffer_t), 0);
+    ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, sizeof(uniform_buffer_t), u_buffer->m_offset);
     ubuffer_descriptor->update();
 
     vka::descriptor_set * dubuffer_descriptor = pipeline->create_new_descriptor_set(2, descriptor_pool);
-    dubuffer_descriptor->attach_dynamic_uniform_buffer(0, du_buffer, sizeof(dynamic_uniform_buffer_t), 0);
+    dubuffer_descriptor->attach_dynamic_uniform_buffer(0, du_buffer, sizeof(dynamic_uniform_buffer_t), du_buffer->m_offset);
     dubuffer_descriptor->update();
 
     vka::array_view<uniform_buffer_t> staging_buffer_map        = staging_buffer->map<uniform_buffer_t>();
@@ -577,7 +578,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
       // Copy the uniform buffer data from the stating buffer to the uniform buffer. THis normally only needs to be done
       // once per rendering frame because it contains frame constant data.
-      cb.copyBuffer( *staging_buffer ,  *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
+      cb.copyBuffer( *staging_buffer ,  *u_buffer , vk::BufferCopy{ 0,u_buffer->m_offset,sizeof(uniform_buffer_t) } );
 
 
       // Copy the dynamic uniform buffer data from the staging buffer
@@ -600,13 +601,13 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
           // byte offset within the staging buffer where the data resides
           auto srcOffset = sizeof(uniform_buffer_t) + j * sizeof(dynamic_uniform_buffer_t);
           // byte offset within the dynamic uniform buffer where to copy the data
-          auto dstOffset = j * alignment;
+          auto dstOffset = j * alignment + du_buffer->m_offset;
           // number of bytes to copy
           auto size      = sizeof(dynamic_uniform_buffer_t);
 
           cb.copyBuffer( *staging_buffer , *du_buffer , vk::BufferCopy{ srcOffset,dstOffset, size } );
 
-          m_Objects[j].m_uniform_offset = dstOffset;
+          m_Objects[j].m_uniform_offset = j * alignment ;
       }
 
 
@@ -650,8 +651,8 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
                                                 nullptr );
 
     // bind the vertex/index buffers
-        cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );
-        cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
+        cb.bindVertexBuffers(0, vertex_buffer->get(), {vertex_buffer->m_offset} );
+        cb.bindIndexBuffer(  index_buffer->get() , index_buffer->m_offset , vk::IndexType::eUint16);
 
       //========================================================================
       // Draw all the objects while binding the dynamic uniform buffer

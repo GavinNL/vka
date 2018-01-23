@@ -10,7 +10,7 @@ void vka::buffer_pool::free_buffer(sub_buffer * b)
         m_sub_buffers.erase(b);
         m_manager.free(b->m_offset);
 
-        get_parent_context()->get_device().destroyBuffer(b->m_buffer);
+       // get_parent_context()->get_device().destroyBuffer(b->m_buffer);
 
         LOG << "Buffer free: " << b->m_size << " bytes" << ENDL;
 
@@ -31,39 +31,23 @@ vka::buffer_pool::~buffer_pool()
     m_sub_buffers.clear();
 }
 
-vka::sub_buffer *vka::buffer_pool::new_buffer(size_t n)
+vka::sub_buffer *vka::buffer_pool::new_buffer(vk::DeviceSize n, vk::DeviceSize alignment)
 {
-    vk::BufferCreateInfo Info;
-    Info.size = n;
-    Info.usage = this->m_create_info.usage;
-
-    auto vk_sub_buff = get_parent_context()->get_device().createBuffer(Info);
-
-    if(!vk_sub_buff)
-    {
-        throw std::runtime_error("Could not create buffer");
-    }
-
-    auto req = get_device().getBufferMemoryRequirements(vk_sub_buff);
-
-    n = (n/req.alignment + (( n%req.alignment==0) ? 0 : 1))*req.alignment;
-
-    auto offset = m_manager.allocate( n , req.alignment);
+    auto offset = m_manager.allocate( n , alignment);
 
     if(offset == m_manager.error)
     {
-        get_device().destroyBuffer(vk_sub_buff);
+
         return nullptr;
     }
 
-    get_device().bindBufferMemory( vk_sub_buff , m_memory, offset);
 
 
     auto * S = new vka::sub_buffer( this );
 
-    S->m_buffer = vk_sub_buff;
-    S->m_size   = req.size;
-    S->m_offset = offset;
+    S->m_buffer   = m_buffer;
+    S->m_size     = n;
+    S->m_offset   = offset;
     S->clear_buffer_objects();
 
     m_sub_buffers.insert(S);
@@ -71,27 +55,7 @@ vka::sub_buffer *vka::buffer_pool::new_buffer(size_t n)
     return S;
 }
 
-void vka::sub_buffer::copy(const void *data, vk::DeviceSize _size, vk::DeviceSize offset)
-{
 
-        auto * C =  m_parent->get_parent_context();
-        auto * cp = C->get_command_pool();
-        auto * sb = C->get_staging_buffer();
-        // copy the data to the staging buffer
-        if( !sb->copy( data, _size, 0) )
-        {
-            throw std::runtime_error("Staging buffer is too small");
-        }
-
-        vk::CommandBuffer copy_cmd = cp->AllocateCommandBuffer();
-        copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-
-        copy_cmd.copyBuffer( *sb , *this, vk::BufferCopy( 0, offset , _size ) );
-        copy_cmd.end();
-        C->submit_cmd_buffer(copy_cmd);
-        cp->FreeCommandBuffer(copy_cmd);
-
-}
 
 vka::sub_buffer_object vka::sub_buffer::reserve(vk::DeviceSize size, vk::DeviceSize alignment)
 {
@@ -116,9 +80,10 @@ vka::sub_buffer_object vka::sub_buffer::insert(void const * data, vk::DeviceSize
 
     if( offset != m_manager.error)
     {
-        copy(data, size, offset);
+        m_parent->copy(data, size, offset+m_offset);
+        //copy(data, size, offset);
 
-        obj.m_offset = offset;
+        obj.m_offset = m_offset+offset;
         obj.m_size   = size;
     }
     else
