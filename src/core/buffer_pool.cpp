@@ -71,12 +71,6 @@ vka::sub_buffer *vka::buffer_pool::new_buffer(size_t n)
     return S;
 }
 
-//void vka::sub_buffer::copy(void const * data, vk::DeviceSize size, vk::DeviceSize offset)
-//{
-//    m_parent->copy(data, size, m_offset+offset);
-//}
-
-
 void vka::sub_buffer::copy(const void *data, vk::DeviceSize _size, vk::DeviceSize offset)
 {
 
@@ -99,12 +93,26 @@ void vka::sub_buffer::copy(const void *data, vk::DeviceSize _size, vk::DeviceSiz
 
 }
 
+vka::sub_buffer_object vka::sub_buffer::reserve(vk::DeviceSize size, vk::DeviceSize alignment)
+{
+    sub_buffer_object obj;
+    auto offset = m_manager.allocate(size, alignment);
+    if( offset != m_manager.error)
+    {
+        obj.m_offset = offset;
+        obj.m_size   = size;
+    } else {
+        obj.m_offset = m_manager.error;
+        obj.m_size   = 0;
+    }
+    return obj;
+}
 
-vka::sub_buffer_object vka::sub_buffer::insert(void const * data, vk::DeviceSize size)
+vka::sub_buffer_object vka::sub_buffer::insert(void const * data, vk::DeviceSize size, vk::DeviceSize alignment)
 {
     sub_buffer_object obj;
 
-    auto offset = m_manager.allocate(size);
+    auto offset = m_manager.allocate(size, alignment);
 
     if( offset != m_manager.error)
     {

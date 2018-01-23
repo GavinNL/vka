@@ -6,6 +6,7 @@
 
 #include <set>
 
+
 namespace vka
 {
 
@@ -30,6 +31,9 @@ public:
         return m_buffer;
     }
 
+
+    sub_buffer_object reserve(vk::DeviceSize size, vk::DeviceSize alignment=1);
+
     /**
      * @brief copy
      * @param data
@@ -40,7 +44,7 @@ public:
      * a sub_bufffer_object. which indicates where in the buffer
      * this object is. You must keep track of
      */
-    sub_buffer_object insert(void const * data, vk::DeviceSize size);
+    sub_buffer_object insert(void const * data, vk::DeviceSize size, vk::DeviceSize alignment=1);
 
     /**
      * @brief free_buffer_boject
