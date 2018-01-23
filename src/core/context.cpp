@@ -3,6 +3,7 @@
 #include <vka/core/command_pool.h>
 #include <vka/core/buffer.h>
 #include <vka/core/managed_buffer.h>
+#include <vka/utils/buffer_pool.h>
 #include <vka/core/framebuffer.h>
 #include <vka/core/shader.h>
 #include <vka/core/pipeline.h>
@@ -377,6 +378,12 @@ void vka::context::create_swap_chain(vk::Extent2D extents)
 
     m_image_views = create_image_views(m_images, m_image_format);
     LOG << "Image Views created" << ENDL;
+}
+
+
+vka::buffer_pool* vka::context::new_buffer_pool(const std::string & name)
+{
+    return _new<vka::buffer_pool>(name);
 }
 
 

@@ -282,6 +282,7 @@ public:
                                       vk::MemoryPropertyFlags memory_properties,
                                       vk::BufferUsageFlags usage);
 
+    vka::buffer_pool* new_buffer_pool(const std::string & name);
     /**
      * @brief new_vertex_buffer
      * @param name
