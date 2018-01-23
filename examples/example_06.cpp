@@ -50,6 +50,7 @@
 
 #include <vka/utils/buffer_memory_manager.h>
 #include <vka/core/managed_buffer.h>
+#include <vka/utils/buffer_pool.h>
 
 #include <vka/utils/glfw_window_handler.h>
 
@@ -264,6 +265,16 @@ int main(int argc, char ** argv)
 //    2. copy the memory-mapped buffer to the vertex/index buffers
 //==============================================================================
 
+
+//==============================================================================
+// Allocate a buffer pool
+//
+//==============================================================================
+        vka::buffer_pool * buf_pool = C.new_buffer_pool("buffer_pool");
+        buf_pool->set_size(1024*1024*50);
+        buf_pool->create();
+//==============================================================================
+
         std::vector<vka::mesh_t> meshs;
         std::vector< mesh_info_t > m_mesh_info;
 
@@ -271,48 +282,19 @@ int main(int argc, char ** argv)
         meshs.push_back( vka::sphere_mesh(0.5,20,20) );
 
 #if 0
-        // Create two buffers, one for vertices and one for indices. THey
-        // will each be 1024 bytes long
-        vka::buffer* vertex_buffer = C.new_vertex_buffer(  "vb", 5*1024 );
-        vka::buffer_memory_manager vertex_buffer_manager(5*1024);
 
-        vka::buffer* index_buffer  = C.new_index_buffer(   "ib", 5*1024 );
-        vka::buffer_memory_manager index_buffer_manager(5*1024);
-
-        vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 5*1024);
-
-        // [NEW]
-        vka::buffer* du_buffer     = C.new_uniform_buffer( "dub", 5*1024);
-
-        // allocate a staging buffer of 10MB
-        vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
-
-
-        for( auto & M : meshs)
-        {
-            // Use the built in functions to copy data to the device.
-            // Each of these functions
-            auto m1v = vertex_buffer_manager.allocate( M.vertex_data_size() );
-            auto m1i = index_buffer_manager.allocate( M.index_data_size() );
-            vertex_buffer->copy( M.vertex_data(), M.vertex_data_size() , m1v);
-            index_buffer->copy(  M.index_data() , M.index_data_size()  , m1i);
-
-            mesh_info_t m_box_mesh;
-            m_box_mesh.count         = M.num_indices();
-            m_box_mesh.offset        = m1i / M.index_size();
-            m_box_mesh.vertex_offset = m1v / M.vertex_size();
-            m_mesh_info.push_back(m_box_mesh);
-        }
 #else
+
+
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
-        vka::managed_buffer* vertex_buffer = C.new_managed_vertex_buffer(  "vb", 5*1024*1024 );
-        vka::managed_buffer* index_buffer  = C.new_managed_index_buffer(   "ib", 5*1024*1024 );
+        vka::sub_buffer* vertex_buffer = buf_pool->new_buffer( 5*1024*1024 );
+        vka::sub_buffer* index_buffer  = buf_pool->new_buffer( 5*1024*1024 );
 
-        vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 5*1024);
+        vka::sub_buffer* u_buffer      = buf_pool->new_buffer(  5*1024);
 
         // [NEW]
-        vka::buffer* du_buffer     = C.new_uniform_buffer( "dub", 5*1024);
+        vka::sub_buffer* du_buffer     =  buf_pool->new_buffer(5*1024);/// C.new_uniform_buffer( "dub", 5*1024);
 
         // allocate a staging buffer of 10MB
         vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
@@ -322,16 +304,19 @@ int main(int argc, char ** argv)
         {
             // Use the built in functions to copy data to the device.
             // Each of these functions
-            auto m1v = vertex_buffer->copy( M.vertex_data(), M.vertex_data_size() , M.vertex_size() );
-            auto m1i = index_buffer->copy(  M.index_data() , M.index_data_size()  , M.index_size()  );
+            auto m1v = vertex_buffer->insert( M.vertex_data(), M.vertex_data_size() );
+            auto m1i = index_buffer->insert(  M.index_data() , M.index_data_size()  );
 
-            assert( m1v != -1);
-            assert( m1i != -1);
+            assert( m1v.m_size != 0);
+            assert( m1i.m_size != 0);
 
             mesh_info_t m_box_mesh;
             m_box_mesh.count         = M.num_indices();
-            m_box_mesh.offset        = m1i / M.index_size();
-            m_box_mesh.vertex_offset = m1v / M.vertex_size();
+
+            // the offset returned is the byte offset, so we need to divide it
+            // by the index/vertex size to get the actual index/vertex offset
+            m_box_mesh.offset        = m1i.m_offset / M.index_size();
+            m_box_mesh.vertex_offset = m1v.m_offset / M.vertex_size();
             m_mesh_info.push_back(m_box_mesh);
         }
 
