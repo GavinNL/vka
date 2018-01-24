@@ -430,6 +430,9 @@ for(uint32_t j=0;j<MAX_OBJECTS;j++)
 
 m_Objects[1].m_mesh = m_mesh_info[1];
 m_Objects[0].m_transform.set_position( glm::vec3(3,0,0));
+m_Objects[0].m_transform.set_scale( glm::vec3(2,2,2));
+
+
 m_Objects[1].m_transform.set_position( glm::vec3(0,2,0));
 m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
