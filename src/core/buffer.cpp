@@ -11,6 +11,7 @@ vka::buffer::~buffer()
         if(m_buffer)
         {
             get_device().destroyBuffer(m_buffer);
+            m_buffer = vk::Buffer();
         }
         LOG << "Buffer destroyed " << ENDL;
     }
