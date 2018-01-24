@@ -189,7 +189,9 @@ Finally, this example makes use of Buffer Pools. Buffer Pools are a VKA object,
 not a Vulkan object. A Buffer Pool is simply a large Buffer used to store
 Vertex/Index/Uniform data. It manages the memory allication of sub-buffers,
 which hold the vk::Buffer handle of the Buffer Pool and also an offset into
-the buffer so that it can be bound at it's offset. See ( https://developer.nvidia.com/vulkan-memory-management)
+the buffer so that it can be bound at it's offset. See ( https://developer.nvidia.com/vulkan-memory-management )
+
+
 ---
 
 
