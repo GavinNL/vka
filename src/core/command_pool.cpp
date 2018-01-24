@@ -15,7 +15,7 @@ void vka::command_pool::FreeCommandBuffer(vk::CommandBuffer cmd)
     get_device().freeCommandBuffers( m_command_pool,1, &cmd);
 }
 
-vk::CommandBuffer vka::command_pool::AllocateCommandBuffer(vk::CommandBufferLevel level)
+vka::command_buffer vka::command_pool::AllocateCommandBuffer(vk::CommandBufferLevel level)
 {
 
     vk::CommandBufferAllocateInfo allocInfo;

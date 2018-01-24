@@ -3,7 +3,7 @@
 #include <vka/core/texture2d.h>
 #include <vka/core/command_pool.h>
 #include <vka/core/buffer.h>
-
+#include <vka/core/image.h>
 
 vka::texture::texture(vka::context *parent) : context_child(parent), m_Memory(parent)
 {
@@ -135,6 +135,42 @@ void vka::texture::copy_buffer(vk::CommandBuffer cb,
 }
 
 
+
+void vka::texture::copy_image(vka::host_image & D, uint32_t layer, vk::Offset2D E)
+{
+    auto * b = get_parent_context()->get_staging_buffer();
+
+    void * image_buffer_data = b->map_memory();
+    memcpy( image_buffer_data, D.data(), D.size() );
+    b->unmap_memory();
+
+    auto cb = get_parent_context()->get_command_pool()->AllocateCommandBuffer();
+
+    cb.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+
+        // a. convert the texture to eTransferDstOptimal
+        convert_layer(cb, vk::ImageLayout::eTransferDstOptimal, layer,0);
+
+        // b. copy the data from the buffer to the texture
+        vk::BufferImageCopy BIC;
+        BIC.setBufferImageHeight(  D.height() )
+           .setBufferOffset(0) // the image data starts at the start of the buffer
+           .setImageExtent( vk::Extent3D( D.width() , D.height(), 1) ) // size of the image
+           .setImageOffset( vk::Offset3D( E.x,E.y,0)) // where in the texture we want to paste the image
+           .imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
+                            .setBaseArrayLayer(layer) // the layer to copy
+                            .setLayerCount(1) // only copy 2 layers
+                            .setMipLevel(0);  // only the first mip-map level
+
+        copy_buffer( cb, b, BIC);
+
+        generate_mipmaps(cb , layer);
+    cb.end();
+    get_parent_context()->submit_cmd_buffer(cb);
+    get_parent_context()->get_command_pool()->FreeCommandBuffer(cb);
+}
+
+
 void vka::texture::set_mipmap_levels( uint32_t levels)
 {
 #warning The format should not be hard coded
@@ -147,6 +183,62 @@ void vka::texture::set_mipmap_levels( uint32_t levels)
     }
 
     m_CreateInfo.mipLevels = levels;
+}
+
+void vka::texture::generate_mipmaps(vk::CommandBuffer cmdBuff ,
+                                    uint32_t layer)
+{
+    auto L = get_mipmap_levels();
+
+    for(uint32_t m = 0; m < L-1; m++)
+    {
+        convert_layer(cmdBuff, vk::ImageLayout::eTransferSrcOptimal, layer, m);
+        convert_layer(cmdBuff, vk::ImageLayout::eTransferDstOptimal, layer, m+1);
+
+        blit_mipmap(cmdBuff, layer, layer, m, m+1);
+
+        convert_layer(cmdBuff, vk::ImageLayout::eShaderReadOnlyOptimal, layer, m);
+    }
+}
+
+
+void vka::texture::blit_mipmap( vk::CommandBuffer & cmdBuff,
+                                uint32_t srcLayer,
+                                uint32_t dstLayer,
+                                uint32_t src_miplevel,
+                                uint32_t dst_miplevel)
+{
+    vk::ImageBlit imgBlit;
+
+    // Source
+    imgBlit.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    imgBlit.srcSubresource.layerCount = 1;
+    imgBlit.srcSubresource.baseArrayLayer = srcLayer;
+    imgBlit.srcSubresource.mipLevel   = src_miplevel;
+
+
+    imgBlit.srcOffsets[1].x = int32_t( get_extents().width  >> src_miplevel);
+    imgBlit.srcOffsets[1].y = int32_t( get_extents().height >> src_miplevel);
+    imgBlit.srcOffsets[1].z = std::max( int32_t(1), int32_t( get_extents().depth>>src_miplevel));
+
+    // Destination
+    imgBlit.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    imgBlit.dstSubresource.layerCount = 1;
+    imgBlit.dstSubresource.baseArrayLayer = dstLayer;
+    imgBlit.dstSubresource.mipLevel   = dst_miplevel;
+
+    imgBlit.dstOffsets[1].x = int32_t( get_extents().width  >> dst_miplevel);
+    imgBlit.dstOffsets[1].y = int32_t( get_extents().height >> dst_miplevel);
+    imgBlit.dstOffsets[1].z = std::max( int32_t(1), int32_t( get_extents().depth>>dst_miplevel) );
+
+
+
+
+
+    LOG << "Generating Mipmap Level: " << dst_miplevel << ENDL;
+    cmdBuff.blitImage( get_image(), vk::ImageLayout::eTransferSrcOptimal,
+                       get_image(), vk::ImageLayout::eTransferDstOptimal,
+                       imgBlit, vk::Filter::eLinear);
 }
 
 uint32_t vka::texture::get_mipmap_levels( ) const

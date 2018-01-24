@@ -10,6 +10,8 @@
 namespace vka
 {
 
+class sub_buffer;
+
 class descriptor_set_layout : public context_child
 {
 public:
@@ -88,11 +90,17 @@ public:
     void create(std::vector< vk::DescriptorSetLayoutBinding > const & bindings);
 
 
+
     //==========================================
     void update();
     vka::descriptor_set * attach_sampler(uint32_t index, vka::texture *texture);
     vka::descriptor_set * attach_uniform_buffer(uint32_t index, const buffer *buff, vk::DeviceSize size, vk::DeviceSize offset);
+    vka::descriptor_set * attach_uniform_buffer(uint32_t index, const sub_buffer *buff, vk::DeviceSize size, vk::DeviceSize offset);
+
     vka::descriptor_set * attach_dynamic_uniform_buffer(uint32_t index, const buffer *buff, vk::DeviceSize size, vk::DeviceSize offset);
+    vka::descriptor_set * attach_dynamic_uniform_buffer(uint32_t index, const sub_buffer *buff, vk::DeviceSize size, vk::DeviceSize offset);
+
+
 private:
     vk::DescriptorSet     m_descriptor_set;
     vka::descriptor_pool *m_parent_pool = nullptr;

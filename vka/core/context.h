@@ -132,8 +132,6 @@ private:
 
 
     vk::Fence     m_render_fence;
-    //vk::Semaphore m_image_available_smaphore;
-    //vk::Semaphore m_render_finished_smaphore;
 
     vk::DebugReportCallbackEXT  m_callback;
 
@@ -261,6 +259,8 @@ public:
      */
     vka::buffer*   new_buffer(const std::string & name);
 
+
+    vka::managed_buffer*   new_managed_buffer(const std::string & name);
     /**
      * @brief new_buffer
      * @param name - name of the buffer
@@ -276,6 +276,13 @@ public:
                               vk::MemoryPropertyFlags memory_properties,
                               vk::BufferUsageFlags usage);
 
+
+    vka::managed_buffer*   new_managed_buffer(const std::string & name,
+                                      size_t size,
+                                      vk::MemoryPropertyFlags memory_properties,
+                                      vk::BufferUsageFlags usage);
+
+    vka::buffer_pool* new_buffer_pool(const std::string & name);
     /**
      * @brief new_vertex_buffer
      * @param name
@@ -291,6 +298,12 @@ public:
                           vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
     }
 
+    vka::managed_buffer* new_managed_vertex_buffer(const std::string & name, size_t size)
+    {
+        return new_managed_buffer(name , size,
+                          vk::MemoryPropertyFlagBits::eDeviceLocal,
+                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
+    }
     /**
      * @brief new_index_buffer
      * @param name
@@ -302,6 +315,12 @@ public:
     vka::buffer* new_index_buffer(const std::string & name, size_t size)
     {
         return new_buffer(name , size,
+                          vk::MemoryPropertyFlagBits::eDeviceLocal,
+                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
+    }
+    vka::managed_buffer* new_managed_index_buffer(const std::string & name, size_t size)
+    {
+        return new_managed_buffer(name , size,
                           vk::MemoryPropertyFlagBits::eDeviceLocal,
                           vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
     }
@@ -321,6 +340,12 @@ public:
                           vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer);
     }
 
+    vka::managed_buffer* new_managed_uniform_buffer(const std::string & name, size_t size)
+    {
+        return new_managed_buffer(name , size,
+                          vk::MemoryPropertyFlagBits::eDeviceLocal,
+                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer);
+    }
     /**
      * @brief new_multi_buffer
      * @param name
@@ -368,6 +393,8 @@ public:
     vka::texture* new_texture(const std::string &name);
 
     vka::texture2d* new_texture2d(const std::string &name);
+
+    vka::texture2darray* new_texture2darray(const std::string &name);
 
     /**
      * @brief new_texture2d_host_visible
@@ -427,6 +454,12 @@ public:
     {
         return m_physical_device_properties.limits;
     }
+
+    vka::buffer * get_staging_buffer()
+    {
+        return m_staging_buffer;
+    }
+
 
 private:
 

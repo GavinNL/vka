@@ -85,7 +85,14 @@ class transform
 
         inline glm::mat4 get_matrix() const
         {
+#if defined USE_ANGLE_AXIS
+            const float angle    = glm::angle(m_orientation);
+            const glm::vec3 axis = glm::axis(m_orientation);
+
+            return glm::scale( glm::rotate( glm::translate(  glm::mat4(1.0f), m_position), angle, axis), m_scale);
+#else
             return glm::translate(  glm::mat4(1.0f), m_position) * glm::mat4_cast(m_orientation) * glm::scale( glm::mat4(1.0), m_scale);
+#endif
         }
 
         const glm::quat   & get_orientation() const { return m_orientation; }

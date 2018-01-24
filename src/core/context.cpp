@@ -2,12 +2,15 @@
 #include <vka/core/renderpass.h>
 #include <vka/core/command_pool.h>
 #include <vka/core/buffer.h>
+#include <vka/core/managed_buffer.h>
+#include <vka/utils/buffer_pool.h>
 #include <vka/core/framebuffer.h>
 #include <vka/core/shader.h>
 #include <vka/core/pipeline.h>
 #include <vka/core/semaphore.h>
 #include <vka/core/texture.h>
 #include <vka/core/texture2d.h>
+#include <vka/core/texture2darray.h>
 #include <vka/core/descriptor_pool.h>
 #include <vka/core/descriptor_set.h>
 #include <vulkan/vulkan.hpp>
@@ -378,11 +381,35 @@ void vka::context::create_swap_chain(vk::Extent2D extents)
 }
 
 
+vka::buffer_pool* vka::context::new_buffer_pool(const std::string & name)
+{
+    return _new<vka::buffer_pool>(name);
+}
+
+
 vka::framebuffer* vka::context::new_framebuffer(const std::string & name)
 {
     return _new<vka::framebuffer>(name);
 }
 
+
+vka::managed_buffer*   vka::context::new_managed_buffer(const std::string & name,
+                          size_t size,
+                          vk::MemoryPropertyFlags memory_properties,
+                          vk::BufferUsageFlags usage)
+{
+
+    auto * b = new_managed_buffer(name);
+    if( b )
+    {
+        b->set_memory_properties(memory_properties);
+        b->set_size(size);
+        b->set_usage(usage);
+        b->create();
+        return b;
+    }
+    return nullptr;
+}
 
 vka::buffer*   vka::context::new_buffer(const std::string & name,
                           size_t size,
@@ -407,6 +434,10 @@ vka::buffer* vka::context::new_buffer(const std::string & name)
         return _new<vka::buffer>(name);
 }
 
+vka::managed_buffer* vka::context::new_managed_buffer(const std::string & name)
+{
+        return _new<vka::managed_buffer>(name);
+}
 
 vka::shader* vka::context::new_shader_module(const std::string &name)
 {
@@ -439,6 +470,12 @@ vka::texture *vka::context::new_texture(const std::string &name)
 vka::texture2d *vka::context::new_texture2d(const std::string &name)
 {
     return _new<vka::texture2d>(name);
+}
+
+
+vka::texture2darray *vka::context::new_texture2darray(const std::string &name)
+{
+    return _new<vka::texture2darray>(name);
 }
 
 vka::texture * vka::context::new_depth_texture(const std::string & name, vk::ImageUsageFlags flags)
