@@ -64,16 +64,24 @@ public:
     void clear_buffer_objects();
 
 
-    vk::DeviceSize m_size;
-    vk::DeviceSize m_offset; // offset from teh start of the parent' memory block
+    vk::DeviceSize size() const
+    {
+        return m_size;
+    }
+
+    vk::DeviceSize offset() const
+    {
+        return m_offset;
+    }
 protected:
 
     sub_buffer( buffer_pool * parent) : m_parent(parent){}
     ~sub_buffer() {}
 
     vk::Buffer     m_buffer;
-    //vk::DeviceSize m_size;
-    //vk::DeviceSize m_offset; // offset from teh start of the parent' memory block
+
+    vk::DeviceSize m_size;
+    vk::DeviceSize m_offset; // offset from teh start of the parent' memory block
 
     buffer_pool    *m_parent;
     vka::buffer_memory_manager m_manager;

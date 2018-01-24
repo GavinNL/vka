@@ -83,7 +83,7 @@ vka::sub_buffer_object vka::sub_buffer::insert(void const * data, vk::DeviceSize
         m_parent->copy(data, size, offset+m_offset);
         //copy(data, size, offset);
 
-        obj.m_offset = m_offset+offset;
+        obj.m_offset = offset;
         obj.m_size   = size;
     }
     else
