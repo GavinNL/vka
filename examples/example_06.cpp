@@ -42,7 +42,7 @@
 
 #define WIDTH 1024
 #define HEIGHT 768
-#define APP_TITLE "Example_06 - Camera Control and Transformations"
+#define APP_TITLE "Example_06 - Camera Control , Transformations, and Sub Buffers"
 
 #include <vka/core/camera.h>
 #include <vka/core/transform.h>
@@ -54,15 +54,6 @@
 
 #include <vka/utils/glfw_window_handler.h>
 
-
-// This is the vertex structure we are going to use
-// it contains a position and a UV coordates field
-// struct Vertex
-// {
-//     glm::vec3 p; // position
-//     glm::vec2 u; // uv coords
-//     glm::vec3 n; // normal
-// };
 
 // This is the structure of the uniform buffer we want.
 // it needs to match the structure in the shader.
@@ -89,14 +80,14 @@ struct push_constants_t
 
 /**
  * @brief The mesh_info_t struct
- * Infromation about the mesh, number of indices to draw and
+ * Information about the mesh, number of indices to draw and
  * offset in the index array
  */
 struct mesh_info_t
 {
-    uint32_t offset;
+    uint32_t offset; // index offset
     uint32_t count; // number of indices
-    uint32_t vertex_offset;
+    uint32_t vertex_offset; // vertex offset
 };
 
 
@@ -181,12 +172,18 @@ int main(int argc, char ** argv)
 
 
     //==========================================================================
-
     #define MAX_OBJECTS 3
     vka::GLFW_Window_Handler m_Window(window);
-    vka::camera              m_Camera;
     std::vector<Object_t>    m_Objects;
 
+
+    //==========================================================================
+    // The camera class is used to help position the camera nd keep track
+    // of all the variables associated with it. It also provides methods for
+    // moving the camera through space
+    //==========================================================================
+    vka::camera              m_Camera;
+    //==========================================================================
 
 
     //==========================================================================
@@ -241,7 +238,6 @@ int main(int argc, char ** argv)
     vka::descriptor_pool* descriptor_pool = C.new_descriptor_pool("main_desc_pool");
     descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 2);
     descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
-    // [NEW]
     descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
 
     descriptor_pool->create();
@@ -254,20 +250,11 @@ int main(int argc, char ** argv)
 
 
 
-//==============================================================================
-// Create the Vertex and Index buffers
-//
-//  We are going to  create a vertex and index buffer. The vertex buffer will
-//  hold the positions and UV coordates of our triangle.
-//
-//  The steps to create the buffer are.
-//    1. Copy the vertex/index data from the host to a memory mappable device buffer
-//    2. copy the memory-mapped buffer to the vertex/index buffers
-//==============================================================================
-
-
 /*==============================================================================
- Allocate a buffer pool. The buffer pool is esentially a large device-local
+ Create the Vertex and Index buffers.
+
+ This time we are goign to use a Buffer Pool. Buffer Pools are a VKA specifc
+ construct. Simply put, it is esentially a large device-local
  buffer set to be used as vertex|index|uniform.  It is meant to be a large
  buffer big enough to hold many smaller pieces of data.
 
@@ -276,44 +263,43 @@ int main(int argc, char ** argv)
  see: https://developer.nvidia.com/vulkan-memory-management
 
  Sub buffer allocation is handled automatically within the bufferPool. When
- a sub buffer is finished its use, it should be
+ a sub buffer is finished its use, it should free the resource.
 ==============================================================================*/
+
         vka::buffer_pool * buf_pool = C.new_buffer_pool("buffer_pool");
-        buf_pool->set_size(1024*1024*50);
+        buf_pool->set_size(1024*1024*50); // create 50Mb buffer
         buf_pool->create();
 //============================================================================//
 
-        std::vector<vka::mesh_t> meshs;
         std::vector< mesh_info_t > m_mesh_info;
 
+        std::vector<vka::mesh_t>   meshs;
         meshs.push_back( vka::box_mesh(1,1,1) );
         meshs.push_back( vka::sphere_mesh(0.5,20,20) );
 
-#if 0
-
-#else
-
-
-        // Create two buffers, one for vertices and one for indices. THey
-        // will each be 1024 bytes long
+        // Allocate sub buffers from the buffer pool. These buffers can be
+        // used for indices/vertices or uniforms.
         vka::sub_buffer* vertex_buffer = buf_pool->new_buffer( 16*1024 );
         vka::sub_buffer* index_buffer  = buf_pool->new_buffer( 16*1024 );
         vka::sub_buffer* u_buffer      = buf_pool->new_buffer( 16*1024 );
+        vka::sub_buffer* du_buffer     = buf_pool->new_buffer( 16*1024 );
 
-
-        // [NEW]
-        vka::sub_buffer* du_buffer     =  buf_pool->new_buffer(16*1024);/// C.new_uniform_buffer( "dub", 5*1024);
-
-        // allocate a staging buffer of 10MB
+        // allocate a staging buffer of 10MB since we will need this to copy
+        // data to the sub_buffers
         vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*16 );
 
 
         for( auto & M : meshs)
         {
-            // Use the built in functions to copy data to the device.
-            // Each of these functions
+
+            // sub_buffer::insert inserts data into the sub buffer at an available
+            // space and returns a sub_buffer object.
+
             auto m1v = vertex_buffer->insert( M.vertex_data(), M.vertex_data_size() );
             auto m1i = index_buffer->insert(  M.index_data() , M.index_data_size()  );
+
+            // If you wish to free the memory you have allocated, you shoudl call
+            // vertex_buffer->free_buffer_object(m1v);
 
             assert( m1v.m_size != 0);
             assert( m1i.m_size != 0);
@@ -325,10 +311,9 @@ int main(int argc, char ** argv)
             // by the index/vertex size to get the actual index/vertex offset
             m_box_mesh.offset        =  m1i.m_offset  / M.index_size();
             m_box_mesh.vertex_offset =  m1v.m_offset  / M.vertex_size();
+
             m_mesh_info.push_back(m_box_mesh);
         }
-
-#endif
 
 
 //==============================================================================
@@ -484,8 +469,8 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
 
 
-    // They GLFW_Window_Manager has signals which you can attach functions to
-    // we are going to use a lamda function to determine whenever a key was pressed
+    // They GLFW_Window_Manager has signals which you can attach functions to.
+    // We are going to use a lamda function to determine whenever a key was pressed
     // and then change the Camera's acceleration based on what key was pressed
     //
     // We are going to create a general FPS controller.
@@ -583,7 +568,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
       // | uniform_data |                                       | Uniform Buffer
       // +------------------------------------------------------+
 
-      // Copy the uniform buffer data from the stating buffer to the uniform buffer. THis normally only needs to be done
+      // Copy the uniform buffer data from the stating buffer to the uniform sub_buffer. This normally only needs to be done
       // once per rendering frame because it contains frame constant data.
       cb.copySubBuffer( *staging_buffer ,  u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
 
@@ -612,7 +597,6 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
           // number of bytes to copy
           auto size      = sizeof(dynamic_uniform_buffer_t);
 
-//          cb.copyBuffer( *staging_buffer , *du_buffer , vk::BufferCopy{ srcOffset,dstOffset, size } );
           cb.copySubBuffer( *staging_buffer , du_buffer , vk::BufferCopy{ srcOffset,dstOffset, size } );
 
           m_Objects[j].m_uniform_offset = j * alignment ;
