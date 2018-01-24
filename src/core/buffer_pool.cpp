@@ -95,7 +95,7 @@ vka::sub_buffer_object vka::sub_buffer::insert(void const * data, vk::DeviceSize
     return obj;
 }
 
-void vka::sub_buffer::free_buffer_boject( const sub_buffer_object & obj)
+void vka::sub_buffer::free_buffer_object( const sub_buffer_object & obj)
 {
     m_manager.free(obj.m_offset);
 }

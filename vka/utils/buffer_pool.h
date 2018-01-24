@@ -52,7 +52,7 @@ public:
      *
      * Reclaim the space used by that buffer object.
      */
-    void free_buffer_boject( const sub_buffer_object & obj);
+    void free_buffer_object( const sub_buffer_object & obj);
 
 
     /**
