@@ -4,6 +4,8 @@
 #include <vulkan/vulkan.hpp>
 #include "context_child.h"
 
+#include <vka/core/command_buffer.h>
+
 namespace vka
 {
 
@@ -22,7 +24,7 @@ public:
         return m_command_pool;
     }
 
-    vk::CommandBuffer AllocateCommandBuffer(vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary);
+    vka::command_buffer AllocateCommandBuffer(vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary);
 
     void FreeCommandBuffer(vk::CommandBuffer cmd);
 private:
