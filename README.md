@@ -78,7 +78,7 @@ make
 ln -s $PWD/../resources resources
 ```
 
-## Examples
+## Basic Examples
 
 ### Example_01 - Hello Rotating Textured Triangle
 
@@ -166,5 +166,31 @@ mipmaps are generated in two ways; manually and one automatically with a single
 function call.
 
 
-
 ---
+
+### Example_06 - Cameras, Transforms, User Input and Buffer Pools
+
+<img align="right" width="200"  src="docs/images/example_06.jpeg">
+
+This example covers a few categories that are more related to the VKA library
+than general Vulkan. The first are the Camera class and the Transform class
+which will be used as helper classes to produce the model-view-projection matrices.
+
+The Transform class is a class consisting of a translate component, a scale
+component and an orientation component. It takes the three components and
+produces a Model matrix to send to the shader.
+
+This example also uses a helper class: GLFW_Window_Manager, which is a wrapper
+around the GLFWWindow. It provides mechanisms to easily get input from the user.
+This example gets keyboard and mouse inputs form the user and uses that to
+control the Camera class.
+
+Finally, this example makes use of Buffer Pools. Buffer Pools are a VKA object,
+not a Vulkan object. A Buffer Pool is simply a large Buffer used to store
+Vertex/Index/Uniform data. It manages the memory allication of sub-buffers,
+which hold the vk::Buffer handle of the Buffer Pool and also an offset into
+the buffer so that it can be bound at it's offset. See ( https://developer.nvidia.com/vulkan-memory-management)
+---
+
+
+
