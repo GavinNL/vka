@@ -474,6 +474,8 @@ private:
             return R.get();
         }
 
+        throw std::runtime_error("An object of that name already exists");
+
         return nullptr;
     }
 
