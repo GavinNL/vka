@@ -214,11 +214,15 @@ public:
         {
             if( i->empty()  )
             {
-                if( n <= i->m_size  + (i->m_offset%alignment) ) // the whole block can fit in this
-                {
-                    auto aligned_offset = i->m_offset + (i->m_offset%alignment); // current location to allocate
+                size_t allocation_offset = (i->m_offset/alignment + (i->m_offset%alignment == 0 ? 0 : 1))*alignment;
 
-                    auto r = allocate_at(i, n , aligned_offset);
+
+                //if( n <= i->m_size  + (i->m_offset%alignment) ) // the whole block can fit in this
+                if( allocation_offset + n <= i->m_offset + i->m_size )
+                {
+                   // auto aligned_offset = i->m_offset + (i->m_offset%alignment); // current location to allocate
+
+                    auto r = allocate_at(i, n , allocation_offset);
                     return r;
                 }
             }
