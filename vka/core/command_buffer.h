@@ -7,6 +7,8 @@ namespace vka
 {
 
 class sub_buffer;
+class pipeline;
+class descriptor_set;
 
 class command_buffer : public vk::CommandBuffer
 {
@@ -35,6 +37,17 @@ class command_buffer : public vk::CommandBuffer
 
     void copySubBuffer( sub_buffer const * srcBuffer, sub_buffer const * dstBuffer, const vk::BufferCopy & region ) const;
 
+
+    void bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
+                            vka::pipeline const * pipeline,
+                            uint32_t firstSet,
+                            vka::descriptor_set const * set ) const;
+
+    void bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
+                            vka::pipeline const * pipeline,
+                            uint32_t firstSet,
+                            vka::descriptor_set const * set,
+                            uint32_t dynamic_offset) const;
 };
 
 }
