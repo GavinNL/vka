@@ -174,6 +174,9 @@ public:
         return this;
     }
 
+    pipeline * set_vertex_shader  ( const std::string & path  , std::string const & entry_point);
+    pipeline * set_fragment_shader( const std::string & path, std::string const & entry_point);
+
     pipeline* set_vertex_shader( vka::shader * shader, std::string entry_point="main")
     {
         m_VertexShader = shader;
@@ -188,6 +191,11 @@ public:
         return this;
     }
 
+    pipeline* set_toplogy( vk::PrimitiveTopology r )
+    {
+        m_InputAssembly.topology = r;
+        return this;
+    }
 
     pipeline* set_render_pass( vka::renderpass * p);
 

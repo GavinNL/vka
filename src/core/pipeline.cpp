@@ -116,6 +116,24 @@ vka::pipeline* vka::pipeline::set_render_pass( vka::renderpass * p)
     return this;
 }
 
+vka::pipeline * vka::pipeline::set_vertex_shader( const std::string & path  , std::string const & entry_point)
+{
+    static int i=0;
+    auto * p = get_parent_context()->new_shader_module( std::string("vertex_shader_module_" + std::to_string(i++) ) );
+    p->load_from_file(path);
+    set_vertex_shader(p, entry_point);
+    return this;
+}
+
+vka::pipeline * vka::pipeline::set_fragment_shader( const std::string & path  , std::string const & entry_point)
+{
+    static int i=0;
+    auto * p = get_parent_context()->new_shader_module( std::string("fragment_shader_module_" + std::to_string(i++) ) );
+    p->load_from_file(path);
+    set_fragment_shader(p, entry_point);
+    return this;
+}
+
 
 void vka::pipeline::create()
 {
