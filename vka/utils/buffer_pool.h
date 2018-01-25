@@ -73,6 +73,10 @@ public:
     {
         return m_offset;
     }
+
+    vka::buffer_pool* get_parent_pool() {
+        return m_parent;
+    }
 protected:
 
     sub_buffer( buffer_pool * parent) : m_parent(parent){}
