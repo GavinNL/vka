@@ -85,8 +85,8 @@ struct push_constants_t
  */
 struct mesh_info_t
 {
-    uint32_t offset; // index offset
-    uint32_t count; // number of indices
+    uint32_t index_offset; // index offset
+    uint32_t count; // number of indices or vertices
     uint32_t vertex_offset; // vertex offset
 };
 
@@ -106,11 +106,27 @@ struct Object_t
     dynamic_uniform_buffer_t m_uniform;  // the struct of the uniform buffer
 
     size_t                   m_uniform_offset; // the offset into the buffer
-    vka::descriptor_set     *m_uniform_descriptor_set; // the buffer descriptor set.
 
     push_constants_t         m_push; // push_constants
 
     mesh_info_t              m_mesh; // the mesh to use
+};
+
+class PhysicsComponent_t
+{
+    vka::transform m_transform;
+};
+
+class RenderComponent_t
+{
+    vka::pipeline  *m_pipeline;
+    mesh_info_t     m_mesh;
+};
+
+struct Entity_t
+{
+    PhysicsComponent_t *m_physics = nullptr;
+    RenderComponent_t  *m_render  = nullptr;
 };
 
 /**
@@ -194,10 +210,6 @@ int main(int argc, char ** argv)
     //
     // All objects created by the context requires a unique name
     //==========================================================================
-
-
-
-
     // Create a depth texture which we will use to be store the depths
     // of each pixel.
     auto * depth = C.new_depth_texture("depth_texture");
@@ -309,7 +321,7 @@ int main(int argc, char ** argv)
 
             // the offset returned is the byte offset, so we need to divide it
             // by the index/vertex size to get the actual index/vertex offset
-            m_box_mesh.offset        =  m1i.m_offset  / M.index_size();
+            m_box_mesh.index_offset  =  m1i.m_offset  / M.index_size();
             m_box_mesh.vertex_offset =  m1v.m_offset  / M.vertex_size();
 
             m_mesh_info.push_back(m_box_mesh);
@@ -342,7 +354,7 @@ int main(int argc, char ** argv)
         auto L = vertex_buffer->insert( X.data(), X.size()*sizeof(line_Vertex), sizeof(line_Vertex));
         mesh_info_t line_Mesh;
         line_Mesh.count  = 6;
-        line_Mesh.offset = 0;
+        line_Mesh.index_offset = 0;
         line_Mesh.vertex_offset = L.m_offset / sizeof(line_Vertex);
 
 //==============================================================================
@@ -732,7 +744,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
             cb.drawIndexed(m_Objects[j].m_mesh.count,
                            1,
-                           m_Objects[j].m_mesh.offset,
+                           m_Objects[j].m_mesh.index_offset,
                            m_Objects[j].m_mesh.vertex_offset,
                            0);
 
