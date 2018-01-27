@@ -54,6 +54,7 @@
 
 #include <vka/utils/glfw_window_handler.h>
 
+#include "vulkan_app.h"
 
 // This is the structure of the uniform buffer we want.
 // it needs to match the structure in the shader.
@@ -129,39 +130,277 @@ struct Entity_t
     RenderComponent_t  *m_render  = nullptr;
 };
 
-/**
- * @brief get_elapsed_time
- * @return
- *
- * Gets the number of seconds since the application started.
- */
-float get_elapsed_time()
+
+
+
+
+struct App :   public VulkanApp
 {
-    static auto startTime = std::chrono::high_resolution_clock::now();
 
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    double time = 1.0 * std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0;
+  void init_pools()
+  {
+      //==========================================================================
+      // Initialize the Command and Descriptor Pools
+      //==========================================================================
+      m_descriptor_pool = m_Context.new_descriptor_pool("main_desc_pool");
+      m_descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 2);
+      m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
+      m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
+      m_descriptor_pool->create();
 
-    return time;
-
-}
-
-
-uint32_t tick()
-{
-    static auto startTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration_cast<std::chrono::microseconds>(currentTime - startTime).count();
-
-    //return time;
-}
+      m_command_pool = m_Context.new_command_pool("main_command_pool");
+      //==========================================================================
+  }
 
 
+  void init_memory()
+  {
+      m_buffer_pool = m_Context.new_buffer_pool("main_buffer_pool");
+      m_buffer_pool->set_size( 50*1024*1024 ); // create 50Mb buffer
+      m_buffer_pool->create();
 
+      // Allocate sub buffers from the buffer pool. These buffers can be
+      // used for indices/vertices or uniforms.
+      m_vbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
+      m_ibuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
+      m_ubuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
+      m_dbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
+      m_sbuffer = m_Context.new_staging_buffer( "staging_buffer", 10*1024*1024);
+
+      m_texture_array = m_Context.new_texture2darray("main_texture_array");
+      m_texture_array->set_size( 512 , 512 );
+      m_texture_array->set_format(vk::Format::eR8G8B8A8Unorm);
+      m_texture_array->set_mipmap_levels(8);
+      m_texture_array->set_layers(10);
+      m_texture_array->create();
+      m_texture_array->create_image_view(vk::ImageAspectFlagBits::eColor);
+  }
+
+  void init_pipelines()
+  {
+      // Create the graphics Pipeline
+      auto M = vka::box_mesh(1,1,1);
+
+        m_pipelines.main = m_Context.new_pipeline("main_pipeline");
+        m_pipelines.main->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
+                ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
+
+                ->set_vertex_shader(   "resources/shaders/mipmaps/mipmaps_v.spv", "main" )   // the shaders we want to use
+                ->set_fragment_shader( "resources/shaders/mipmaps/mipmaps_f.spv", "main" ) // the shaders we want to use
+
+                // tell the pipeline that attribute 0 contains 3 floats
+                // and the data starts at offset 0
+                ->set_vertex_attribute(0 ,  M.offset( vka::VertexAttribute::ePosition) , M.format( vka::VertexAttribute::ePosition) , M.vertex_size() )
+                // tell the pipeline that attribute 1 contains 3 floats
+                // and the data starts at offset 12
+                ->set_vertex_attribute(1 ,  M.offset( vka::VertexAttribute::eUV)       , M.format( vka::VertexAttribute::eUV) , M.vertex_size() )
+
+                ->set_vertex_attribute(2 ,  M.offset( vka::VertexAttribute::eNormal)   , M.format( vka::VertexAttribute::eNormal) , M.vertex_size() )
+
+                // Triangle vertices are drawn in a counter clockwise manner
+                // using the right hand rule which indicates which face is the
+                // front
+                ->set_front_face(vk::FrontFace::eCounterClockwise)
+
+                // Cull all back facing triangles.
+                ->set_cull_mode(vk::CullModeFlagBits::eBack)
+
+                // Tell the shader that we are going to use a texture
+                // in Set #0 binding #0
+                ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
+
+                // Tell teh shader that we are going to use a uniform buffer
+                // in Set #0 binding #0
+                ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
+
+                // Tell teh shader that we are going to use a uniform buffer
+                // in Set #0 binding #0
+                ->add_dynamic_uniform_layout_binding(2, 0, vk::ShaderStageFlagBits::eVertex)
+
+                // Add a push constant to the layout. It is accessable in the vertex shader
+                // stage only.
+                ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
+                //
+                ->set_render_pass( m_default_renderpass )
+                ->create();
+
+
+
+          m_pipelines.line = m_Context.new_pipeline("line_pipeline");
+          m_pipelines.line->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
+                  ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
+
+                  ->set_vertex_shader(   "resources/shaders/line_shader/line_shader_v.spv" , "main") // the shaders we want to use
+                  ->set_fragment_shader( "resources/shaders/line_shader/line_shader_f.spv" , "main") // the shaders we want to use
+
+                  // tell the pipeline that attribute 0 contains 3 floats
+                  // and the data starts at offset 0
+                  ->set_vertex_attribute(0 ,  0 ,  vk::Format::eR32G32B32Sfloat, 7*sizeof(float) )
+                  // tell the pipeline that attribute 1 contains 3 floats
+                  // and the data starts at offset 12
+                  ->set_vertex_attribute(1 ,  3*sizeof(float)       , vk::Format::eR32G32B32A32Sfloat , 7*sizeof(float) )
+
+                  ->set_toplogy( vk::PrimitiveTopology::eLineList)
+                  // Triangle vertices are drawn in a counter clockwise manner
+                  // using the right hand rule which indicates which face is the
+                  // front
+                  ->set_front_face(vk::FrontFace::eCounterClockwise)
+
+                  // Cull all back facing triangles.
+                  ->set_cull_mode(vk::CullModeFlagBits::eBack)
+
+                  // Tell teh shader that we are going to use a uniform buffer
+                  // in Set #0 binding #0
+                  ->add_uniform_layout_binding(0, 0, vk::ShaderStageFlagBits::eVertex)
+
+                  // Tell teh shader that we are going to use a uniform buffer
+                  // in Set #0 binding #0
+                  ->add_dynamic_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
+
+                  //
+                  ->set_render_pass( m_default_renderpass )
+                  ->create();
+  }
+
+
+  void load_meshs()
+  {
+      std::vector<vka::mesh_t>   meshs;
+      meshs.push_back( vka::box_mesh(1,1,1) );
+      meshs.push_back( vka::sphere_mesh(0.5,20,20) );
+
+      for( auto & M : meshs)
+      {
+
+          // sub_buffer::insert inserts data into the sub buffer at an available
+          // space and returns a sub_buffer object.
+
+          auto m1v = m_vbuffer->insert( M.vertex_data(), M.vertex_data_size() );
+          auto m1i = m_ibuffer->insert(  M.index_data() , M.index_data_size()  );
+
+          // If you wish to free the memory you have allocated, you shoudl call
+          // vertex_buffer->free_buffer_object(m1v);
+
+          assert( m1v.m_size != 0);
+          assert( m1i.m_size != 0);
+
+          mesh_info_t mesh;
+          mesh.count         = M.num_indices();
+
+          // the offset returned is the byte offset, so we need to divide it
+          // by the index/vertex size to get the actual index/vertex offset
+          mesh.index_offset  =  m1i.m_offset  / M.index_size();
+          mesh.vertex_offset =  m1v.m_offset  / M.vertex_size();
+
+          m_mesh_info.push_back(mesh);
+      }
+  }
+
+  void load_textures()
+  {
+      // 1. First load host_image into memory, and specifcy we want 4 channels.
+          std::vector<std::string> image_paths = {
+              "resources/textures/Brick-2852a.jpg",
+              "resources/textures/noise.jpg"
+          };
+
+          uint32_t layer=0;
+          for(auto & img : image_paths)
+          {
+              vka::host_image D(img, 4);
+              assert( D.width() == 512 && D.height()==512);
+              m_texture_array->copy_image( D , layer++, vk::Offset2D(0,0) );
+          }
+
+  }
+
+
+
+  void init_descriptor_sets()
+  {
+      // we want a descriptor set for set #0 in the pipeline.
+      m_dsets.texture_array = m_pipelines.main->create_new_descriptor_set(0, m_descriptor_pool);
+      //  attach our texture to binding 0 in the set.
+      m_dsets.texture_array->attach_sampler(0, m_texture_array);
+      m_dsets.texture_array->update();
+
+      m_dsets.uniform_buffer = m_pipelines.main->create_new_descriptor_set(1, m_descriptor_pool);
+      m_dsets.uniform_buffer->attach_uniform_buffer(0, m_ubuffer, sizeof(uniform_buffer_t), m_ubuffer->offset());
+      m_dsets.uniform_buffer->update();
+
+      vka::descriptor_set * dubuffer_descriptor = m_pipelines.main->create_new_descriptor_set(2, m_descriptor_pool);
+      dubuffer_descriptor->attach_dynamic_uniform_buffer(0, m_dbuffer, sizeof(dynamic_uniform_buffer_t), m_dbuffer->offset());
+      dubuffer_descriptor->update();
+
+  }
+  virtual void onInit()
+  {
+      init_pools();
+      init_memory();
+
+      load_meshs();
+      load_textures();
+
+      init_pipelines();
+
+      init_descriptor_sets();
+
+  }
+
+  virtual void onFrame(double dt, double T)
+  {
+
+  }
+
+
+
+  //=====================================
+
+  vka::descriptor_pool *m_descriptor_pool;
+  vka::command_pool    *m_command_pool;
+
+  vka::buffer_pool * m_buffer_pool;
+
+  vka::sub_buffer* m_vbuffer;
+  vka::sub_buffer* m_ibuffer;
+  vka::sub_buffer* m_ubuffer;
+  vka::sub_buffer* m_dbuffer;
+  vka::buffer    * m_sbuffer;
+
+  vka::texture2darray * m_texture_array;
+
+  struct
+  {
+    vka::descriptor_set * texture_array;
+    vka::descriptor_set * uniform_buffer;
+    vka::descriptor_set * dynamic_uniform_buffer;
+  } m_dsets;
+
+  struct
+  {
+    vka::pipeline * main;
+    vka::pipeline * line;
+  } m_pipelines;
+
+  //====================================
+
+  std::vector< mesh_info_t > m_mesh_info;
+
+
+};
 
 int main(int argc, char ** argv)
 {
+    App A;
+
+    A.init( WIDTH, HEIGHT, APP_TITLE);
+    A.init_default_renderpass(WIDTH,HEIGHT);
+
+    A.start_mainloop();
+
+
+    return 0;
+
     //==========================================================================
     // 1. Initlize the library and create a window
     //==========================================================================
@@ -301,12 +540,9 @@ int main(int argc, char ** argv)
         a.finalLayout    = vk::ImageLayout::eShaderReadOnlyOptimal;  // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 
-        a.format = Position_Texture->get_format();
-        R2->add_attachment_description( a );
-        a.format = Normal_Texture->get_format();
-        R2->add_attachment_description( a );
-        a.format = Albedo_Texture->get_format();
-        R2->add_attachment_description( a );
+        a.format = Position_Texture->get_format();   R2->add_attachment_description( a );
+        a.format = Normal_Texture->get_format();     R2->add_attachment_description( a );
+        a.format = Albedo_Texture->get_format();     R2->add_attachment_description( a );
 
         a.format = Depth_Texture->get_format();
         a.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
@@ -338,22 +574,6 @@ int main(int argc, char ** argv)
 
         R2->add_subpass_dependency(S0);
         R2->add_subpass_dependency(S1);
-
-//        dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-//        dependencies[0].dstSubpass = 0;
-//        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-//        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-//        dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-//        dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-//        dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-//        S1.srcSubpass = 0;
-//        S1.dstSubpass = VK_SUBPASS_EXTERNAL;
-//        S1.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-//        S1.dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-//        S1.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-//        S1.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-//        S1.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
         R2->create();
 
@@ -423,7 +643,6 @@ int main(int argc, char ** argv)
         // allocate a staging buffer of 10MB since we will need this to copy
         // data to the sub_buffers
         vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*16 );
-
 
         for( auto & M : meshs)
         {
@@ -660,7 +879,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
     dubuffer_descriptor->attach_dynamic_uniform_buffer(0, du_buffer, sizeof(dynamic_uniform_buffer_t), du_buffer->offset());
     dubuffer_descriptor->update();
 
-    vka::array_view<uniform_buffer_t> staging_buffer_map        = staging_buffer->map<uniform_buffer_t>();
+    vka::array_view<uniform_buffer_t> staging_buffer_map          = staging_buffer->map<uniform_buffer_t>();
     vka::array_view<dynamic_uniform_buffer_t> staging_dbuffer_map = staging_buffer->map<dynamic_uniform_buffer_t>(sizeof(uniform_buffer_t));
 
 
@@ -737,7 +956,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
     auto cb = cp->AllocateCommandBuffer();
     while (!glfwWindowShouldClose(window) )
     {
-       float t = get_elapsed_time();
+       float t =0.0;// get_elapsed_time();
 
        // [NEW] We need to call the camera's calculate method periodically
        // this is so that it can perform the proper physics calculations
