@@ -97,3 +97,27 @@ void vka::renderpass::create(vka::context & Context)
     }
     LOG << "Render Pass created with " << count << " attachments" << ENDL;
 }
+
+
+void vka::renderpass::create()
+{
+    //std::vector<vk::AttachmentDescription> AttachmentDescriptions;
+
+
+    m_CreateInfo.dependencyCount = m_SubpassDependency.size();
+    m_CreateInfo.pDependencies   = m_SubpassDependency.data();
+
+    m_CreateInfo.pAttachments    = m_AttachmentDescription.data();
+    m_CreateInfo.attachmentCount = m_AttachmentDescription.size();
+
+
+    m_CreateInfo.subpassCount = 1;
+    m_CreateInfo.pSubpasses   = &m_SubpassDescriptions;
+    m_RenderPass = get_device().createRenderPass( m_CreateInfo );
+
+    if( !m_RenderPass )
+    {
+        throw std::runtime_error("failed to create render pass!");
+    }
+    LOG << "Render Pass created with " << ENDL;
+}

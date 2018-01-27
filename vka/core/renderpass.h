@@ -21,6 +21,14 @@ class renderpass : public context_child
     std::vector<vk::SubpassDependency> m_SubpassDependency;
 
 
+
+    std::vector<vk::AttachmentReference> m_ColorReferences;
+    vk::AttachmentReference  m_DepthReference;
+    std::vector<vk::AttachmentDescription> m_AttachmentDescription;
+    vk::SubpassDescription             m_SubpassDescriptions;
+
+    vk::RenderPassCreateInfo           m_CreateInfo;
+
     renderpass(context * parent) : context_child(parent)
     {
         m_DepthRef.attachment =  std::numeric_limits< decltype(m_DepthRef.attachment) >::max();
@@ -36,11 +44,39 @@ class renderpass : public context_child
         return m_RenderPass;
     }
 
+    vk::RenderPass get() const
+    {
+        return m_RenderPass;
+    }
+
+    void create();
+
     void attach_color(vk::Format f = vk::Format::eR8G8B8A8Unorm);
     void attach_depth(vk::Format f);
 
-    void attach(vk::AttachmentDescription a);
+    renderpass* add_attachment_description(vk::AttachmentDescription a)
+    {
+        m_AttachmentDescription.push_back(a);
+        return this;
+    }
 
+    renderpass* add_color_attachment_reference(uint32_t i, vk::ImageLayout layout)
+    {
+        m_ColorReferences.push_back( vk::AttachmentReference(i, layout) );
+        return this;
+    }
+
+    renderpass* add_depth_attachment_reference(uint32_t i, vk::ImageLayout layout)
+    {
+        m_DepthReference = vk::AttachmentReference(i, layout);
+        return this;
+    }
+
+    renderpass* add_subpass_dependency(const vk::SubpassDependency & D)
+    {
+        m_SubpassDependency.push_back(D);
+        return this;
+    }
     void create(context & device);
 
 private:
