@@ -78,7 +78,7 @@ vk::Extent3D vka::texture::get_extents() const
     return m_CreateInfo.extent;
 }
 
-void vka::texture::set_size(vk::DeviceSize w, vk::DeviceSize h, vk::DeviceSize d)
+vka::texture* vka::texture::set_size(vk::DeviceSize w, vk::DeviceSize h, vk::DeviceSize d)
 {
     m_CreateInfo.extent.width  = w;
     m_CreateInfo.extent.height = h;
@@ -92,14 +92,16 @@ void vka::texture::set_size(vk::DeviceSize w, vk::DeviceSize h, vk::DeviceSize d
     {
         m_CreateInfo.imageType     = vk::ImageType::e3D;
     }
+    return this;
 }
 
-void vka::texture::set_format(vk::Format F)
+vka::texture* vka::texture::set_format(vk::Format F)
 {
     m_CreateInfo.format = F;
 
     set_mipmap_levels( get_mipmap_levels() );
     //m_CreateInfo.mipLevels
+    return this;
 }
 
 vk::Format vka::texture::get_format() const
@@ -107,9 +109,10 @@ vk::Format vka::texture::get_format() const
     return m_CreateInfo.format;
 }
 
-void vka::texture::set_tiling(vk::ImageTiling T)
+vka::texture* vka::texture::set_tiling(vk::ImageTiling T)
 {
     m_CreateInfo.tiling = T;
+    return this;
 }
 
 vk::ImageTiling vka::texture::get_tiling() const
@@ -117,9 +120,10 @@ vk::ImageTiling vka::texture::get_tiling() const
     return m_CreateInfo.tiling;
 }
 
-void vka::texture::set_view_type( vk::ImageViewType type)
+vka::texture* vka::texture::set_view_type( vk::ImageViewType type)
 {
     m_ViewInfo.viewType = type;
+    return this;
 }
 
 vk::ImageViewType vka::texture::get_view_type( )
@@ -246,9 +250,10 @@ uint32_t vka::texture::get_mipmap_levels( ) const
     return m_CreateInfo.mipLevels;
 }
 
-void vka::texture::set_memory_properties(vk::MemoryPropertyFlags flags)
+vka::texture* vka::texture::set_memory_properties(vk::MemoryPropertyFlags flags)
 {
     m_Memory.set_memory_properties(flags);
+    return this;
 }
 
 vk::ImageUsageFlags vka::texture::get_usage() const
@@ -256,9 +261,10 @@ vk::ImageUsageFlags vka::texture::get_usage() const
     return m_CreateInfo.usage;
 }
 
-void vka::texture::set_usage(vk::ImageUsageFlags flags)
+vka::texture* vka::texture::set_usage(vk::ImageUsageFlags flags)
 {
     m_CreateInfo.usage = flags;
+    return this;
 }
 
 void vka::texture::create()
