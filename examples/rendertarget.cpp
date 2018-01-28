@@ -64,6 +64,11 @@ struct uniform_buffer_t
     glm::mat4 proj;
 };
 
+struct per_frame_uniform_t
+{
+    glm::mat4 view;
+    glm::mat4 proj;
+};
 
 // Each object just needs the model matrix
 struct dynamic_uniform_buffer_t
@@ -120,9 +125,85 @@ class PhysicsComponent_t
 
 class RenderComponent_t
 {
-    vka::pipeline  *m_pipeline;
-    mesh_info_t     m_mesh;
+public:
+    vka::pipeline   *m_pipeline = nullptr;
+    vka::sub_buffer *m_ibuffer  = nullptr;
+    vka::sub_buffer *m_vbuffer  = nullptr;
+
+    vka::descriptor_set * m_texture        = nullptr;
+    vka::descriptor_set * m_uniform_buffer = nullptr;
+    vka::descriptor_set * m_dynamic_buffer = nullptr;
+
+    vk::DeviceSize        m_dynamic_offset = 0;
+
+    push_constants_t         m_push;
+
+    dynamic_uniform_buffer_t m_uniform_data;
+    mesh_info_t              m_mesh;
 };
+
+
+
+class ComponentRenderer_t
+{
+    vka::pipeline * m_pipeline = nullptr;
+    vka::sub_buffer *m_ibuffer = nullptr;
+    vka::sub_buffer *m_vbuffer = nullptr;
+
+public:
+    // given a render component, draw
+    // it into the command buffer.
+    void operator ()( vka::command_buffer & cb,
+                      RenderComponent_t * obj)
+    {
+        // ===== bind the pipeline that we want to use next =======
+        if( obj->m_pipeline != m_pipeline)
+        {
+
+        }
+        m_pipeline = obj->m_pipeline;
+        m_vbuffer = obj->m_vbuffer;
+        m_ibuffer = obj->m_ibuffer;
+        cb.bindVertexSubBuffer(0, m_vbuffer);
+        cb.bindIndexSubBuffer(m_ibuffer, vk::IndexType::eUint16);
+        cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
+
+        if( obj->m_vbuffer != m_vbuffer)
+        {
+        }
+
+        cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                             m_pipeline,
+                             0, // binding index
+                             obj->m_texture);
+
+        cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                             m_pipeline,
+                             1, // binding index
+                             obj->m_uniform_buffer);
+
+        cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                             m_pipeline,
+                             2, // binding index
+                             obj->m_dynamic_buffer,
+                             obj->m_dynamic_offset);
+
+        obj->m_push.index    = 0;
+        obj->m_push.miplevel = -1;
+
+
+        cb.pushConstants( m_pipeline->get_layout(),
+                          vk::ShaderStageFlagBits::eVertex,
+                          0,
+                          sizeof(push_constants_t),
+                          &obj->m_push);
+
+        mesh_info_t const & m = obj->m_mesh;
+        cb.drawIndexed(m.count, 1 , m.index_offset, m.vertex_offset, 0);
+    }
+};
+
+
 
 struct Entity_t
 {
@@ -134,7 +215,7 @@ struct Entity_t
 
 
 
-struct App :   public VulkanApp
+struct App : public VulkanApp
 {
 
   void init_pools()
@@ -161,10 +242,10 @@ struct App :   public VulkanApp
 
       // Allocate sub buffers from the buffer pool. These buffers can be
       // used for indices/vertices or uniforms.
+      m_dbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
+      m_ubuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
       m_vbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
       m_ibuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
-      m_ubuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
-      m_dbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
       m_sbuffer = m_Context.new_staging_buffer( "staging_buffer", 10*1024*1024);
 
       m_texture_array = m_Context.new_texture2darray("main_texture_array");
@@ -203,7 +284,7 @@ struct App :   public VulkanApp
                 ->set_front_face(vk::FrontFace::eCounterClockwise)
 
                 // Cull all back facing triangles.
-                ->set_cull_mode(vk::CullModeFlagBits::eBack)
+                ->set_cull_mode(vk::CullModeFlagBits::eNone)
 
                 // Tell the shader that we are going to use a texture
                 // in Set #0 binding #0
@@ -267,7 +348,7 @@ struct App :   public VulkanApp
   {
       std::vector<vka::mesh_t>   meshs;
       meshs.push_back( vka::box_mesh(1,1,1) );
-      meshs.push_back( vka::sphere_mesh(0.5,20,20) );
+ //     meshs.push_back( vka::sphere_mesh(0.5,20,20) );
 
       for( auto & M : meshs)
       {
@@ -304,7 +385,7 @@ struct App :   public VulkanApp
               "resources/textures/noise.jpg"
           };
 
-          uint32_t layer=0;
+          uint32_t layer = 0;
           for(auto & img : image_paths)
           {
               vka::host_image D(img, 4);
@@ -328,9 +409,10 @@ struct App :   public VulkanApp
       m_dsets.uniform_buffer->attach_uniform_buffer(0, m_ubuffer, sizeof(uniform_buffer_t), m_ubuffer->offset());
       m_dsets.uniform_buffer->update();
 
-      vka::descriptor_set * dubuffer_descriptor = m_pipelines.main->create_new_descriptor_set(2, m_descriptor_pool);
-      dubuffer_descriptor->attach_dynamic_uniform_buffer(0, m_dbuffer, sizeof(dynamic_uniform_buffer_t), m_dbuffer->offset());
-      dubuffer_descriptor->update();
+
+      m_dsets.dynamic_uniform_buffer = m_pipelines.main->create_new_descriptor_set(2, m_descriptor_pool);
+      m_dsets.dynamic_uniform_buffer->attach_dynamic_uniform_buffer(0, m_dbuffer, sizeof(dynamic_uniform_buffer_t), m_dbuffer->offset());
+      m_dsets.dynamic_uniform_buffer->update();
 
   }
   virtual void onInit()
@@ -341,18 +423,206 @@ struct App :   public VulkanApp
       load_meshs();
       load_textures();
 
-      init_pipelines();
 
+      init_pipelines();
       init_descriptor_sets();
 
+
+      m_image_available_semaphore = m_Context.new_semaphore("image_available_semaphore");
+      m_render_complete_semaphore = m_Context.new_semaphore("render_complete_semaphore");
+
+      m_command_buffer = m_command_pool->AllocateCommandBuffer();
+
+      init_scene();
+
+      keyslot = onKey << [&] (vka::Key k, bool down)
+      {
+          float x=0;
+          float y=0;
+
+          if( is_pressed(vka::Key::A    ) || is_pressed(vka::Key::LEFT )) x += -1;
+          if( is_pressed(vka::Key::D    ) || is_pressed(vka::Key::RIGHT)) x +=  1;
+          if( is_pressed(vka::Key::W    ) || is_pressed(vka::Key::UP   ))   y += -1;
+          if( is_pressed(vka::Key::S    ) || is_pressed(vka::Key::DOWN ))  y +=  1;
+
+          m_Camera.set_acceleration( glm::vec3( x, 0, y ) );
+
+      };
+
+       mouseslot =  onMouseMove << [&] (double dx, double dy)
+      {
+        dx = mouse_x() - dx;
+        dy = mouse_y() - dy;
+        if( is_pressed( vka::Button::RIGHT))
+        {
+            show_cursor(false);
+            if( fabs(dx) < 10) m_Camera.yaw(   -dx*0.001f);
+            if( fabs(dy) < 10) m_Camera.pitch( dy*0.001f);
+        }
+        else
+        {
+            show_cursor(true);
+        }
+        //std::cout << "Moving: " << dx << ", " << dy << std::endl;
+      };
+
   }
+
+  vka::signal<void(double       , double)>::slot mouseslot;
+  vka::signal<void(vka::Key,      int   )>::slot keyslot;
+
+  void UpdateDynamicUniforms(vka::command_buffer & cb)
+  {
+    auto alignment = 256;
+
+    auto S = static_cast<unsigned char*>(m_sbuffer->map_memory());
+    vk::DeviceSize src_offset  = 0;
+    vk::DeviceSize dst_offset  = 0;
+
+    vk::DeviceSize size = sizeof( per_frame_uniform_t );
+    memcpy( &S[src_offset], &m_frame_uniform, size );
+
+
+
+    cb.copySubBuffer( *m_sbuffer, m_ubuffer, vk::BufferCopy(src_offset, 0 ,size)  );
+    src_offset += size;
+
+
+    for(auto * comps : m_Objs)
+    {
+        size = sizeof(comps->m_uniform_data);
+        memcpy( &S[src_offset], &comps->m_uniform_data, size );
+
+        auto i = size/alignment + 1;
+        if(size%alignment == 0) i--;
+
+        cb.copySubBuffer( *m_sbuffer, m_dbuffer, vk::BufferCopy(src_offset , dst_offset, size) );
+
+        comps->m_dynamic_offset = dst_offset;
+
+        dst_offset += alignment * i;
+        src_offset += size;
+    }
+   // cb.copySubBuffer( m_sbuffer, m_dbuffer, vk::ArrayProxy<const vk::BufferCopy>(BC) );
+
+  }
+
+  uint32_t UpdateCommandBuffer(vka::command_buffer & cb)
+  {
+    uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
+
+    // reset the command buffer so that we can record from scratch again.
+    cb.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+    cb.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
+
+
+    //  BEGIN RENDER PASS=====================================================
+    // We want the to use the render pass we created earlier
+    vk::RenderPassBeginInfo renderPassInfo;
+    renderPassInfo.renderPass        = *m_default_renderpass;
+    renderPassInfo.framebuffer       = *m_framebuffers[fb_index];
+    renderPassInfo.renderArea.offset = vk::Offset2D{0,0};
+    renderPassInfo.renderArea.extent = vk::Extent2D(WIDTH,HEIGHT);
+
+    // Clear values are used to clear the various frame buffers
+    // we want to clear the colour values to black
+    // at the start of rendering.
+    std::vector<vk::ClearValue> clearValues;
+    clearValues.push_back( vk::ClearValue( vk::ClearColorValue( std::array<float,4>{0.0f, 0.f, 0.f, 1.f} ) ) );
+    clearValues.push_back(vk::ClearValue( vk::ClearDepthStencilValue(1.0f,0) ) );
+
+    renderPassInfo.clearValueCount = clearValues.size();
+    renderPassInfo.pClearValues    = clearValues.data();
+
+    cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+    //========================================================================
+
+    // ===== bind the pipeline that we want to use next =======
+    ComponentRenderer_t R;
+    for(auto * comp : m_Objs)
+    {
+        R(cb, comp);
+    }
+
+    cb.endRenderPass();
+    //==============
+    return fb_index;
+
+
+  }
+
 
   virtual void onFrame(double dt, double T)
   {
+m_Camera.calculate();
+    //  uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
 
+
+     m_command_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+     m_command_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
+
+     // update uniforms
+     UpdateDynamicUniforms(m_command_buffer);
+
+     // Render
+     auto fb_index = UpdateCommandBuffer(m_command_buffer);
+
+     m_command_buffer.end();
+
+     m_Context.submit_command_buffer(m_command_buffer, m_image_available_semaphore, m_render_complete_semaphore);
+     m_Context.present_image( fb_index , m_render_complete_semaphore);
   }
 
 
+
+  void init_scene()
+  {
+      for(int i=0;i<3;i++)
+      {
+        auto * obj = new RenderComponent_t();
+
+        obj->m_ibuffer = m_ibuffer;
+        obj->m_vbuffer = m_vbuffer;
+        obj->m_mesh    = m_mesh_info[0];
+        obj->m_pipeline = m_pipelines.main;
+
+        obj->m_uniform_buffer = m_dsets.uniform_buffer;
+        obj->m_dynamic_buffer = m_dsets.dynamic_uniform_buffer;
+        obj->m_texture        = m_dsets.texture_array;
+
+        m_Objs.push_back(obj);
+    }
+
+
+    vka::transform T;
+    T.set_position( glm::vec3(3,0,0));
+    T.set_scale( glm::vec3(2,2,2));
+    m_Objs[0]->m_uniform_data.model = T.get_matrix();
+
+
+
+        //======================
+
+        //========================
+        // Initialize the camera
+        glm::vec3 cam_position(2,2,2);
+        glm::vec3 cam_looking_at(0,0,0);
+        float field_of_view = glm::radians(60.f);
+        float aspect_ratio  = WIDTH / (float)HEIGHT;
+        float near_plane    = 0.1f;
+        float far_plane     = 100.0f;
+        m_Camera.set_fov(  field_of_view );
+        m_Camera.set_aspect_ratio( aspect_ratio );
+        m_Camera.set_near_plane(near_plane); // default value
+        m_Camera.set_far_plane(far_plane);// default value
+        m_Camera.set_position( cam_position );
+        m_Camera.lookat( cam_looking_at , {0,1,0});
+
+        m_frame_uniform.view = m_Camera.get_view_matrix();
+        m_frame_uniform.proj = m_Camera.get_proj_matrix();
+        m_frame_uniform.proj[1][1] *= -1;
+
+  }
 
   //=====================================
 
@@ -369,6 +639,13 @@ struct App :   public VulkanApp
 
   vka::texture2darray * m_texture_array;
 
+  vka::semaphore * m_image_available_semaphore;
+  vka::semaphore * m_render_complete_semaphore;
+
+  //========================================
+          vka::camera m_Camera;
+   per_frame_uniform_t m_frame_uniform;
+
   struct
   {
     vka::descriptor_set * texture_array;
@@ -382,24 +659,28 @@ struct App :   public VulkanApp
     vka::pipeline * line;
   } m_pipelines;
 
+
+  vka::command_buffer m_command_buffer;
+
   //====================================
 
-  std::vector< mesh_info_t > m_mesh_info;
+  std::vector< mesh_info_t >        m_mesh_info;
+  std::vector< RenderComponent_t* > m_Objs;
 
 
 };
 
 int main(int argc, char ** argv)
 {
-    App A;
+     App A;
 
-    A.init( WIDTH, HEIGHT, APP_TITLE);
-    A.init_default_renderpass(WIDTH,HEIGHT);
+     A.init( WIDTH, HEIGHT, APP_TITLE);
+     A.init_default_renderpass(WIDTH,HEIGHT);
 
-    A.start_mainloop();
+     A.start_mainloop();
 
 
-    return 0;
+     return 0;
 
     //==========================================================================
     // 1. Initlize the library and create a window
@@ -635,14 +916,14 @@ int main(int argc, char ** argv)
 
         // Allocate sub buffers from the buffer pool. These buffers can be
         // used for indices/vertices or uniforms.
-        vka::sub_buffer* vertex_buffer = buf_pool->new_buffer( 16*1024 );
-        vka::sub_buffer* index_buffer  = buf_pool->new_buffer( 16*1024 );
-        vka::sub_buffer* u_buffer      = buf_pool->new_buffer( 16*1024 );
-        vka::sub_buffer* du_buffer     = buf_pool->new_buffer( 16*1024 );
+        vka::sub_buffer* du_buffer     = buf_pool->new_buffer( 10*1024*1024 );
+        vka::sub_buffer* u_buffer      = buf_pool->new_buffer( 10*1024*1024 );
+        vka::sub_buffer* vertex_buffer = buf_pool->new_buffer( 10*1024*1024 );
+        vka::sub_buffer* index_buffer  = buf_pool->new_buffer( 10*1024*1024 );
 
         // allocate a staging buffer of 10MB since we will need this to copy
         // data to the sub_buffers
-        vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*16 );
+        vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
 
         for( auto & M : meshs)
         {
@@ -965,6 +1246,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
       // Get the next available image in the swapchain
       uint32_t fb_index = C.get_next_image_index(image_available_semaphore);
+
       glfwPollEvents();
 
       // reset the command buffer so that we can record from scratch again.

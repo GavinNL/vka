@@ -100,7 +100,7 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
       double T  = 0;
       double dt = 0;
 
-      while (!glfwWindowShouldClose(m_win) )
+      while ( !glfwWindowShouldClose( m_win ) )
       {
           dt  = get_elapsed_time()-T;
           T  += dt;
@@ -108,7 +108,7 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
 
           onFrame(dt, T);
 
-          std::this_thread::sleep_for(std::chrono::milliseconds(3));
+          std::this_thread::sleep_for( std::chrono::milliseconds(3) );
       }
   }
 
