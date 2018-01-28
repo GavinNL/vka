@@ -175,15 +175,14 @@ public:
                                  1, // binding index
                                  obj->m_uniform_buffer);
 
-            cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
-                                 m_pipeline,
-                                 2, // binding index
-                                 obj->m_dynamic_buffer,
-                                 obj->m_dynamic_offset);
         }
 
+        cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                             m_pipeline,
+                             2, // binding index
+                             obj->m_dynamic_buffer,
+                             obj->m_dynamic_offset);
 
-        obj->m_push.index    =   0;
         obj->m_push.miplevel =  -1;
 
 
@@ -239,8 +238,11 @@ struct App : public VulkanApp
       // used for indices/vertices or uniforms.
       m_dbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
       m_ubuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
+
       m_vbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
-      m_ibuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
+      //m_ibuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
+      m_ibuffer = m_vbuffer;
+
       m_sbuffer = m_Context.new_staging_buffer( "staging_buffer", 10*1024*1024);
 
       m_texture_array = m_Context.new_texture2darray("main_texture_array");
@@ -279,7 +281,7 @@ struct App : public VulkanApp
                 ->set_front_face(vk::FrontFace::eCounterClockwise)
 
                 // Cull all back facing triangles.
-                ->set_cull_mode(vk::CullModeFlagBits::eNone)
+                ->set_cull_mode(vk::CullModeFlagBits::eBack)
 
                 // Tell the shader that we are going to use a texture
                 // in Set #0 binding #0
@@ -351,8 +353,8 @@ struct App : public VulkanApp
           // sub_buffer::insert inserts data into the sub buffer at an available
           // space and returns a sub_buffer object.
 
-          auto m1v = m_vbuffer->insert( M.vertex_data(), M.vertex_data_size() );
-          auto m1i = m_ibuffer->insert(  M.index_data() , M.index_data_size()  );
+          auto m1v = m_vbuffer->insert( M.vertex_data() , M.vertex_data_size() , M.vertex_size());
+          auto m1i = m_ibuffer->insert(  M.index_data() , M.index_data_size()  , M.index_size() );
 
           // If you wish to free the memory you have allocated, you shoudl call
           // vertex_buffer->free_buffer_object(m1v);
@@ -590,7 +592,7 @@ struct App : public VulkanApp
 
   void init_scene()
   {
-      #define MAX_OBJ 1700
+      #define MAX_OBJ 1500
 
       float x = 0;
       float y = 0;
@@ -601,13 +603,14 @@ struct App : public VulkanApp
 
         obj->m_ibuffer  = m_ibuffer;
         obj->m_vbuffer  = m_vbuffer;
-        obj->m_mesh     = m_mesh_info[0];
+        obj->m_mesh     = m_mesh_info[ i%2 ];
         obj->m_pipeline = m_pipelines.main;
 
         obj->m_uniform_buffer = m_dsets.uniform_buffer;
         obj->m_dynamic_buffer = m_dsets.dynamic_uniform_buffer;
         obj->m_texture        = m_dsets.texture_array;
 
+        obj->m_push.index = i%2;
         m_Objs.push_back(obj);
 
         vka::transform T;
