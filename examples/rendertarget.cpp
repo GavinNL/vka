@@ -511,11 +511,6 @@ struct App : public VulkanApp
   {
     uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
 
-    // reset the command buffer so that we can record from scratch again.
-    cb.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
-    cb.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
-
-
     //  BEGIN RENDER PASS=====================================================
     // We want the to use the render pass we created earlier
     vk::RenderPassBeginInfo renderPassInfo;
@@ -554,12 +549,17 @@ struct App : public VulkanApp
 
   virtual void onFrame(double dt, double T)
   {
-m_Camera.calculate();
+    m_Camera.calculate();
     //  uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
+
+    m_frame_uniform.view = m_Camera.get_view_matrix();
+    m_frame_uniform.proj = m_Camera.get_proj_matrix();
+    m_frame_uniform.proj[1][1] *= -1;
 
 
      m_command_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
      m_command_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
+
 
      // update uniforms
      UpdateDynamicUniforms(m_command_buffer);
@@ -595,9 +595,11 @@ m_Camera.calculate();
 
 
     vka::transform T;
-    T.set_position( glm::vec3(3,0,0));
-    T.set_scale( glm::vec3(2,2,2));
-    m_Objs[0]->m_uniform_data.model = T.get_matrix();
+    T.set_position( glm::vec3(0,0,0));
+    T.set_scale( glm::vec3(1,1,1));
+    m_Objs[0]->m_uniform_data.model = vka::transform( glm::vec3(2,0,0) ).get_matrix(); // T.get_matrix();
+    m_Objs[1]->m_uniform_data.model = vka::transform( glm::vec3(0,3,0) ).get_matrix(); // T.get_matrix();
+    m_Objs[2]->m_uniform_data.model = vka::transform( glm::vec3(0,0,4) ).get_matrix(); // T.get_matrix();
 
 
 
@@ -605,7 +607,7 @@ m_Camera.calculate();
 
         //========================
         // Initialize the camera
-        glm::vec3 cam_position(2,2,2);
+        glm::vec3 cam_position(4,2,4);
         glm::vec3 cam_looking_at(0,0,0);
         float field_of_view = glm::radians(60.f);
         float aspect_ratio  = WIDTH / (float)HEIGHT;
