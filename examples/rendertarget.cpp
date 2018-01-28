@@ -159,37 +159,32 @@ public:
         // ===== bind the pipeline that we want to use next =======
         if( obj->m_pipeline != m_pipeline)
         {
+            m_pipeline = obj->m_pipeline;
+            m_vbuffer = obj->m_vbuffer;
+            m_ibuffer = obj->m_ibuffer;
+            cb.bindVertexSubBuffer(0, m_vbuffer);
+            cb.bindIndexSubBuffer(m_ibuffer, vk::IndexType::eUint16);
+            cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
+            cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                                 m_pipeline,
+                                 0, // binding index
+                                 obj->m_texture);
 
+            cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                                 m_pipeline,
+                                 1, // binding index
+                                 obj->m_uniform_buffer);
+
+            cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                                 m_pipeline,
+                                 2, // binding index
+                                 obj->m_dynamic_buffer,
+                                 obj->m_dynamic_offset);
         }
-        m_pipeline = obj->m_pipeline;
-        m_vbuffer = obj->m_vbuffer;
-        m_ibuffer = obj->m_ibuffer;
-        cb.bindVertexSubBuffer(0, m_vbuffer);
-        cb.bindIndexSubBuffer(m_ibuffer, vk::IndexType::eUint16);
-        cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
 
-        if( obj->m_vbuffer != m_vbuffer)
-        {
-        }
 
-        cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
-                             m_pipeline,
-                             0, // binding index
-                             obj->m_texture);
-
-        cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
-                             m_pipeline,
-                             1, // binding index
-                             obj->m_uniform_buffer);
-
-        cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
-                             m_pipeline,
-                             2, // binding index
-                             obj->m_dynamic_buffer,
-                             obj->m_dynamic_offset);
-
-        obj->m_push.index    = 0;
-        obj->m_push.miplevel = -1;
+        obj->m_push.index    =   0;
+        obj->m_push.miplevel =  -1;
 
 
         cb.pushConstants( m_pipeline->get_layout(),
@@ -348,7 +343,7 @@ struct App : public VulkanApp
   {
       std::vector<vka::mesh_t>   meshs;
       meshs.push_back( vka::box_mesh(1,1,1) );
- //     meshs.push_back( vka::sphere_mesh(0.5,20,20) );
+      meshs.push_back( vka::sphere_mesh(0.5,20,20) );
 
       for( auto & M : meshs)
       {
@@ -471,8 +466,10 @@ struct App : public VulkanApp
   vka::signal<void(double       , double)>::slot mouseslot;
   vka::signal<void(vka::Key,      int   )>::slot keyslot;
 
+
   void UpdateDynamicUniforms(vka::command_buffer & cb)
   {
+#define SINGLE_COPY
     auto alignment = 256;
 
     auto S = static_cast<unsigned char*>(m_sbuffer->map_memory());
@@ -483,11 +480,13 @@ struct App : public VulkanApp
     memcpy( &S[src_offset], &m_frame_uniform, size );
 
 
-
     cb.copySubBuffer( *m_sbuffer, m_ubuffer, vk::BufferCopy(src_offset, 0 ,size)  );
     src_offset += size;
 
-
+#if defined SINGLE_COPY
+    std::vector< vk::BufferCopy > regions;
+    regions.reserve(m_Objs.size() );
+#endif
     for(auto * comps : m_Objs)
     {
         size = sizeof(comps->m_uniform_data);
@@ -496,14 +495,21 @@ struct App : public VulkanApp
         auto i = size/alignment + 1;
         if(size%alignment == 0) i--;
 
-        cb.copySubBuffer( *m_sbuffer, m_dbuffer, vk::BufferCopy(src_offset , dst_offset, size) );
+#if defined SINGLE_COPY
+        regions.push_back( vk::BufferCopy(src_offset , dst_offset + m_dbuffer->offset(), size) ); // must add the offset of the dynamic buffer
+#else
+        cb.copySubBuffer( *m_sbuffer, m_dbuffer, vk::BufferCopy(src_offset , dst_offset, size) ); // no need for extra offset
+#endif
 
         comps->m_dynamic_offset = dst_offset;
 
         dst_offset += alignment * i;
         src_offset += size;
     }
-   // cb.copySubBuffer( m_sbuffer, m_dbuffer, vk::ArrayProxy<const vk::BufferCopy>(BC) );
+
+#if defined SINGLE_COPY
+    cb.copyBuffer( *m_sbuffer, *m_dbuffer, regions);
+#endif
 
   }
 
@@ -547,8 +553,10 @@ struct App : public VulkanApp
   }
 
 
-  virtual void onFrame(double dt, double T)
+  virtual void onFrame( double dt, double T )
   {
+
+
     m_Camera.calculate();
     //  uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
 
@@ -557,33 +565,43 @@ struct App : public VulkanApp
     m_frame_uniform.proj[1][1] *= -1;
 
 
-     m_command_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
-     m_command_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
+    m_command_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+    m_command_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
 
+        // update uniforms
 
-     // update uniforms
-     UpdateDynamicUniforms(m_command_buffer);
+    auto s1 = microseconds();
+        UpdateDynamicUniforms(m_command_buffer);
+    auto s2 = microseconds();
 
-     // Render
-     auto fb_index = UpdateCommandBuffer(m_command_buffer);
+        // Render
+        auto fb_index = UpdateCommandBuffer(m_command_buffer);
+    auto s3 = microseconds();
+    m_command_buffer.end();
 
-     m_command_buffer.end();
+    m_Context.submit_command_buffer(m_command_buffer, m_image_available_semaphore, m_render_complete_semaphore);
+    auto s4 = microseconds();
 
-     m_Context.submit_command_buffer(m_command_buffer, m_image_available_semaphore, m_render_complete_semaphore);
-     m_Context.present_image( fb_index , m_render_complete_semaphore);
+    m_Context.present_image( fb_index , m_render_complete_semaphore);
+    std::cout <<  s2-s1 << "   " <<  s3-s2 << "   "<<  s4-s3 << "   "<< std::endl;
   }
 
 
 
   void init_scene()
   {
-      for(int i=0;i<3;i++)
+      #define MAX_OBJ 1700
+
+      float x = 0;
+      float y = 0;
+      float z = 0;
+      for(int i=0; i<MAX_OBJ ;i++)
       {
         auto * obj = new RenderComponent_t();
 
-        obj->m_ibuffer = m_ibuffer;
-        obj->m_vbuffer = m_vbuffer;
-        obj->m_mesh    = m_mesh_info[0];
+        obj->m_ibuffer  = m_ibuffer;
+        obj->m_vbuffer  = m_vbuffer;
+        obj->m_mesh     = m_mesh_info[0];
         obj->m_pipeline = m_pipelines.main;
 
         obj->m_uniform_buffer = m_dsets.uniform_buffer;
@@ -591,38 +609,52 @@ struct App : public VulkanApp
         obj->m_texture        = m_dsets.texture_array;
 
         m_Objs.push_back(obj);
+
+        vka::transform T;
+        T.set_position( glm::vec3(0,0,0));
+        T.set_scale( glm::vec3(1,1,1));
+
+
+        obj->m_uniform_data.model = vka::transform( glm::vec3( x , y, z)   ).get_matrix(); // T.get_matrix();
+        x += 1;
+        if( x > 25 )
+        {
+            x =0;
+            y += 1;
+        }
+        if(y > 25 )
+        {
+            y = 0;
+            z += 1;
+        }
     }
 
 
-    vka::transform T;
-    T.set_position( glm::vec3(0,0,0));
-    T.set_scale( glm::vec3(1,1,1));
-    m_Objs[0]->m_uniform_data.model = vka::transform( glm::vec3(2,0,0) ).get_matrix(); // T.get_matrix();
-    m_Objs[1]->m_uniform_data.model = vka::transform( glm::vec3(0,3,0) ).get_matrix(); // T.get_matrix();
-    m_Objs[2]->m_uniform_data.model = vka::transform( glm::vec3(0,0,4) ).get_matrix(); // T.get_matrix();
+   //   m_Objs[1]->m_uniform_data.model = vka::transform( glm::vec3(0,3,0) ).get_matrix(); // T.get_matrix();
+   //   m_Objs[2]->m_uniform_data.model = vka::transform( glm::vec3(0,0,4) ).get_matrix(); // T.get_matrix();
 
 
 
-        //======================
+    //======================
 
-        //========================
-        // Initialize the camera
-        glm::vec3 cam_position(4,2,4);
-        glm::vec3 cam_looking_at(0,0,0);
-        float field_of_view = glm::radians(60.f);
-        float aspect_ratio  = WIDTH / (float)HEIGHT;
-        float near_plane    = 0.1f;
-        float far_plane     = 100.0f;
-        m_Camera.set_fov(  field_of_view );
-        m_Camera.set_aspect_ratio( aspect_ratio );
-        m_Camera.set_near_plane(near_plane); // default value
-        m_Camera.set_far_plane(far_plane);// default value
-        m_Camera.set_position( cam_position );
-        m_Camera.lookat( cam_looking_at , {0,1,0});
+    //========================
+    // Initialize the camera
+    glm::vec3 cam_position(4,2,4);
+    glm::vec3 cam_looking_at(0,0,0);
+    float field_of_view = glm::radians(60.f);
+    float aspect_ratio  = WIDTH / (float)HEIGHT;
+    float near_plane    = 0.1f;
+    float far_plane     = 100.0f;
+    m_Camera.set_fov(  field_of_view );
+    m_Camera.set_aspect_ratio( aspect_ratio );
+    m_Camera.set_near_plane(near_plane); // default value
+    m_Camera.set_far_plane(far_plane);// default value
+    m_Camera.set_position( cam_position );
+    m_Camera.lookat( cam_looking_at , {0,1,0});
 
-        m_frame_uniform.view = m_Camera.get_view_matrix();
-        m_frame_uniform.proj = m_Camera.get_proj_matrix();
-        m_frame_uniform.proj[1][1] *= -1;
+    m_frame_uniform.view = m_Camera.get_view_matrix();
+    m_frame_uniform.proj = m_Camera.get_proj_matrix();
+    m_frame_uniform.proj[1][1] *= -1;
 
   }
 

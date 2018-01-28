@@ -123,6 +123,12 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
 
   }
 
+  uint64_t microseconds() const
+  {
+      static auto startTime = std::chrono::high_resolution_clock::now();
+      auto currentTime = std::chrono::high_resolution_clock::now();
+      return std::chrono::duration_cast<std::chrono::microseconds>(currentTime - startTime).count();
+  }
   //=====================================
 
   GLFWwindow                  * m_win;
