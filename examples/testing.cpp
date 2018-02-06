@@ -56,30 +56,36 @@
 
 #include "vulkan_app.h"
 
+#define ENABLE_UNIFORM
+
 // This is the structure of the uniform buffer we want.
 // it needs to match the structure in the shader.
-struct uniform_buffer_t
-{
-    glm::mat4 view;
-    glm::mat4 proj;
-};
 
 struct per_frame_uniform_t
 {
     glm::mat4 view;
     glm::mat4 proj;
+#if defined ENABLE_UNIFORM
+    int use_uniform = 1;
+#else
+    int use_uniform = 0;
+#endif
 };
 
 // Each object just needs the model matrix
 struct dynamic_uniform_buffer_t
 {
     glm::mat4 model;
+    int index; // index into the texture array layer
+    int miplevel; // mipmap level we want to use, -1 for shader chosen.
+
 };
 
 // This data will be written directly to the command buffer to
 // be passed to the shader as a push constant.
 struct push_constants_t
 {
+    glm::mat4 model;
     int index; // index into the texture array layer
     int miplevel; // mipmap level we want to use, -1 for shader chosen.
 };
@@ -174,23 +180,31 @@ public:
                                  m_pipeline,
                                  1, // binding index
                                  obj->m_uniform_buffer);
-
+#if !defined ENABLE_UNIFORM
+        cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                             m_pipeline,
+                             2, // binding index
+                             obj->m_dynamic_buffer,
+                             0);
+#endif
         }
 
+#if defined ENABLE_UNIFORM
         cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
                              m_pipeline,
                              2, // binding index
                              obj->m_dynamic_buffer,
                              obj->m_dynamic_offset);
+#endif
 
-        obj->m_push.miplevel =  -1;
 
-
+#if !defined ENABLE_UNIFORM
         cb.pushConstants( m_pipeline->get_layout(),
                           vk::ShaderStageFlagBits::eVertex,
                           0,
                           sizeof(push_constants_t),
                           &obj->m_push);
+#endif
 
         mesh_info_t const & m = obj->m_mesh;
         cb.drawIndexed(m.count, 1 , m.index_offset, m.vertex_offset, 0);
@@ -263,8 +277,8 @@ struct App : public VulkanApp
         m_pipelines.main->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                 ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                ->set_vertex_shader(   "resources/shaders/mipmaps/mipmaps_v.spv", "main" )   // the shaders we want to use
-                ->set_fragment_shader( "resources/shaders/mipmaps/mipmaps_f.spv", "main" ) // the shaders we want to use
+                ->set_vertex_shader(   "resources/shaders/default/default_v.spv", "main" )   // the shaders we want to use
+                ->set_fragment_shader( "resources/shaders/default/default_f.spv", "main" ) // the shaders we want to use
 
                 // tell the pipeline that attribute 0 contains 3 floats
                 // and the data starts at offset 0
@@ -403,7 +417,7 @@ struct App : public VulkanApp
       m_dsets.texture_array->update();
 
       m_dsets.uniform_buffer = m_pipelines.main->create_new_descriptor_set(1, m_descriptor_pool);
-      m_dsets.uniform_buffer->attach_uniform_buffer(0, m_ubuffer, sizeof(uniform_buffer_t), m_ubuffer->offset());
+      m_dsets.uniform_buffer->attach_uniform_buffer(0, m_ubuffer, sizeof(per_frame_uniform_t), m_ubuffer->offset());
       m_dsets.uniform_buffer->update();
 
 
@@ -485,34 +499,37 @@ struct App : public VulkanApp
     cb.copySubBuffer( *m_sbuffer, m_ubuffer, vk::BufferCopy(src_offset, 0 ,size)  );
     src_offset += size;
 
-#if defined SINGLE_COPY
-    std::vector< vk::BufferCopy > regions;
-    regions.reserve(m_Objs.size() );
+#if defined ENABLE_UNIFORM
+
+    #if defined SINGLE_COPY
+        std::vector< vk::BufferCopy > regions;
+        regions.reserve(m_Objs.size() );
+    #endif
+        for(auto * comps : m_Objs)
+        {
+            size = sizeof(comps->m_uniform_data);
+            memcpy( &S[src_offset], &comps->m_uniform_data, size );
+
+            auto i = size/alignment + 1;
+            if(size%alignment == 0) i--;
+
+    #if defined SINGLE_COPY
+            regions.push_back( vk::BufferCopy(src_offset , dst_offset + m_dbuffer->offset(), size) ); // must add the offset of the dynamic buffer
+    #else
+            cb.copySubBuffer( *m_sbuffer, m_dbuffer, vk::BufferCopy(src_offset , dst_offset, size) ); // no need for extra offset
+    #endif
+
+            comps->m_dynamic_offset = dst_offset;
+
+            dst_offset += alignment * i;
+            src_offset += size;
+        }
+
+    #if defined SINGLE_COPY
+        cb.copyBuffer( *m_sbuffer, *m_dbuffer, regions);
+    #endif
+
 #endif
-    for(auto * comps : m_Objs)
-    {
-        size = sizeof(comps->m_uniform_data);
-        memcpy( &S[src_offset], &comps->m_uniform_data, size );
-
-        auto i = size/alignment + 1;
-        if(size%alignment == 0) i--;
-
-#if defined SINGLE_COPY
-        regions.push_back( vk::BufferCopy(src_offset , dst_offset + m_dbuffer->offset(), size) ); // must add the offset of the dynamic buffer
-#else
-        cb.copySubBuffer( *m_sbuffer, m_dbuffer, vk::BufferCopy(src_offset , dst_offset, size) ); // no need for extra offset
-#endif
-
-        comps->m_dynamic_offset = dst_offset;
-
-        dst_offset += alignment * i;
-        src_offset += size;
-    }
-
-#if defined SINGLE_COPY
-    cb.copyBuffer( *m_sbuffer, *m_dbuffer, regions);
-#endif
-
   }
 
   uint32_t UpdateCommandBuffer(vka::command_buffer & cb)
@@ -573,11 +590,12 @@ struct App : public VulkanApp
         // update uniforms
 
     auto s1 = microseconds();
-        UpdateDynamicUniforms(m_command_buffer);
+
+    UpdateDynamicUniforms(m_command_buffer);
     auto s2 = microseconds();
 
         // Render
-        auto fb_index = UpdateCommandBuffer(m_command_buffer);
+    auto fb_index = UpdateCommandBuffer(m_command_buffer);
     auto s3 = microseconds();
     m_command_buffer.end();
 
@@ -610,15 +628,22 @@ struct App : public VulkanApp
         obj->m_dynamic_buffer = m_dsets.dynamic_uniform_buffer;
         obj->m_texture        = m_dsets.texture_array;
 
-        obj->m_push.index = i%2;
-        m_Objs.push_back(obj);
 
         vka::transform T;
         T.set_position( glm::vec3(0,0,0));
         T.set_scale( glm::vec3(1,1,1));
 
 
-        obj->m_uniform_data.model = vka::transform( glm::vec3( x , y, z)   ).get_matrix(); // T.get_matrix();
+        obj->m_push.model    = vka::transform( glm::vec3( x , y, z)   ).get_matrix(); // T.get_matrix();
+        obj->m_push.index    = i%2;
+        obj->m_push.miplevel = -1;
+
+        obj->m_uniform_data.model    = vka::transform( glm::vec3( x , y, z)   ).get_matrix(); // T.get_matrix();
+        obj->m_uniform_data.index    = i%2;
+        obj->m_uniform_data.miplevel = -1;
+
+
+
         x += 1;
         if( x > 25 )
         {
@@ -630,6 +655,8 @@ struct App : public VulkanApp
             y = 0;
             z += 1;
         }
+
+        m_Objs.push_back(obj);
     }
 
 
@@ -718,7 +745,7 @@ int main(int argc, char ** argv)
 
 
      return 0;
-
+#if 0
     //==========================================================================
     // 1. Initlize the library and create a window
     //==========================================================================
@@ -1060,11 +1087,11 @@ int main(int argc, char ** argv)
 //==============================================================================
         // create the vertex shader from a pre compiled SPIR-V file
         vka::shader* vertex_shader = C.new_shader_module("vs");
-        vertex_shader->load_from_file("resources/shaders/mipmaps/mipmaps_v.spv");
+        vertex_shader->load_from_file("resources/shaders/default/default_v.spv");
 
         // create the fragment shader from a pre compiled SPIR-V file
         vka::shader* fragment_shader = C.new_shader_module("fs");
-        fragment_shader->load_from_file("resources/shaders/mipmaps/mipmaps_f.spv");
+        fragment_shader->load_from_file("resources/shaders/default/default_f.spv");
 
         vka::pipeline* pipeline      = C.new_pipeline("triangle");
         vka::pipeline* line_pipeline = C.new_pipeline("line");
@@ -1448,6 +1475,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
     }
 
     return 0;
+#endif
 }
 
 #define STB_IMAGE_IMPLEMENTATION
