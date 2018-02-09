@@ -17,15 +17,13 @@ vka::pipeline::~pipeline()
     }
 }
 
-vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t index, uint32_t offset, vk::Format format , uint32_t stride)
+vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t binding, uint32_t location, uint32_t offset, vk::Format format , uint32_t stride)
 {
     auto & ad = m_VertexAttributeDescription;
-    //decltype(get().m_VertexAttributeDescription)::value_type AD;
-
     vk::VertexInputAttributeDescription AD;
 
-    AD.binding  = 0;
-    AD.location = index;
+    AD.binding  = binding;
+    AD.location = location;
     AD.format   = format;
     AD.offset   = offset;
 
@@ -34,18 +32,57 @@ vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t index, uint32_t offs
   //  uint32_t s = size;
 
     LOG  << "Adding vertex attribute: "  <<
-            "index: " << index  << ", " <<
+            "index: " << location  << ", " <<
             "offset:" << offset << ", " <<
             "format:" << vk::to_string(format) << ENDL;
 
 
 
-    m_VertexBindDescription.binding   = 0;
-    m_VertexBindDescription.stride    = stride;
-    m_VertexBindDescription.inputRate = vk::VertexInputRate::eVertex;
+    vk::VertexInputBindingDescription V;
+    V.binding   = binding;
+    V.stride    = stride;
+    V.inputRate = vk::VertexInputRate::eVertex;
+    m_VertexBindDescriptions.push_back(V);
 
-    m_VertexInputInfo.vertexBindingDescriptionCount   = 1;
-    m_VertexInputInfo.pVertexBindingDescriptions      = &m_VertexBindDescription;
+    m_VertexInputInfo.vertexBindingDescriptionCount   = m_VertexBindDescriptions.size();
+    m_VertexInputInfo.pVertexBindingDescriptions      = m_VertexBindDescriptions.data();
+
+    m_VertexInputInfo.vertexAttributeDescriptionCount = m_VertexAttributeDescription.size();
+    m_VertexInputInfo.pVertexAttributeDescriptions    = m_VertexAttributeDescription.data();
+
+    return this;
+}
+
+vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t location, uint32_t offset, vk::Format format , uint32_t stride)
+{
+    auto & ad = m_VertexAttributeDescription;
+    //decltype(get().m_VertexAttributeDescription)::value_type AD;
+
+    vk::VertexInputAttributeDescription AD;
+
+    AD.binding  = 0;
+    AD.location = location;
+    AD.format   = format;
+    AD.offset   = offset;
+
+    ad.push_back(AD);
+
+  //  uint32_t s = size;
+
+    LOG  << "Adding vertex attribute: "  <<
+            "index: " << location  << ", " <<
+            "offset:" << offset << ", " <<
+            "format:" << vk::to_string(format) << ENDL;
+
+
+    vk::VertexInputBindingDescription V;
+    V.binding   = 0;
+    V.stride    = stride;
+    V.inputRate = vk::VertexInputRate::eVertex;
+    m_VertexBindDescriptions.push_back(V);
+
+    m_VertexInputInfo.vertexBindingDescriptionCount   = m_VertexBindDescriptions.size();
+    m_VertexInputInfo.pVertexBindingDescriptions      = m_VertexBindDescriptions.data();
 
     m_VertexInputInfo.vertexAttributeDescriptionCount = m_VertexAttributeDescription.size();
     m_VertexInputInfo.pVertexAttributeDescriptions    = m_VertexAttributeDescription.data();

@@ -56,7 +56,9 @@
 
 #include "vulkan_app.h"
 
-#define ENABLE_UNIFORM
+//#define ENABLE_UNIFORM
+
+
 
 // This is the structure of the uniform buffer we want.
 // it needs to match the structure in the shader.
@@ -83,11 +85,16 @@ struct dynamic_uniform_buffer_t
 
 // This data will be written directly to the command buffer to
 // be passed to the shader as a push constant.
-struct push_constants_t
+struct push_constants_base_t
 {
     glm::mat4 model;
     int index; // index into the texture array layer
     int miplevel; // mipmap level we want to use, -1 for shader chosen.
+};
+
+struct push_constants_t : public push_constants_base_t
+{
+    uint8_t _buffer[ 256 - sizeof(push_constants_base_t)];
 };
 
 /**
@@ -102,27 +109,6 @@ struct mesh_info_t
     uint32_t vertex_offset; // vertex offset
 };
 
-
-/**
- * @brief The Object_t struct
- *
- * This class holds all information about an object we want to draw.
- */
-struct Object_t
-{
-    vka::transform           m_transform; // the world space transformation
-
-
-    vka::pipeline           *m_pipeline; // the graphcis pipeline to use
-
-    dynamic_uniform_buffer_t m_uniform;  // the struct of the uniform buffer
-
-    size_t                   m_uniform_offset; // the offset into the buffer
-
-    push_constants_t         m_push; // push_constants
-
-    mesh_info_t              m_mesh; // the mesh to use
-};
 
 class PhysicsComponent_t
 {

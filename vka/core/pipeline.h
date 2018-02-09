@@ -37,7 +37,9 @@ private:
 
 
     std::vector<vk::VertexInputAttributeDescription>  m_VertexAttributeDescription;
-    vk::VertexInputBindingDescription                 m_VertexBindDescription;
+
+    std::vector<vk::VertexInputBindingDescription>    m_VertexBindDescriptions;
+    //vk::VertexInputBindingDescription                 m_VertexBindDescription;
 
     std::vector<vk::PushConstantRange>                m_PushConstantRange;
 
@@ -199,7 +201,8 @@ public:
 
     pipeline* set_render_pass( vka::renderpass * p);
 
-    pipeline* set_vertex_attribute(uint32_t index, uint32_t offset, vk::Format format , uint32_t size);
+    pipeline* set_vertex_attribute(uint32_t location, uint32_t offset, vk::Format format , uint32_t size);
+    pipeline* set_vertex_attribute(uint32_t binding, uint32_t location, uint32_t offset, vk::Format format , uint32_t size);
 
 
     vk::PipelineLayout  get_layout() const {
