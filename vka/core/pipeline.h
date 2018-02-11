@@ -199,6 +199,12 @@ public:
         return this;
     }
 
+    pipeline* set_line_width(float f)
+    {
+        m_Rasterizer.lineWidth = f;
+        return this;
+    }
+
     pipeline* set_render_pass( vka::renderpass * p);
 
     pipeline* set_vertex_attribute(uint32_t location, uint32_t offset, vk::Format format , uint32_t size);

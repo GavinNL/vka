@@ -94,13 +94,14 @@ struct mesh_info_t
     uint32_t count; // number of indices or vertices
     uint32_t vertex_offset; // vertex offset
 
-    vk::DeviceSize p_offset;
-    vk::DeviceSize u_offset;
-    vk::DeviceSize n_offset;
+    //vk::DeviceSize p_offset;
+    //vk::DeviceSize u_offset;
+    //vk::DeviceSize n_offset;
 
-    vka::sub_buffer * p_buffer;
-    vka::sub_buffer * u_buffer;
-    vka::sub_buffer * n_buffer;
+    std::vector<vka::sub_buffer*> m_buffers;
+    //vka::sub_buffer * p_buffer;
+    //vka::sub_buffer * u_buffer;
+    //vka::sub_buffer * n_buffer;
 
 };
 
@@ -126,9 +127,31 @@ public:
     push_constants_t         m_push;
 
     mesh_info_t              m_mesh;
+    bool m_draw_axis = true;
 };
 
 
+class AxisRenderer_t
+{
+public:
+    vka::pipeline * m_pipeline;
+    vka::command_buffer m_commandbuffer;
+
+    AxisRenderer_t(vka::command_buffer & cb , vka::pipeline * pipeline) : m_pipeline(pipeline) , m_commandbuffer(cb)
+    {
+        m_commandbuffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
+    }
+
+    void operator ()( glm::mat4 const & mvp)
+    {
+        m_commandbuffer.draw(6,1,0,0);
+        m_commandbuffer.pushConstants( m_pipeline->get_layout(),
+                                       vk::ShaderStageFlagBits::eVertex,
+                                       0,
+                                       sizeof(glm::mat4),
+                                       &mvp);
+    }
+};
 
 class ComponentRenderer_t
 {
@@ -160,14 +183,19 @@ public:
                                  1, // binding index
                                  obj->m_uniform_buffer);
 
+            cb.bindIndexSubBuffer(m_ibuffer, vk::IndexType::eUint16);
         }
 
-        cb.bindVertexSubBuffer(0, obj->m_mesh.p_buffer, obj->m_mesh.p_offset);
-        cb.bindVertexSubBuffer(1, obj->m_mesh.u_buffer, obj->m_mesh.u_offset);
-        cb.bindVertexSubBuffer(2, obj->m_mesh.n_buffer, obj->m_mesh.n_offset);
+        uint32_t i = 0;
+        for(auto & b : obj->m_mesh.m_buffers)
+        {
+            cb.bindVertexSubBuffer(i++, b);
+        }
+        //cb.bindVertexSubBuffer(1, obj->m_mesh.u_buffer, obj->m_mesh.u_offset);
+        //cb.bindVertexSubBuffer(2, obj->m_mesh.n_buffer, obj->m_mesh.n_offset);
 
 
-        cb.bindIndexSubBuffer(m_ibuffer, vk::IndexType::eUint16);
+
         cb.pushConstants( m_pipeline->get_layout(),
                           vk::ShaderStageFlagBits::eVertex,
                           0,
@@ -188,6 +216,24 @@ struct Entity_t
 };
 
 
+/**
+ * @brief The object_buffer class
+ * An object buffer allocates objects.
+ */
+class object_buffer
+{
+    vka::buffer_pool * m_buffer_pool;
+public:
+
+    // each object (mesh) has multiple attributes each stored
+    // in its own sub_buffer.
+    struct object
+    {
+        std::vector<vka::sub_buffer*> m_attributes;
+    };
+
+    object new_obj();
+};
 
 
 
@@ -221,8 +267,6 @@ struct App : public VulkanApp
       m_dbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
       m_ubuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
 
-      //m_vbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
-      //m_ibuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
       m_ibuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
 
       m_sbuffer = m_Context.new_staging_buffer( "staging_buffer", 10*1024*1024);
@@ -280,14 +324,23 @@ struct App : public VulkanApp
                 ->set_render_pass( m_default_renderpass )
                 ->create();
 
-        m_pipelines.line = m_Context.new_pipeline("axis_pipeline");
-        m_pipelines.line->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
+
+        //======================================================================
+        // The axis shader does not require any vertex attributes, it contains
+        // 6 vertices, 2 vertices per axis and are drawn as a line list.
+        // the vertex positions are generated dynamically in the shader.
+        // The shader requires a single push constant which is the
+        // cumulative Model-View-Projection matrix.
+        //======================================================================
+        m_pipelines.axis = m_Context.new_pipeline("axis_pipeline");
+        m_pipelines.axis->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                 ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
                 ->set_vertex_shader(   "resources/shaders/axis_shader/axis_shader_v.spv", "main" )   // the shaders we want to use
                 ->set_fragment_shader( "resources/shaders/axis_shader/axis_shader_f.spv", "main" ) // the shaders we want to use
 
                 ->set_toplogy(vk::PrimitiveTopology::eLineList)
+                ->set_line_width(5.0f)
                 // Triangle vertices are drawn in a counter clockwise manner
                 // using the right hand rule which indicates which face is the
                 // front
@@ -297,10 +350,11 @@ struct App : public VulkanApp
                 ->set_cull_mode(vk::CullModeFlagBits::eBack)
                 // Add a push constant to the layout. It is accessable in the vertex shader
                 // stage only.
-                ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
+                ->add_push_constant( sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex)
                 //
                 ->set_render_pass( m_default_renderpass )
                 ->create();
+        //======================================================================
 
 
   }
@@ -316,7 +370,7 @@ struct App : public VulkanApp
       {
 
           auto P = M.get_attribute_view<glm::vec3>( vka::VertexAttribute::ePosition);
-          auto U = M.get_attribute_view<glm::vec2>( vka::VertexAttribute::eUV);
+          auto U = M.get_attribute_view<glm::vec2>( vka::VertexAttribute::eUV    );
           auto N = M.get_attribute_view<glm::vec3>( vka::VertexAttribute::eNormal);
 
           std::vector< glm::vec3> p;
@@ -337,13 +391,13 @@ struct App : public VulkanApp
           // space and returns a sub_buffer object.
           mesh_info_t mesh;
 
-          mesh.p_buffer = m_buffer_pool->new_buffer( p.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
-          mesh.u_buffer = m_buffer_pool->new_buffer( u.size() * sizeof(glm::vec2) , sizeof(glm::vec2 ) );
-          mesh.n_buffer = m_buffer_pool->new_buffer( n.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
+          mesh.m_buffers.push_back( m_buffer_pool->new_buffer( p.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) ) );
+          mesh.m_buffers.push_back( m_buffer_pool->new_buffer( u.size() * sizeof(glm::vec2) , sizeof(glm::vec2 ) ) );
+          mesh.m_buffers.push_back( m_buffer_pool->new_buffer( n.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) ) );
 
-          auto m1p = mesh.p_buffer->insert( p.data() , p.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
-          auto m1u = mesh.u_buffer->insert( u.data() , u.size() * sizeof(glm::vec2) , sizeof(glm::vec2 ) );
-          auto m1n = mesh.n_buffer->insert( n.data() , n.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
+          auto m1p = mesh.m_buffers[0]->insert( p.data() , p.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
+          auto m1u = mesh.m_buffers[1]->insert( u.data() , u.size() * sizeof(glm::vec2) , sizeof(glm::vec2 ) );
+          auto m1n = mesh.m_buffers[2]->insert( n.data() , n.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
 
           auto m1i = m_ibuffer->insert(  M.index_data() , M.index_data_size()  , M.index_size() );
 
@@ -355,14 +409,10 @@ struct App : public VulkanApp
 
           mesh.count         = M.num_indices();
 
-          mesh.p_offset = 0;//m1p.m_offset;
-          mesh.u_offset = 0;//m1u.m_offset;
-          mesh.n_offset = 0;//m1n.m_offset;
-
           // the offset returned is the byte offset, so we need to divide it
           // by the index/vertex size to get the actual index/vertex offset
           mesh.index_offset  =  m1i.m_offset  / M.index_size();
-          mesh.vertex_offset =  0;//m1p.m_offset  / sizeof(glm::vec3);
+          mesh.vertex_offset =  0;
 
           m_mesh_info.push_back(mesh);
       }
@@ -505,26 +555,22 @@ struct App : public VulkanApp
     cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
     //========================================================================
 
-    // ===== bind the pipeline that we want to use next =======
+
+
+    // Main component renderer
     ComponentRenderer_t R;
     for(auto * comp : m_Objs)
     {
         R(cb, comp);
     }
 
+    // axis renderer
+    AxisRenderer_t A(cb, m_pipelines.axis);
+    for(auto * comp : m_Objs)
+    {
 
-    glm::mat4 m = m_Camera.get_proj_matrix();
-    m[1][1] *= -1;
-    m =  m * m_Camera.get_view_matrix();
-    cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipelines.line );
-    cb.pushConstants( m_pipelines.line->get_layout(),
-                      vk::ShaderStageFlagBits::eVertex,
-                      0,
-                      sizeof(push_constants_t),
-                      &m);
-    cb.draw(6,1,0,0);
-
-
+        A( m_frame_uniform.proj * m_frame_uniform.view  * comp->m_push.model );
+    }
 
 
     cb.endRenderPass();
@@ -573,11 +619,12 @@ struct App : public VulkanApp
 
   void init_scene()
   {
-      #define MAX_OBJ 1
+      #define MAX_OBJ 1000
 
       float x = 0;
       float y = 0;
       float z = 0;
+
       for(int i=0; i<MAX_OBJ ;i++)
       {
         auto * obj = new RenderComponent_t();
@@ -597,19 +644,19 @@ struct App : public VulkanApp
         T.set_scale( glm::vec3(1,1,1));
 
 
-        obj->m_push.model    = vka::transform( glm::vec3( x , y, z)   ).get_matrix(); // T.get_matrix();
+        obj->m_push.model    = vka::transform( 1.25f*glm::vec3( x , y, z)   ).get_matrix(); // T.get_matrix();
         obj->m_push.index    = i%2;
         obj->m_push.miplevel = -1;
 
 
 
         x += 1;
-        if( x > 25 )
+        if( x > pow(MAX_OBJ,1.0/3.0) )
         {
             x =0;
             y += 1;
         }
-        if(y > 25 )
+        if(y > pow(MAX_OBJ,1.0/3.0) )
         {
             y = 0;
             z += 1;
@@ -679,7 +726,7 @@ struct App : public VulkanApp
   struct
   {
     vka::pipeline * main;
-    vka::pipeline * line;
+    vka::pipeline * axis;
   } m_pipelines;
 
 
@@ -689,7 +736,6 @@ struct App : public VulkanApp
 
   std::vector< mesh_info_t >        m_mesh_info;
   std::vector< RenderComponent_t* > m_Objs;
-
 
 };
 
