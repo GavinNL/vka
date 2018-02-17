@@ -94,15 +94,7 @@ struct mesh_info_t
     uint32_t count; // number of indices or vertices
     uint32_t vertex_offset; // vertex offset
 
-    //vk::DeviceSize p_offset;
-    //vk::DeviceSize u_offset;
-    //vk::DeviceSize n_offset;
-
     std::vector<vka::sub_buffer*> m_buffers;
-    //vka::sub_buffer * p_buffer;
-    //vka::sub_buffer * u_buffer;
-    //vka::sub_buffer * n_buffer;
-
 };
 
 
@@ -116,17 +108,16 @@ class RenderComponent_t
 public:
     vka::pipeline   *m_pipeline = nullptr;
     vka::sub_buffer *m_ibuffer  = nullptr;
-//    vka::sub_buffer *m_vbuffer  = nullptr;
 
     vka::descriptor_set * m_texture        = nullptr;
     vka::descriptor_set * m_uniform_buffer = nullptr;
-    //vka::descriptor_set * m_dynamic_buffer = nullptr;
 
     vk::DeviceSize        m_dynamic_offset = 0;
 
     push_constants_t         m_push;
 
     mesh_info_t              m_mesh;
+
     bool m_draw_axis = true;
 };
 
@@ -509,11 +500,10 @@ struct App : public VulkanApp
 
   }
 
-  vka::signal<void(double       , double)>::slot mouseslot;
-  vka::signal<void(vka::Key,      int   )>::slot keyslot;
 
 
-  void UpdateDynamicUniforms(vka::command_buffer & cb)
+
+  void UpdateUniforms(vka::command_buffer & cb)
   {
 #define SINGLE_COPY
     auto alignment = 256;
@@ -600,7 +590,7 @@ struct App : public VulkanApp
 
     auto s1 = microseconds();
 
-    UpdateDynamicUniforms(m_command_buffer);
+    UpdateUniforms(m_command_buffer);
     auto s2 = microseconds();
 
         // Render
@@ -736,6 +726,9 @@ struct App : public VulkanApp
 
   std::vector< mesh_info_t >        m_mesh_info;
   std::vector< RenderComponent_t* > m_Objs;
+
+  vka::signal<void(double       , double)>::slot mouseslot;
+  vka::signal<void(vka::Key,      int   )>::slot keyslot;
 
 };
 
