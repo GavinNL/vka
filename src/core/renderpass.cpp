@@ -110,6 +110,8 @@ void vka::renderpass::create()
     m_CreateInfo.pAttachments    = m_AttachmentDescription.data();
     m_CreateInfo.attachmentCount = m_AttachmentDescription.size();
 
+    m_SubpassDescriptions.colorAttachmentCount = m_ColorReferences.size();
+    m_SubpassDescriptions.pColorAttachments    = m_ColorReferences.data();
 
     m_CreateInfo.subpassCount = 1;
     m_CreateInfo.pSubpasses   = &m_SubpassDescriptions;
