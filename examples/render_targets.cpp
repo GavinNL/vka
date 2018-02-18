@@ -90,11 +90,32 @@ struct push_constants_t : public push_constants_base_t
  */
 struct mesh_info_t
 {
-    uint32_t index_offset; // index offset
-    uint32_t count; // number of indices or vertices
-    uint32_t vertex_offset; // vertex offset
+    uint32_t index_offset  = 0; // index offset
+    uint32_t count         = 0; // number of indices or vertices
+    uint32_t vertex_offset = 0; // vertex offset
 
     std::vector<vka::sub_buffer*> m_buffers;
+    vka::sub_buffer              *m_index_buffer=nullptr;
+
+    void bind(vka::command_buffer & cb)
+    {
+        uint32_t i = 0;
+        if( m_index_buffer)
+        {
+            cb.bindIndexSubBuffer(m_index_buffer, vk::IndexType::eUint16);
+        }
+
+        for(auto & b : m_buffers)
+            cb.bindVertexSubBuffer( i++, b);
+    }
+
+    void draw( vka::command_buffer & cb)
+    {
+        if( m_index_buffer)
+            cb.drawIndexed(count, 1 , index_offset, vertex_offset,0);
+        else
+            cb.draw(count,1,vertex_offset,0);
+    }
 };
 
 
@@ -107,12 +128,8 @@ class RenderComponent_t
 {
 public:
     vka::pipeline   *m_pipeline = nullptr;
-    vka::sub_buffer *m_ibuffer  = nullptr;
 
-    vka::descriptor_set * m_texture        = nullptr;
-    vka::descriptor_set * m_uniform_buffer = nullptr;
-
-    vk::DeviceSize        m_dynamic_offset = 0;
+    std::map<uint32_t, vka::descriptor_set*> m_descriptor_sets;
 
     push_constants_t         m_push;
 
@@ -121,6 +138,32 @@ public:
     bool m_draw_axis = true;
 };
 
+
+class FullScreenQuadRenderer_t
+{
+public:
+    vka::pipeline * m_pipeline;
+    vka::command_buffer m_commandbuffer;
+
+    FullScreenQuadRenderer_t(vka::command_buffer & cb , vka::pipeline * pipeline) : m_pipeline(pipeline) , m_commandbuffer(cb)
+    {
+        m_commandbuffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
+    }
+
+    void operator()( vka::descriptor_set * dset)
+    {
+        m_commandbuffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                             m_pipeline,
+                             0, // binding index
+                             dset);
+        m_commandbuffer.draw(6,1,0,0);
+        //m_commandbuffer.pushConstants( m_pipeline->get_layout(),
+        //                               vk::ShaderStageFlagBits::eVertex,
+        //                               0,
+        //                               sizeof(glm::mat4),
+        //                               &mvp);
+    }
+};
 
 class AxisRenderer_t
 {
@@ -135,12 +178,13 @@ public:
 
     void operator ()( glm::mat4 const & mvp)
     {
-        m_commandbuffer.draw(6,1,0,0);
+
         m_commandbuffer.pushConstants( m_pipeline->get_layout(),
                                        vk::ShaderStageFlagBits::eVertex,
                                        0,
                                        sizeof(glm::mat4),
                                        &mvp);
+        m_commandbuffer.draw(6,1,0,0);
     }
 };
 
@@ -161,27 +205,25 @@ public:
         {
             m_pipeline = obj->m_pipeline;
             //m_vbuffer = obj->m_vbuffer;
-            m_ibuffer = obj->m_ibuffer;
+           // m_ibuffer = obj->m_ibuffer;
 
             cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
-            cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
-                                 m_pipeline,
-                                 0, // binding index
-                                 obj->m_texture);
 
-            cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
-                                 m_pipeline,
-                                 1, // binding index
-                                 obj->m_uniform_buffer);
-
-            cb.bindIndexSubBuffer(m_ibuffer, vk::IndexType::eUint16);
+            for(auto & d : obj->m_descriptor_sets)
+            {
+                cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                                     m_pipeline,
+                                     d.first, // binding index
+                                     d.second);
+            }
         }
 
-        uint32_t i = 0;
-        for(auto & b : obj->m_mesh.m_buffers)
-        {
-            cb.bindVertexSubBuffer(i++, b);
-        }
+
+        //uint32_t i = 0;
+        //for(auto & b : obj->m_mesh.m_buffers)
+        //{
+        //    cb.bindVertexSubBuffer(i++, b);
+        //}
         //cb.bindVertexSubBuffer(1, obj->m_mesh.u_buffer, obj->m_mesh.u_offset);
         //cb.bindVertexSubBuffer(2, obj->m_mesh.n_buffer, obj->m_mesh.n_offset);
 
@@ -193,8 +235,10 @@ public:
                           sizeof(push_constants_t),
                           &obj->m_push);
 
-        mesh_info_t const & m = obj->m_mesh;
-        cb.drawIndexed(m.count, 1 , m.index_offset, m.vertex_offset, 0);
+        obj->m_mesh.bind(cb);
+        obj->m_mesh.draw(cb);
+        //mesh_info_t const & m = obj->m_mesh;
+        //cb.drawIndexed(m.count, 1 , m.index_offset, m.vertex_offset, 0);
     }
 };
 
@@ -219,7 +263,7 @@ struct App : public VulkanApp
       // Initialize the Command and Descriptor Pools
       //==========================================================================
       m_descriptor_pool = m_Context.new_descriptor_pool("main_desc_pool");
-      m_descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 2);
+      m_descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 25);
       m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
       m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
       m_descriptor_pool->create();
@@ -376,7 +420,39 @@ struct App : public VulkanApp
                 ->create();
         //======================================================================
 
+        //======================================================================
+        // The compose pipeline generates a full screen quad (in the shader)
+        // and accepts a number of textures. It uses thse textures and combines
+        // to produce an image on the screen.
+        //======================================================================
+        m_pipelines.compose = m_Context.new_pipeline("compose_pipeline");
+        m_pipelines.compose->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
+                ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
+                ->set_vertex_shader(   "resources/shaders/compose/compose_v.spv", "main" )   // the shaders we want to use
+                ->set_fragment_shader( "resources/shaders/compose/compose_f.spv", "main" ) // the shaders we want to use
+
+                ->set_toplogy(vk::PrimitiveTopology::eTriangleList)
+                ->set_line_width(1.0f)
+                // Triangle vertices are drawn in a counter clockwise manner
+                // using the right hand rule which indicates which face is the
+                // front
+                ->set_front_face(vk::FrontFace::eCounterClockwise)
+
+                ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
+                ->add_texture_layout_binding(0, 1, vk::ShaderStageFlagBits::eFragment)
+                ->add_texture_layout_binding(0, 2, vk::ShaderStageFlagBits::eFragment)
+                ->add_texture_layout_binding(0, 3, vk::ShaderStageFlagBits::eFragment)
+
+                // Cull all back facing triangles.
+                ->set_cull_mode(vk::CullModeFlagBits::eNone)
+                // Add a push constant to the layout. It is accessable in the vertex shader
+                // stage only.
+                ->add_push_constant( sizeof(int), 0, vk::ShaderStageFlagBits::eVertex)
+                //
+                ->set_render_pass( m_default_renderpass )
+                ->create();
+        //======================================================================
   }
 
 
@@ -414,12 +490,13 @@ struct App : public VulkanApp
           mesh.m_buffers.push_back( m_buffer_pool->new_buffer( p.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) ) );
           mesh.m_buffers.push_back( m_buffer_pool->new_buffer( u.size() * sizeof(glm::vec2) , sizeof(glm::vec2 ) ) );
           mesh.m_buffers.push_back( m_buffer_pool->new_buffer( n.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) ) );
+          mesh.m_index_buffer = m_buffer_pool->new_buffer( M.index_data_size(), sizeof(uint16_t) );
 
           auto m1p = mesh.m_buffers[0]->insert( p.data() , p.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
           auto m1u = mesh.m_buffers[1]->insert( u.data() , u.size() * sizeof(glm::vec2) , sizeof(glm::vec2 ) );
           auto m1n = mesh.m_buffers[2]->insert( n.data() , n.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
 
-          auto m1i = m_ibuffer->insert(  M.index_data() , M.index_data_size()  , M.index_size() );
+          auto m1i = mesh.m_index_buffer->insert(  M.index_data() , M.index_data_size()  , M.index_size() );
 
           // If you wish to free the memory you have allocated, you shoudl call
           // vertex_buffer->free_buffer_object(m1v);
@@ -453,7 +530,6 @@ struct App : public VulkanApp
               assert( D.width() == 512 && D.height()==512);
               m_texture_array->copy_image( D , layer++, vk::Offset2D(0,0) );
           }
-
   }
 
 
@@ -471,6 +547,13 @@ struct App : public VulkanApp
       m_dsets.uniform_buffer->update();
 
 
+      m_dsets.renderTargets = m_pipelines.compose->create_new_descriptor_set(0, m_descriptor_pool);
+      m_dsets.renderTargets->attach_sampler(0, m_textures.renderTargets[0]);
+      m_dsets.renderTargets->attach_sampler(1, m_textures.renderTargets[1]);
+      m_dsets.renderTargets->attach_sampler(2, m_textures.renderTargets[2]);
+      m_dsets.renderTargets->attach_sampler(3, m_textures.renderTargets[3]);
+      m_dsets.renderTargets->update();
+
       // m_dsets.dynamic_uniform_buffer = m_pipelines.main->create_new_descriptor_set(2, m_descriptor_pool);
       // m_dsets.dynamic_uniform_buffer->attach_dynamic_uniform_buffer(0, m_dbuffer, sizeof(dynamic_uniform_buffer_t), m_dbuffer->offset());
       // m_dsets.dynamic_uniform_buffer->update();
@@ -481,11 +564,11 @@ struct App : public VulkanApp
       init_pools();
       init_memory();
 
+      init_render_targets();
+
+
       load_meshs();
       load_textures();
-
-
-      init_render_targets();
 
       init_pipelines();
       init_descriptor_sets();
@@ -593,6 +676,8 @@ struct App : public VulkanApp
         A( m_frame_uniform.proj * m_frame_uniform.view  * comp->m_push.model );
     }
 
+  //  FullScreenQuadRenderer_t Q(cb, m_pipelines.compose);
+  //  Q( m_dsets.renderTargets);
 
     cb.endRenderPass();
     //==============
@@ -633,7 +718,7 @@ struct App : public VulkanApp
     auto s4 = microseconds();
 
     m_Context.present_image( fb_index , m_render_complete_semaphore);
-    std::cout <<  s2-s1 << "   " <<  s3-s2 << "   "<<  s4-s3 << "   "<< std::endl;
+  //  std::cout <<  s2-s1 << "   " <<  s3-s2 << "   "<<  s4-s3 << "   "<< std::endl;
   }
 
 
@@ -650,14 +735,15 @@ struct App : public VulkanApp
       {
         auto * obj = new RenderComponent_t();
 
-        obj->m_ibuffer  = m_ibuffer;
-        //obj->m_vbuffer  = m_vbuffer;
         obj->m_mesh     = m_mesh_info[ i%2 ];
         obj->m_pipeline = m_pipelines.main;
 
-        obj->m_uniform_buffer = m_dsets.uniform_buffer;
+        obj->m_descriptor_sets[0] = m_dsets.texture_array;
+        obj->m_descriptor_sets[1] = m_dsets.uniform_buffer;
+
+        //obj->m_uniform_buffer = m_dsets.uniform_buffer;
         //obj->m_dynamic_buffer = m_dsets.dynamic_uniform_buffer;
-        obj->m_texture        = m_dsets.texture_array;
+        //obj->m_texture        = m_dsets.texture_array;
 
 
         vka::transform T;
@@ -747,48 +833,73 @@ struct App : public VulkanApp
 
       cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
       //========================================================================
+
+
+      for(auto & c : m_Objs)
+      {
+
+      }
+
+      cb.endRenderPass();
   }
 
   void init_render_targets()
   {
+    //==================================================
+    /*  Want to be able to do soemthing like this:
+        A render target consists of images to render onto, a framebuffer, and
+        a renderpass.
+
+      RenderTarget T;
+      T.set_size( 1024, 768 );
+      T.add_color_attachment( 1024, 768, vk::Format::eR32G32B32A32Sfloat );
+      T.add_color_attachment( 1024, 768, vk::Format::eR32G32B32A32Sfloat );
+      T.add_color_attachment( 1024, 768, vk::Format::eR8G8B8A8Unorm );
+      T.add_depth_attachment( 1024, 768, vk::Format::eR8G8B8A8Unorm );
+      T.create();
+
+     */
+    //==================================================
 
           auto * Position_Texture = m_Context.new_texture("position_texture");
           Position_Texture->set_format( vk::Format::eR32G32B32A32Sfloat )
                           ->set_size( WIDTH,HEIGHT, 1 )
-                          ->set_usage( vk::ImageUsageFlagBits::eSampled| vk::ImageUsageFlagBits::eColorAttachment )
+                          ->set_usage( vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled| vk::ImageUsageFlagBits::eColorAttachment )
                           ->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal)
                           ->set_tiling( vk::ImageTiling::eOptimal)
                           ->set_view_type( vk::ImageViewType::e2D )
                           ->create();
           Position_Texture->create_image_view(vk::ImageAspectFlagBits::eColor);
+          m_textures.renderTargets[0] = Position_Texture;
 
           auto * Normal_Texture = m_Context.new_texture("normal_texture");
           Normal_Texture->set_format( vk::Format::eR32G32B32A32Sfloat )
                   ->set_size( WIDTH,HEIGHT,1)
-                  ->set_usage( vk::ImageUsageFlagBits::eSampled| vk::ImageUsageFlagBits::eColorAttachment )
+                  ->set_usage(  vk::ImageUsageFlagBits::eTransferDst |vk::ImageUsageFlagBits::eSampled| vk::ImageUsageFlagBits::eColorAttachment )
                   ->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal)
                   ->set_tiling( vk::ImageTiling::eOptimal)
                   ->set_view_type( vk::ImageViewType::e2D )
                   ->create();
           Normal_Texture->create_image_view(vk::ImageAspectFlagBits::eColor);
+          m_textures.renderTargets[1] = Normal_Texture;
 
           auto * Albedo_Texture = m_Context.new_texture("albedo_texture");
           Albedo_Texture->set_format( vk::Format::eR8G8B8A8Unorm )
                   ->set_size( WIDTH,HEIGHT,1)
-                  ->set_usage( vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment )
+                  ->set_usage(  vk::ImageUsageFlagBits::eTransferDst |vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment )
                   ->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal)
                   ->set_tiling( vk::ImageTiling::eOptimal)
                   ->set_view_type( vk::ImageViewType::e2D )
                   ->create();
           Albedo_Texture->create_image_view(vk::ImageAspectFlagBits::eColor);
-
+m_textures.renderTargets[2] = Albedo_Texture;
 
           auto * Depth_Texture = m_Context.new_depth_texture("depth_texture_2");
           Depth_Texture->set_size( WIDTH, HEIGHT, 1)
-                       ->set_usage( vk::ImageUsageFlagBits::eSampled| vk::ImageUsageFlagBits::eDepthStencilAttachment )
+                       ->set_usage(  vk::ImageUsageFlagBits::eTransferDst |vk::ImageUsageFlagBits::eSampled| vk::ImageUsageFlagBits::eDepthStencilAttachment )
                        ->create();
           Depth_Texture->create_image_view( vk::ImageAspectFlagBits::eDepth);
-
+m_textures.renderTargets[3] = Depth_Texture;
 
 
 
@@ -885,13 +996,21 @@ struct App : public VulkanApp
     vka::descriptor_set * texture_array;
     vka::descriptor_set * uniform_buffer;
     vka::descriptor_set * dynamic_uniform_buffer;
+
+    vka::descriptor_set * renderTargets;
   } m_dsets;
+
+  struct textures
+  {
+    vka::texture * renderTargets[4];
+  } m_textures;
 
   struct
   {
     vka::pipeline * gbuffer;
     vka::pipeline * main;
     vka::pipeline * axis;
+    vka::pipeline * compose;
   } m_pipelines;
 
 
