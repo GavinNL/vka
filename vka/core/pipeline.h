@@ -29,7 +29,9 @@ private:
     vk::PipelineRasterizationStateCreateInfo m_Rasterizer;
 
     vk::PipelineMultisampleStateCreateInfo   m_Multisampling;
-    vk::PipelineColorBlendAttachmentState    m_ColorBlendAttachment;
+
+    std::vector<vk::PipelineColorBlendAttachmentState> m_ColorBlendAttachments;
+    //vk::PipelineColorBlendAttachmentState    m_ColorBlendAttachment;
     vk::PipelineColorBlendStateCreateInfo    m_ColorBlending;
 
     vk::PipelineVertexInputStateCreateInfo   m_VertexInputInfo;
@@ -89,14 +91,8 @@ private:
 
         //==========
 
-        m_ColorBlendAttachment.colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-        m_ColorBlendAttachment.blendEnable         = VK_TRUE;
-        m_ColorBlendAttachment.colorBlendOp        = vk::BlendOp::eAdd;
-        m_ColorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eSrcAlpha;
-        m_ColorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
 
-        m_ColorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eOneMinusDstAlpha;
-        m_ColorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusDstAlpha;
+
 
         //==========
         m_ColorBlending.logicOpEnable     = VK_FALSE;
@@ -105,8 +101,8 @@ private:
         m_ColorBlending.blendConstants[1] = 1.0f;
         m_ColorBlending.blendConstants[2] = 1.0f;
         m_ColorBlending.blendConstants[3] = 1.0f;
-        m_ColorBlending.attachmentCount   = 1;
-        m_ColorBlending.pAttachments      = &m_ColorBlendAttachment;
+        m_ColorBlending.attachmentCount   = m_ColorBlendAttachments.size();
+        m_ColorBlending.pAttachments      = m_ColorBlendAttachments.data();
         //===========
 
 
@@ -222,6 +218,33 @@ public:
 
 
 
+    pipeline* add_color_blend_attachment_state( const vk::PipelineColorBlendAttachmentState & C)
+    {
+        m_ColorBlendAttachments.push_back(C);
+        return this;
+    }
+
+    vk::PipelineColorBlendAttachmentState& get_color_blend_attachment_state(uint32_t i)
+    {
+        return m_ColorBlendAttachments[i];
+    }
+
+    pipeline* set_color_attachments(uint32_t num)
+    {
+        vk::PipelineColorBlendAttachmentState C;
+        C.colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+        C.blendEnable         = VK_TRUE;
+        C.colorBlendOp        = vk::BlendOp::eAdd;
+        C.srcAlphaBlendFactor = vk::BlendFactor::eSrcAlpha;
+        C.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+        C.dstAlphaBlendFactor = vk::BlendFactor::eOneMinusDstAlpha;
+        C.dstColorBlendFactor = vk::BlendFactor::eOneMinusDstAlpha;
+
+        for(uint32_t i =0;i<num;++i)
+            add_color_blend_attachment_state(C);
+
+        return this;
+    }
 
     /**
      * @brief create_new_descriptor_set

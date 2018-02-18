@@ -185,6 +185,21 @@ void vka::pipeline::create()
 //    {
 //        throw std::runtime_error("Renderpass not created. Make sure you run renderpass->create() first");
 //    }
+    if( m_ColorBlendAttachments.size() == 0)
+    {
+        vk::PipelineColorBlendAttachmentState C;
+        C.colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+        C.blendEnable         = VK_TRUE;
+        C.colorBlendOp        = vk::BlendOp::eAdd;
+        C.srcAlphaBlendFactor = vk::BlendFactor::eSrcAlpha;
+        C.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+        C.dstAlphaBlendFactor = vk::BlendFactor::eOneMinusDstAlpha;
+        C.dstColorBlendFactor = vk::BlendFactor::eOneMinusDstAlpha;
+
+        add_color_blend_attachment_state(C);
+    }
+    m_ColorBlending.attachmentCount   = m_ColorBlendAttachments.size();
+    m_ColorBlending.pAttachments      = m_ColorBlendAttachments.data();
 
     // setup the viewport
     vk::PipelineViewportStateCreateInfo viewportState;
