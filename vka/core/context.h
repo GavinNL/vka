@@ -27,6 +27,19 @@ public:
         LOG << "Registry cleared" << ENDL;
         m_registry.clear();
     }
+
+    std::string get_name( T const * p)
+    {
+        for(auto & f : m_registry)
+        {
+            if( f.second.get() == p)
+            {
+                return f.first;
+            }
+        }
+        return "";
+    }
+
 protected:
     bool insert_object(std::string const & name, std::shared_ptr<T> obj)
     {
@@ -421,6 +434,9 @@ public:
 
 
     //============================================================
+
+    vka::offscreen_target *new_offscreen_target(const std::string &name);
+
     vka::command_pool *get_command_pool();
 
     void submit_cmd_buffer(vk::CommandBuffer b)
@@ -460,8 +476,15 @@ public:
         return m_staging_buffer;
     }
 
+    template<typename T>
+    std::string get_name( T const * obj)
+    {
+        return registry_t<T>::get_name(obj);
+    }
 
 private:
+
+
 
     template<typename T>
     T* _new(const std::string & name)

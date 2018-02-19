@@ -13,6 +13,7 @@
 #include <vka/core/texture2darray.h>
 #include <vka/core/descriptor_pool.h>
 #include <vka/core/descriptor_set.h>
+#include <vka/core/offscreen_target.h>
 #include <vulkan/vulkan.hpp>
 #include <vka/core/context_child.h>
 #include <GLFW/glfw3.h>
@@ -604,6 +605,11 @@ void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
     } while(  r == vk::Result::eTimeout);
 
     m_device.resetFences( m_render_fence );
+}
+
+vka::offscreen_target* vka::context::new_offscreen_target(const std::string & name)
+{
+    return _new<vka::offscreen_target>(name);
 }
 
 vka::renderpass* vka::context::new_renderpass(const std::string & name)

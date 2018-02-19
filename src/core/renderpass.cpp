@@ -42,6 +42,41 @@ void vka::renderpass::attach_depth(vk::Format f)
     m_DepthRef.layout            = vk::ImageLayout::eDepthStencilAttachmentOptimal;// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 }
 
+vka::renderpass *vka::renderpass::set_num_color_attachments(uint32_t n)
+{
+    uint32_t i=0;
+    if( n > m_AttachmentDescription.size() )
+    {
+        i = m_AttachmentDescription.size();
+        m_AttachmentDescription.resize( n );
+
+        vk::AttachmentDescription a;
+        a.format         = vk::Format::eUndefined;
+        a.samples        = vk::SampleCountFlagBits::e1;      // VK_SAMPLE_COUNT_1_BIT;
+        a.loadOp         = vk::AttachmentLoadOp::eClear;     // VK_ATTACHMENT_LOAD_OP_CLEAR;
+        a.storeOp        = vk::AttachmentStoreOp::eStore;    // VK_ATTACHMENT_STORE_OP_STORE;
+        a.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;  // VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        a.stencilStoreOp = vk::AttachmentStoreOp::eDontCare; // VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        a.initialLayout  = vk::ImageLayout::eUndefined;      // VK_IMAGE_LAYOUT_UNDEFINED;
+        a.finalLayout    = vk::ImageLayout::ePresentSrcKHR;  // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        for(uint32_t j=i;j<n;j++)
+            m_AttachmentDescription[j] = a;
+
+    }
+
+    //m_AttachmentDescription = std::vector<vk::AttachmentDescription>(n, a);
+
+    vk::AttachmentReference AR(-1, vk::ImageLayout::eUndefined);
+
+    m_ColorReferences.resize(n);// = std::vector<vk::AttachmentReference>(n, AR);
+
+    for(i=0;i<n;i++)
+        m_ColorReferences[i].attachment = i;
+
+    return this;
+}
+
 
 void vka::renderpass::create(vka::context & Context)
 {

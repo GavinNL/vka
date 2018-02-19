@@ -17,6 +17,8 @@ X_MACRO( texture2darray        )\
 X_MACRO( descriptor_pool       )\
 X_MACRO( descriptor_set_layout )\
 X_MACRO( descriptor_set        )\
+X_MACRO( render_target        )\
+X_MACRO( offscreen_target        )\
 
 
 
