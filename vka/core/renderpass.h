@@ -23,14 +23,27 @@ class renderpass : public context_child
 
 
     std::vector<vk::AttachmentReference> m_ColorReferences;
-    vk::AttachmentReference  m_DepthReference;
+    vk::AttachmentReference              m_DepthReference;
+
+
     std::vector<vk::AttachmentDescription> m_AttachmentDescription;
+    vk::AttachmentDescription              m_DepthAttachmentDescription;
+
     vk::SubpassDescription             m_SubpassDescriptions;
 
     vk::RenderPassCreateInfo           m_CreateInfo;
 
     renderpass(context * parent) : context_child(parent)
     {
+        m_DepthAttachmentDescription.format         = vk::Format::eUndefined;
+        m_DepthAttachmentDescription.samples        = vk::SampleCountFlagBits::e1;      // VK_SAMPLE_COUNT_1_BIT;
+        m_DepthAttachmentDescription.loadOp         = vk::AttachmentLoadOp::eClear;     // VK_ATTACHMENT_LOAD_OP_CLEAR;
+        m_DepthAttachmentDescription.storeOp        = vk::AttachmentStoreOp::eStore;    // VK_ATTACHMENT_STORE_OP_STORE;
+        m_DepthAttachmentDescription.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;  // VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        m_DepthAttachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare; // VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        m_DepthAttachmentDescription.initialLayout  = vk::ImageLayout::eUndefined;      // VK_IMAGE_LAYOUT_UNDEFINED;
+        m_DepthAttachmentDescription.finalLayout    = vk::ImageLayout::ePresentSrcKHR;  // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
         m_DepthRef.attachment =  std::numeric_limits< decltype(m_DepthRef.attachment) >::max();
         m_ColorRef.attachment =  std::numeric_limits< decltype(m_ColorRef.attachment) >::max();
     }
@@ -50,25 +63,51 @@ class renderpass : public context_child
     }
 
     void create();
-
     void attach_color(vk::Format f = vk::Format::eR8G8B8A8Unorm);
     void attach_depth(vk::Format f);
 
-    renderpass* add_attachment_description(vk::AttachmentDescription a)
+    //===============================
+
+    renderpass* set_num_color_attachments(uint32_t n)
     {
-        m_AttachmentDescription.push_back(a);
+        vk::AttachmentDescription a;
+        a.format         = vk::Format::eUndefined;
+        a.samples        = vk::SampleCountFlagBits::e1;      // VK_SAMPLE_COUNT_1_BIT;
+        a.loadOp         = vk::AttachmentLoadOp::eClear;     // VK_ATTACHMENT_LOAD_OP_CLEAR;
+        a.storeOp        = vk::AttachmentStoreOp::eStore;    // VK_ATTACHMENT_STORE_OP_STORE;
+        a.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;  // VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        a.stencilStoreOp = vk::AttachmentStoreOp::eDontCare; // VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        a.initialLayout  = vk::ImageLayout::eUndefined;      // VK_IMAGE_LAYOUT_UNDEFINED;
+        a.finalLayout    = vk::ImageLayout::ePresentSrcKHR;  // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        m_AttachmentDescription = std::vector<vk::AttachmentDescription>(n, a);
+
+        vk::AttachmentReference AR(-1, vk::ImageLayout::eUndefined);
+
+        m_ColorReferences = std::vector<vk::AttachmentReference>(n, AR);
+        for(uint32_t i=0;i<n;i++)
+            m_ColorReferences[i].attachment = i;
+
         return this;
     }
 
-    renderpass* add_color_attachment_reference(uint32_t i, vk::ImageLayout layout)
+    vk::AttachmentDescription & get_color_attachment_description(uint32_t i)
     {
-        m_ColorReferences.push_back( vk::AttachmentReference(i, layout) );
-        return this;
+        return m_AttachmentDescription.at(i);
+    }
+    vk::AttachmentDescription & get_depth_attachment_description()
+    {
+        return m_DepthAttachmentDescription;
     }
 
-    renderpass* add_depth_attachment_reference(uint32_t i, vk::ImageLayout layout)
+    renderpass* set_color_attachment_layout( uint32_t i, vk::ImageLayout L)
     {
-        m_DepthReference = vk::AttachmentReference(i, layout);
+        m_ColorReferences.at(i).layout = L;
+        return this;
+    }
+    renderpass* set_depth_attachment_layout( vk::ImageLayout L)
+    {
+        m_DepthReference.layout = L;
         return this;
     }
 
@@ -77,6 +116,7 @@ class renderpass : public context_child
         m_SubpassDependency.push_back(D);
         return this;
     }
+
     void create(context & device);
 
 private:

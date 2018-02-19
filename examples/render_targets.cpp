@@ -575,9 +575,11 @@ struct App : public VulkanApp
 
 
       m_image_available_semaphore = m_Context.new_semaphore("image_available_semaphore");
-      m_render_complete_semaphore = m_Context.new_semaphore("render_complete_semaphore");
+      m_composition_complete_semaphore = m_Context.new_semaphore("render_complete_semaphore");
+      m_offscreen_complete_semaphore = m_Context.new_semaphore("offscreen_complete_semaphore");
 
-      m_command_buffer = m_command_pool->AllocateCommandBuffer();
+      m_compose_buffer   = m_command_pool->AllocateCommandBuffer();
+      m_offscreen_buffer = m_command_pool->AllocateCommandBuffer();
 
       init_scene();
 
@@ -668,11 +670,10 @@ struct App : public VulkanApp
         R(cb, comp);
     }
 
-    // axis renderer
+    // Axis renderer
     AxisRenderer_t A(cb, m_pipelines.axis);
     for(auto * comp : m_Objs)
     {
-
         A( m_frame_uniform.proj * m_frame_uniform.view  * comp->m_push.model );
     }
 
@@ -683,11 +684,10 @@ struct App : public VulkanApp
     //==============
     return fb_index;
 
-
   }
 
 
-  virtual void onFrame( double dt, double T )
+  virtual void onFrame2( double dt, double T )
   {
 
 
@@ -699,29 +699,120 @@ struct App : public VulkanApp
     m_frame_uniform.proj[1][1] *= -1;
 
 
-    m_command_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
-    m_command_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
+    m_compose_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+    m_compose_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
 
         // update uniforms
 
     auto s1 = microseconds();
 
-    UpdateUniforms(m_command_buffer);
+    UpdateUniforms(m_compose_buffer);
     auto s2 = microseconds();
 
         // Render
-    auto fb_index = UpdateCommandBuffer(m_command_buffer);
+    auto fb_index = UpdateCommandBuffer(m_compose_buffer);
     auto s3 = microseconds();
-    m_command_buffer.end();
+    m_compose_buffer.end();
 
-    m_Context.submit_command_buffer(m_command_buffer, m_image_available_semaphore, m_render_complete_semaphore);
+    m_Context.submit_command_buffer(m_compose_buffer, m_image_available_semaphore, m_composition_complete_semaphore);
     auto s4 = microseconds();
 
-    m_Context.present_image( fb_index , m_render_complete_semaphore);
+    m_Context.present_image( fb_index , m_composition_complete_semaphore);
   //  std::cout <<  s2-s1 << "   " <<  s3-s2 << "   "<<  s4-s3 << "   "<< std::endl;
   }
 
 
+
+  void build_composition_command_buffer(vka::command_buffer & cb, uint32_t frame_buffer_index)
+  {
+    uint32_t fb_index = frame_buffer_index;
+
+    //  BEGIN RENDER PASS=====================================================
+    // We want the to use the render pass we created earlier
+    vk::RenderPassBeginInfo renderPassInfo;
+    renderPassInfo.renderPass        = *m_default_renderpass;
+    renderPassInfo.framebuffer       = *m_framebuffers[fb_index];
+    renderPassInfo.renderArea.offset = vk::Offset2D{0,0};
+    renderPassInfo.renderArea.extent = vk::Extent2D(WIDTH,HEIGHT);
+
+    // Clear values are used to clear the various frame buffers
+    // we want to clear the colour values to black
+    // at the start of rendering.
+    std::vector<vk::ClearValue> clearValues;
+    clearValues.push_back( vk::ClearValue( vk::ClearColorValue( std::array<float,4>{0.0f, 0.f, 0.f, 1.f} ) ) );
+    clearValues.push_back(vk::ClearValue( vk::ClearDepthStencilValue(1.0f,0) ) );
+
+    renderPassInfo.clearValueCount = clearValues.size();
+    renderPassInfo.pClearValues    = clearValues.data();
+
+    cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+    //========================================================================
+
+
+    FullScreenQuadRenderer_t Q(cb, m_pipelines.compose);
+    Q( m_dsets.renderTargets);
+
+    cb.endRenderPass();
+  }
+
+  virtual void onFrame(double dt, double T)
+  {
+      m_Camera.calculate();
+
+      m_frame_uniform.view = m_Camera.get_view_matrix();
+      m_frame_uniform.proj = m_Camera.get_proj_matrix();
+      m_frame_uniform.proj[1][1] *= -1;
+
+      //============== Render Section     =====================================
+      m_offscreen_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+      m_offscreen_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
+          // update uniforms
+          UpdateUniforms(m_offscreen_buffer);
+
+          // Render
+          build_offscreen_commandbuffer(m_offscreen_buffer);
+
+      m_offscreen_buffer.end();
+
+
+      draw();
+  }
+
+
+  void draw()
+  {
+    uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
+
+     //=============== Offscreen Rendering =====================================
+     // submit the offscreen buffer, but wait for the "image_available_semaphore"
+     // once the submittion is complete, trigger the "offscreen_complete_semaphore"
+     m_Context.submit_command_buffer(m_offscreen_buffer, m_image_available_semaphore, m_offscreen_complete_semaphore);
+
+
+    //=============== Composition Rendering ====================================
+     // Draw the composition image. Since this is the final stage, we must wait
+    // until the swapchain image is available. Once we submit, trigger the "present_to_screen_complete"
+
+    //============== Composition Section =====================================
+    // Get the index of the next available image in the swapchain. Once the
+    // and trigger the image_avialble_semaphore
+
+    m_compose_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+    m_compose_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
+
+    build_composition_command_buffer(m_compose_buffer, fb_index);
+
+    m_compose_buffer.end();
+
+    m_Context.submit_command_buffer(m_compose_buffer, m_offscreen_complete_semaphore, m_composition_complete_semaphore);
+
+    // Would like to do this eventually:
+    // m_Context.submit_command_buffer(m_compose_buffer).waitfor(m_image_available_semaphore)
+    //                                                  .signal( m_present_to_screen_complete_semaphore);
+
+    //=============== Final Presentation =======================================
+    m_Context.present_image( fb_index , m_composition_complete_semaphore);
+  }
 
   void init_scene()
   {
@@ -736,7 +827,7 @@ struct App : public VulkanApp
         auto * obj = new RenderComponent_t();
 
         obj->m_mesh     = m_mesh_info[ i%2 ];
-        obj->m_pipeline = m_pipelines.main;
+        obj->m_pipeline = m_pipelines.gbuffer;
 
         obj->m_descriptor_sets[0] = m_dsets.texture_array;
         obj->m_descriptor_sets[1] = m_dsets.uniform_buffer;
@@ -834,14 +925,16 @@ struct App : public VulkanApp
       cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
       //========================================================================
 
-
-      for(auto & c : m_Objs)
+      // Main component renderer
+      ComponentRenderer_t R;
+      for(auto * comp : m_Objs)
       {
-
+          R(cb, comp);
       }
 
       cb.endRenderPass();
   }
+
 
   void init_render_targets()
   {
@@ -918,20 +1011,24 @@ m_textures.renderTargets[3] = Depth_Texture;
           a.initialLayout  = vk::ImageLayout::eUndefined;      // VK_IMAGE_LAYOUT_UNDEFINED;
           a.finalLayout    = vk::ImageLayout::eShaderReadOnlyOptimal;  // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+          R2->set_num_color_attachments(3);
 
-          a.format = Position_Texture->get_format();   R2->add_attachment_description( a );
-          a.format = Normal_Texture->get_format();     R2->add_attachment_description( a );
-          a.format = Albedo_Texture->get_format();     R2->add_attachment_description( a );
+          // set the layout of the colour and depth attachments
+          R2->set_color_attachment_layout(0, vk::ImageLayout::eColorAttachmentOptimal);
+          R2->set_color_attachment_layout(1, vk::ImageLayout::eColorAttachmentOptimal);
+          R2->set_color_attachment_layout(2, vk::ImageLayout::eColorAttachmentOptimal);
+          R2->set_depth_attachment_layout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
-          a.format = Depth_Texture->get_format();
-          a.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+          // Set the format and final layout
+          R2->get_color_attachment_description(0).format      = Position_Texture->get_format();
+          R2->get_color_attachment_description(1).format      = Normal_Texture->get_format();
+          R2->get_color_attachment_description(2).format      = Albedo_Texture->get_format();
+          R2->get_depth_attachment_description().format       = Depth_Texture->get_format();
 
-          R2->add_attachment_description( a );
-
-          R2->add_color_attachment_reference(0, vk::ImageLayout::eColorAttachmentOptimal);
-          R2->add_color_attachment_reference(1, vk::ImageLayout::eColorAttachmentOptimal);
-          R2->add_color_attachment_reference(2, vk::ImageLayout::eColorAttachmentOptimal);
-          R2->add_depth_attachment_reference(3, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+          R2->get_color_attachment_description(0).finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+          R2->get_color_attachment_description(0).finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+          R2->get_color_attachment_description(0).finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+          R2->get_depth_attachment_description().finalLayout  = vk::ImageLayout::eDepthStencilAttachmentOptimal;;
 
           vk::SubpassDependency S0,S1;
           S0.srcSubpass    = VK_SUBPASS_EXTERNAL;
@@ -985,7 +1082,8 @@ m_textures.renderTargets[3] = Depth_Texture;
   vka::texture2darray * m_texture_array;
 
   vka::semaphore * m_image_available_semaphore;
-  vka::semaphore * m_render_complete_semaphore;
+  vka::semaphore * m_offscreen_complete_semaphore;
+  vka::semaphore * m_composition_complete_semaphore;
 
   //========================================
           vka::camera m_Camera;
@@ -1014,7 +1112,8 @@ m_textures.renderTargets[3] = Depth_Texture;
   } m_pipelines;
 
 
-  vka::command_buffer m_command_buffer;
+  vka::command_buffer m_offscreen_buffer;
+  vka::command_buffer m_compose_buffer;
 
   //====================================
 

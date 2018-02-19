@@ -72,9 +72,29 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
       m_depth->convert(vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
       m_default_renderpass = m_Context.new_renderpass("default_renderpass");
+
+#if 1
+      // The default render pass only needs one colour attachment (The main scren)
+      // and one depth attachment which will be a depth texture
+      m_default_renderpass->set_num_color_attachments(1);
+
+      // set the layout of the colour and depth attachments
+      m_default_renderpass->set_color_attachment_layout(0, vk::ImageLayout::eColorAttachmentOptimal);
+      m_default_renderpass->set_depth_attachment_layout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
+      // Set the format and final layout
+      m_default_renderpass->get_color_attachment_description(0).format      = vk::Format::eB8G8R8A8Unorm;
+      m_default_renderpass->get_color_attachment_description(0).finalLayout = vk::ImageLayout::ePresentSrcKHR;
+
+      m_default_renderpass->get_depth_attachment_description().format = m_depth->get_format();
+      m_default_renderpass->get_depth_attachment_description().finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;;
+
+      m_default_renderpass->create();
+#else
       m_default_renderpass->attach_color(vk::Format::eB8G8R8A8Unorm);
       m_default_renderpass->attach_depth( m_depth->get_format() );  // [NEW] we will now be using a depth attachment
       m_default_renderpass->create(m_Context);
+#endif
 
 
 

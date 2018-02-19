@@ -41,6 +41,8 @@ void vka::renderpass::attach_depth(vk::Format f)
     m_DepthRef.attachment        = 1;
     m_DepthRef.layout            = vk::ImageLayout::eDepthStencilAttachmentOptimal;// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 }
+
+
 void vka::renderpass::create(vka::context & Context)
 {
     vk::SubpassDescription                 SubpassDescriptions;
@@ -101,20 +103,46 @@ void vka::renderpass::create(vka::context & Context)
 
 void vka::renderpass::create()
 {
-    //std::vector<vk::AttachmentDescription> AttachmentDescriptions;
+    std::vector<vk::AttachmentDescription> AttachmentDescriptions;
+    AttachmentDescriptions = m_AttachmentDescription;
 
+    if(  m_DepthAttachmentDescription.format != vk::Format::eUndefined )
+    {
+        AttachmentDescriptions.push_back( m_DepthAttachmentDescription );
+        m_DepthReference.attachment = AttachmentDescriptions.size() - 1;
+    }
+
+
+    m_SubpassDescriptions.pipelineBindPoint       = vk::PipelineBindPoint::eGraphics;
+    m_SubpassDescriptions.colorAttachmentCount    = m_ColorReferences.size();
+    m_SubpassDescriptions.pColorAttachments       = m_ColorReferences.data();
+    m_SubpassDescriptions.pDepthStencilAttachment = &m_DepthReference;
+
+
+    m_CreateInfo.attachmentCount = AttachmentDescriptions.size();
+    m_CreateInfo.pAttachments    = AttachmentDescriptions.data();
+    m_CreateInfo.subpassCount = 1;
+    m_CreateInfo.pSubpasses   = &m_SubpassDescriptions;
+
+
+    if( m_SubpassDependency.size() ==0 )
+    {
+        vk::SubpassDependency             SubpassDependencies;
+        SubpassDependencies.srcSubpass    = VK_SUBPASS_EXTERNAL;
+        SubpassDependencies.dstSubpass    = 0;
+        SubpassDependencies.srcStageMask  = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+        SubpassDependencies.srcAccessMask = vk::AccessFlags();
+        SubpassDependencies.dstStageMask  = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+        SubpassDependencies.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+        m_SubpassDependency.push_back(SubpassDependencies);
+    }
 
     m_CreateInfo.dependencyCount = m_SubpassDependency.size();
     m_CreateInfo.pDependencies   = m_SubpassDependency.data();
 
-    m_CreateInfo.pAttachments    = m_AttachmentDescription.data();
-    m_CreateInfo.attachmentCount = m_AttachmentDescription.size();
 
-    m_SubpassDescriptions.colorAttachmentCount = m_ColorReferences.size();
-    m_SubpassDescriptions.pColorAttachments    = m_ColorReferences.data();
 
-    m_CreateInfo.subpassCount = 1;
-    m_CreateInfo.pSubpasses   = &m_SubpassDescriptions;
+
     m_RenderPass = get_device().createRenderPass( m_CreateInfo );
 
     if( !m_RenderPass )
