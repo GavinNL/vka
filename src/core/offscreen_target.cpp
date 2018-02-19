@@ -3,6 +3,7 @@
 #include <vka/core/texture.h>
 #include <vka/core/renderpass.h>
 #include <vka/core/framebuffer.h>
+#include <vka/core/command_buffer.h>
 
 vka::offscreen_target::offscreen_target(context * parent) : context_child(parent)
 {
@@ -33,6 +34,8 @@ vka::offscreen_target::offscreen_target(context * parent) : context_child(parent
 
 vka::offscreen_target* vka::offscreen_target::set_extents( vk::Extent2D size)
 {
+    m_renderpass_info.renderArea.offset = vk::Offset2D{0,0};
+    m_renderpass_info.renderArea.extent = size;
     m_framebuffer->set_extents(size);
     return this;
 }
@@ -58,9 +61,9 @@ vka::offscreen_target* vka::offscreen_target::add_color_attachment(vk::Extent2D 
 
     m_framebuffer->add_attachments(Position_Texture);
 
+    m_clear_values.resize( m_attachments.size() );
 
-
-
+    m_clear_values.back().color = vk::ClearColorValue( std::array<float,4>( {0.0f, 0.0f, 0.0f, 0.0f} ) );
     return this;
 }
 
@@ -79,6 +82,10 @@ vka::offscreen_target* vka::offscreen_target::add_depth_attachment(vk::Extent2D 
     m_renderpass->get_depth_attachment_description().format       = Depth_Texture->get_format();
     m_framebuffer->add_attachments(Depth_Texture);
 
+    m_depth_index = m_attachments.size()-1;
+    m_clear_values.resize( m_attachments.size() );
+    m_clear_values.back().depthStencil = vk::ClearDepthStencilValue(1.0f, 0.0f);
+
     return this;
 }
 
@@ -87,3 +94,22 @@ void vka::offscreen_target::create()
     m_renderpass->create();
     m_framebuffer->create();
 }
+
+
+
+void vka::offscreen_target::beginRender(vka::command_buffer & cb)
+{
+    m_renderpass_info.renderPass        = *get_renderpass();
+    m_renderpass_info.framebuffer       = *get_framebuffer();
+    m_renderpass_info.clearValueCount   = m_clear_values.size();
+    m_renderpass_info.pClearValues      = m_clear_values.data();
+
+    cb.beginRenderPass(m_renderpass_info, vk::SubpassContents::eInline);
+}
+
+void vka::offscreen_target::endRender(vka::command_buffer & cb)
+{
+    cb.endRenderPass();
+}
+
+

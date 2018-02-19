@@ -26,6 +26,6 @@ layout(set=0, binding = 3) uniform sampler2D texSampler3;
  
 void main() 
 {    
-    out_Color = texture(texSampler1, f_UV.xy   ).rgba;
+    out_Color = texture(texSampler2, f_UV.xy   ).rgba;
    // out_Color = f_Color;
 }

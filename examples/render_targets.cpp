@@ -52,6 +52,8 @@
 #include <vka/core/managed_buffer.h>
 #include <vka/utils/buffer_pool.h>
 
+#include <vka/core/offscreen_target.h>
+
 #include <vka/utils/glfw_window_handler.h>
 
 #include "vulkan_app.h"
@@ -548,11 +550,13 @@ struct App : public VulkanApp
 
 
       m_dsets.renderTargets = m_pipelines.compose->create_new_descriptor_set(0, m_descriptor_pool);
-      m_dsets.renderTargets->attach_sampler(0, m_textures.renderTargets[0]);
-      m_dsets.renderTargets->attach_sampler(1, m_textures.renderTargets[1]);
-      m_dsets.renderTargets->attach_sampler(2, m_textures.renderTargets[2]);
-      m_dsets.renderTargets->attach_sampler(3, m_textures.renderTargets[3]);
+      m_dsets.renderTargets->attach_sampler(0, m_OffscreenTarget->get_image(0) );
+      m_dsets.renderTargets->attach_sampler(1, m_OffscreenTarget->get_image(1) );
+      m_dsets.renderTargets->attach_sampler(2, m_OffscreenTarget->get_image(2) );
+      m_dsets.renderTargets->attach_sampler(3, m_OffscreenTarget->get_image(3) );
       m_dsets.renderTargets->update();
+
+
 
       // m_dsets.dynamic_uniform_buffer = m_pipelines.main->create_new_descriptor_set(2, m_descriptor_pool);
       // m_dsets.dynamic_uniform_buffer->attach_dynamic_uniform_buffer(0, m_dbuffer, sizeof(dynamic_uniform_buffer_t), m_dbuffer->offset());
@@ -905,8 +909,8 @@ struct App : public VulkanApp
       //  BEGIN RENDER PASS=====================================================
       // We want the to use the render pass we created earlier
       vk::RenderPassBeginInfo renderPassInfo;
-      renderPassInfo.renderPass        = *m_GBuffer_renderpass;
-      renderPassInfo.framebuffer       = *m_GBuffer_framebuffer;
+      renderPassInfo.renderPass        = *m_OffscreenTarget->get_renderpass();
+      renderPassInfo.framebuffer       = *m_OffscreenTarget->get_framebuffer();
       renderPassInfo.renderArea.offset = vk::Offset2D{0,0};
       renderPassInfo.renderArea.extent = vk::Extent2D(WIDTH,HEIGHT);
 
@@ -922,17 +926,22 @@ struct App : public VulkanApp
       renderPassInfo.clearValueCount = clearValues.size();
       renderPassInfo.pClearValues    = clearValues.data();
 
-      cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+      //cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
       //========================================================================
 
+      m_OffscreenTarget->clear_value(0).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f}));
+      m_OffscreenTarget->clear_value(1).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f}));
+      m_OffscreenTarget->clear_value(2).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f }));
+
+      m_OffscreenTarget->beginRender(cb);
       // Main component renderer
       ComponentRenderer_t R;
       for(auto * comp : m_Objs)
       {
           R(cb, comp);
       }
-
-      cb.endRenderPass();
+      m_OffscreenTarget->endRender(cb);
+      //cb.endRenderPass();
   }
 
 
@@ -996,20 +1005,25 @@ m_textures.renderTargets[3] = Depth_Texture;
 
 
 
-
-
+          m_OffscreenTarget = m_Context.new_offscreen_target("offscreen_target");
+          m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR32G32B32A32Sfloat);
+          m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR32G32B32A32Sfloat);
+          m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
+          m_OffscreenTarget->add_depth_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
+          m_OffscreenTarget->set_extents( vk::Extent2D(WIDTH,HEIGHT));
+          m_OffscreenTarget->create();
 
           vka::renderpass * R2 = m_Context.new_renderpass("renderpass");
 
 
-          vk::AttachmentDescription a;
-          a.samples        = vk::SampleCountFlagBits::e1;      // VK_SAMPLE_COUNT_1_BIT;
-          a.loadOp         = vk::AttachmentLoadOp::eClear;     // VK_ATTACHMENT_LOAD_OP_CLEAR;
-          a.storeOp        = vk::AttachmentStoreOp::eStore;    // VK_ATTACHMENT_STORE_OP_STORE;
-          a.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;  // VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-          a.stencilStoreOp = vk::AttachmentStoreOp::eDontCare; // VK_ATTACHMENT_STORE_OP_DONT_CARE;
-          a.initialLayout  = vk::ImageLayout::eUndefined;      // VK_IMAGE_LAYOUT_UNDEFINED;
-          a.finalLayout    = vk::ImageLayout::eShaderReadOnlyOptimal;  // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        //  vk::AttachmentDescription a;
+        //  a.samples        = vk::SampleCountFlagBits::e1;      // VK_SAMPLE_COUNT_1_BIT;
+        //  a.loadOp         = vk::AttachmentLoadOp::eClear;     // VK_ATTACHMENT_LOAD_OP_CLEAR;
+        //  a.storeOp        = vk::AttachmentStoreOp::eStore;    // VK_ATTACHMENT_STORE_OP_STORE;
+        //  a.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;  // VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        //  a.stencilStoreOp = vk::AttachmentStoreOp::eDontCare; // VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        //  a.initialLayout  = vk::ImageLayout::eUndefined;      // VK_IMAGE_LAYOUT_UNDEFINED;
+        //  a.finalLayout    = vk::ImageLayout::eShaderReadOnlyOptimal;  // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
           R2->set_num_color_attachments(3);
 
@@ -1026,8 +1040,8 @@ m_textures.renderTargets[3] = Depth_Texture;
           R2->get_depth_attachment_description().format       = Depth_Texture->get_format();
 
           R2->get_color_attachment_description(0).finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-          R2->get_color_attachment_description(0).finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-          R2->get_color_attachment_description(0).finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+          R2->get_color_attachment_description(1).finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+          R2->get_color_attachment_description(2).finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
           R2->get_depth_attachment_description().finalLayout  = vk::ImageLayout::eDepthStencilAttachmentOptimal;;
 
           vk::SubpassDependency S0,S1;
@@ -1115,6 +1129,7 @@ m_textures.renderTargets[3] = Depth_Texture;
   vka::command_buffer m_offscreen_buffer;
   vka::command_buffer m_compose_buffer;
 
+  vka::offscreen_target * m_OffscreenTarget;
   //====================================
 
   std::vector< mesh_info_t >        m_mesh_info;
