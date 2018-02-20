@@ -14,6 +14,7 @@
 #include <vka/core/descriptor_pool.h>
 #include <vka/core/descriptor_set.h>
 #include <vka/core/offscreen_target.h>
+#include <vka/core/screen_target.h>
 #include <vulkan/vulkan.hpp>
 #include <vka/core/context_child.h>
 #include <GLFW/glfw3.h>
@@ -82,13 +83,14 @@ void vka::context::init()
 }
 
 
-void vka::context::create_window_surface( GLFWwindow * window )
+vk::SurfaceKHR vka::context::create_window_surface( GLFWwindow * window )
 {
     if (glfwCreateWindowSurface( m_instance, window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_surface) ) != VK_SUCCESS)
     {
         ERROR << "Failed to create window surface!" << ENDL;
         throw std::runtime_error("failed to create window surface!");
     }
+    return m_surface;
 
 }
 
@@ -262,6 +264,7 @@ void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device,
 }
 
 
+
 void vka::context::create_swap_chain(vk::Extent2D extents)
 {
 
@@ -285,7 +288,7 @@ void vka::context::create_swap_chain(vk::Extent2D extents)
     m_swapchain_available_formats = m_physical_device.getSurfaceFormatsKHR(     m_surface);
     m_swapchain_available_present_modes = m_physical_device.getSurfacePresentModesKHR(m_surface);
 
-    //============= Choose teh appropriate present mode =============
+    //============= Choose the appropriate present mode =============
     m_swapchain_present_mode = vk::PresentModeKHR::eFifo;
     for (const auto& availablePresentMode : m_swapchain_available_present_modes)
     {
@@ -579,13 +582,19 @@ void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
 {
     vk::SubmitInfo submitInfo;
 
-    submitInfo.waitSemaphoreCount   = 1;
-    submitInfo.pWaitSemaphores      = &wait_semaphore->m_semaphore;
+    if( wait_semaphore)
+    {
+        submitInfo.waitSemaphoreCount   = 1;
+        submitInfo.pWaitSemaphores      = &wait_semaphore->m_semaphore;
+    }
     submitInfo.pWaitDstStageMask    = &wait_stage;
 
 
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores    = &signal_semaphore->m_semaphore;
+    if( signal_semaphore)
+    {
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores    = &signal_semaphore->m_semaphore;
+    }
 
 
     submitInfo.commandBufferCount = 1;
@@ -598,6 +607,7 @@ void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
     }
 
 
+    auto s = std::chrono::system_clock::now();
     vk::Result r;
     do
     {
@@ -605,6 +615,11 @@ void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
     } while(  r == vk::Result::eTimeout);
 
     m_device.resetFences( m_render_fence );
+}
+
+vka::screen* vka::context::new_screen(const std::string & name)
+{
+    return _new<vka::screen>(name);
 }
 
 vka::offscreen_target* vka::context::new_offscreen_target(const std::string & name)
