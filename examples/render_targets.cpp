@@ -221,16 +221,6 @@ public:
         }
 
 
-        //uint32_t i = 0;
-        //for(auto & b : obj->m_mesh.m_buffers)
-        //{
-        //    cb.bindVertexSubBuffer(i++, b);
-        //}
-        //cb.bindVertexSubBuffer(1, obj->m_mesh.u_buffer, obj->m_mesh.u_offset);
-        //cb.bindVertexSubBuffer(2, obj->m_mesh.n_buffer, obj->m_mesh.n_offset);
-
-
-
         cb.pushConstants( m_pipeline->get_layout(),
                           vk::ShaderStageFlagBits::eVertex,
                           0,
@@ -239,8 +229,7 @@ public:
 
         obj->m_mesh.bind(cb);
         obj->m_mesh.draw(cb);
-        //mesh_info_t const & m = obj->m_mesh;
-        //cb.drawIndexed(m.count, 1 , m.index_offset, m.vertex_offset, 0);
+
     }
 };
 
@@ -343,7 +332,7 @@ struct App : public VulkanApp
               // stage only.
               ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
               //
-              ->set_render_pass( m_GBuffer_renderpass );
+              ->set_render_pass( m_OffscreenTarget->get_renderpass() );
 
         m_pipelines.gbuffer->get_color_blend_attachment_state(0).blendEnable=VK_FALSE;
         m_pipelines.gbuffer->get_color_blend_attachment_state(1).blendEnable=VK_FALSE;
@@ -387,7 +376,7 @@ struct App : public VulkanApp
                 // stage only.
                 ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
                 //
-                ->set_render_pass( m_default_renderpass )
+                ->set_render_pass( m_screen->get_renderpass() )
                 ->create();
 
 
@@ -418,7 +407,7 @@ struct App : public VulkanApp
                 // stage only.
                 ->add_push_constant( sizeof(glm::mat4), 0, vk::ShaderStageFlagBits::eVertex)
                 //
-                ->set_render_pass( m_default_renderpass )
+                ->set_render_pass( m_screen->get_renderpass() )
                 ->create();
         //======================================================================
 
@@ -452,7 +441,7 @@ struct App : public VulkanApp
                 // stage only.
                 ->add_push_constant( sizeof(int), 0, vk::ShaderStageFlagBits::eVertex)
                 //
-                ->set_render_pass( m_default_renderpass )
+                ->set_render_pass( m_screen->get_renderpass() )
                 ->create();
         //======================================================================
   }
@@ -727,8 +716,9 @@ struct App : public VulkanApp
 
 
 
-  void build_composition_command_buffer(vka::command_buffer & cb, uint32_t frame_buffer_index)
+  void build_composition_command_buffer(vka::command_buffer & cb )
   {
+#if 0
     uint32_t fb_index = frame_buffer_index;
 
     //  BEGIN RENDER PASS=====================================================
@@ -750,13 +740,18 @@ struct App : public VulkanApp
     renderPassInfo.pClearValues    = clearValues.data();
 
     cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+
     //========================================================================
-
-
     FullScreenQuadRenderer_t Q(cb, m_pipelines.compose);
     Q( m_dsets.renderTargets);
-
     cb.endRenderPass();
+#else
+
+      m_screen->beginRender(cb);
+         FullScreenQuadRenderer_t Q(cb, m_pipelines.compose);
+         Q( m_dsets.renderTargets);
+      m_screen->endRender(cb);
+#endif
   }
 
   virtual void onFrame(double dt, double T)
@@ -779,13 +774,16 @@ struct App : public VulkanApp
       m_offscreen_buffer.end();
 
 
+      //=================
+
       draw();
   }
 
-
+#if 0
   void draw()
   {
-    uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
+     uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
+
 
      //=============== Offscreen Rendering =====================================
      // submit the offscreen buffer, but wait for the "image_available_semaphore"
@@ -801,6 +799,7 @@ struct App : public VulkanApp
     // Get the index of the next available image in the swapchain. Once the
     // and trigger the image_avialble_semaphore
 
+
     m_compose_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
     m_compose_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
 
@@ -815,8 +814,47 @@ struct App : public VulkanApp
     //                                                  .signal( m_present_to_screen_complete_semaphore);
 
     //=============== Final Presentation =======================================
+    // Present the final image to the screen. But wait on for the semaphore to be flagged first.
     m_Context.present_image( fb_index , m_composition_complete_semaphore);
   }
+#else
+  void draw()
+  {
+     m_screen->prepare_next_frame(m_image_available_semaphore);
+
+     //=============== Offscreen Rendering =====================================
+     // submit the offscreen buffer, but wait for the "image_available_semaphore"
+     // once the submittion is complete, trigger the "offscreen_complete_semaphore"
+     m_Context.submit_command_buffer(m_offscreen_buffer, m_image_available_semaphore, m_offscreen_complete_semaphore);
+
+
+    //=============== Composition Rendering ====================================
+     // Draw the composition image. Since this is the final stage, we must wait
+    // until the swapchain image is available. Once we submit, trigger the "present_to_screen_complete"
+
+    //============== Composition Section =====================================
+    // Get the index of the next available image in the swapchain. Once the
+    // and trigger the image_avialble_semaphore
+
+
+    m_compose_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+    m_compose_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
+
+    build_composition_command_buffer(m_compose_buffer);
+
+    m_compose_buffer.end();
+
+    m_Context.submit_command_buffer(m_compose_buffer, m_offscreen_complete_semaphore, m_composition_complete_semaphore);
+
+    // Would like to do this eventually:
+    // m_Context.submit_command_buffer(m_compose_buffer).waitfor(m_image_available_semaphore)
+    //                                                  .signal( m_present_to_screen_complete_semaphore);
+
+    //=============== Final Presentation =======================================
+    // Present the final image to the screen. But wait on for the semaphore to be flagged first.
+    m_screen->present_frame( m_composition_complete_semaphore );
+  }
+#endif
 
   void init_scene()
   {
@@ -933,6 +971,7 @@ struct App : public VulkanApp
       m_OffscreenTarget->clear_value(1).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f}));
       m_OffscreenTarget->clear_value(2).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f }));
 
+
       m_OffscreenTarget->beginRender(cb);
       // Main component renderer
       ComponentRenderer_t R;
@@ -947,6 +986,14 @@ struct App : public VulkanApp
 
   void init_render_targets()
   {
+      m_OffscreenTarget = m_Context.new_offscreen_target("offscreen_target");
+      m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR32G32B32A32Sfloat);
+      m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR32G32B32A32Sfloat);
+      m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
+      m_OffscreenTarget->add_depth_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
+      m_OffscreenTarget->set_extents( vk::Extent2D(WIDTH,HEIGHT));
+      m_OffscreenTarget->create();
+
     //==================================================
     /*  Want to be able to do soemthing like this:
         A render target consists of images to render onto, a framebuffer, and
@@ -963,6 +1010,7 @@ struct App : public VulkanApp
      */
     //==================================================
 
+/*
           auto * Position_Texture = m_Context.new_texture("position_texture");
           Position_Texture->set_format( vk::Format::eR32G32B32A32Sfloat )
                           ->set_size( WIDTH,HEIGHT, 1 )
@@ -1004,26 +1052,8 @@ m_textures.renderTargets[2] = Albedo_Texture;
 m_textures.renderTargets[3] = Depth_Texture;
 
 
-
-          m_OffscreenTarget = m_Context.new_offscreen_target("offscreen_target");
-          m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR32G32B32A32Sfloat);
-          m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR32G32B32A32Sfloat);
-          m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
-          m_OffscreenTarget->add_depth_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
-          m_OffscreenTarget->set_extents( vk::Extent2D(WIDTH,HEIGHT));
-          m_OffscreenTarget->create();
-
           vka::renderpass * R2 = m_Context.new_renderpass("renderpass");
 
-
-        //  vk::AttachmentDescription a;
-        //  a.samples        = vk::SampleCountFlagBits::e1;      // VK_SAMPLE_COUNT_1_BIT;
-        //  a.loadOp         = vk::AttachmentLoadOp::eClear;     // VK_ATTACHMENT_LOAD_OP_CLEAR;
-        //  a.storeOp        = vk::AttachmentStoreOp::eStore;    // VK_ATTACHMENT_STORE_OP_STORE;
-        //  a.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;  // VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        //  a.stencilStoreOp = vk::AttachmentStoreOp::eDontCare; // VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        //  a.initialLayout  = vk::ImageLayout::eUndefined;      // VK_IMAGE_LAYOUT_UNDEFINED;
-        //  a.finalLayout    = vk::ImageLayout::eShaderReadOnlyOptimal;  // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
           R2->set_num_color_attachments(3);
 
@@ -1076,10 +1106,10 @@ m_textures.renderTargets[3] = Depth_Texture;
           m_GBuffer_framebuffer->set_extents( vk::Extent2D{WIDTH,HEIGHT} );
           m_GBuffer_framebuffer->set_renderpass(m_GBuffer_renderpass);
           m_GBuffer_framebuffer->create();
-
+*/
   }
-  vka::framebuffer * m_GBuffer_framebuffer;
-  vka::renderpass  * m_GBuffer_renderpass;
+  // vka::framebuffer * m_GBuffer_framebuffer;
+  // vka::renderpass  * m_GBuffer_renderpass;
   //=====================================
 
   vka::descriptor_pool *m_descriptor_pool;
@@ -1129,6 +1159,7 @@ m_textures.renderTargets[3] = Depth_Texture;
   vka::command_buffer m_offscreen_buffer;
   vka::command_buffer m_compose_buffer;
 
+
   vka::offscreen_target * m_OffscreenTarget;
   //====================================
 
@@ -1145,7 +1176,7 @@ int main(int argc, char ** argv)
      App A;
 
      A.init( WIDTH, HEIGHT, APP_TITLE);
-     A.init_default_renderpass(WIDTH,HEIGHT);
+     //A.init_default_renderpass(WIDTH,HEIGHT);
 
      A.start_mainloop();
 

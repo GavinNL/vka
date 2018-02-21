@@ -687,8 +687,11 @@ void vka::context::present_image(uint32_t image_index,  vka::semaphore * wait_se
     //std::cout << "Next Image index: " << image_index << std::endl;
     //=== finally present the image ====
     vk::PresentInfoKHR presentInfo;
-    presentInfo.waitSemaphoreCount  = 1;
-    presentInfo.pWaitSemaphores     = &wait_semaphore->get();
+    if( wait_semaphore)
+    {
+        presentInfo.waitSemaphoreCount  = 1;
+        presentInfo.pWaitSemaphores     = &wait_semaphore->get();
+    }
 
     vk::SwapchainKHR swapChains[] = { m_swapchain };
     presentInfo.swapchainCount    = 1;
@@ -699,7 +702,10 @@ void vka::context::present_image(uint32_t image_index,  vka::semaphore * wait_se
     m_present_queue.presentKHR( presentInfo );
 }
 
-
+void vka::context::present_image(const vk::PresentInfoKHR & info)
+{
+    m_present_queue.presentKHR( info );
+}
 
 std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Image> const & images, vk::Format image_format)
 {

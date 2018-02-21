@@ -159,7 +159,8 @@ private:
 public:
     vk::Device get_device() { return m_device; }
     vk::PhysicalDevice get_physical_device() { return m_physical_device; }
-
+    vk::SurfaceKHR  get_surface() { return m_surface; }
+    queue_family_index_t get_queue_family() { return m_queue_family; }
 
     context() // default constructor
     {
@@ -222,7 +223,7 @@ public:
      *
      * Creates a window surface
      */
-    void create_window_surface( GLFWwindow * window );
+    vk::SurfaceKHR create_window_surface( GLFWwindow * window );
 
     void create_device();
 
@@ -263,6 +264,7 @@ public:
 
 
     void present_image(uint32_t image_index, semaphore *wait_semaphore);
+    void present_image(const vk::PresentInfoKHR & info);
     /**
      * @brief new_buffer
      * @param name
@@ -436,6 +438,7 @@ public:
     //============================================================
 
     vka::offscreen_target *new_offscreen_target(const std::string &name);
+    vka::screen           *new_screen(const std::string &name);
 
     vka::command_pool *get_command_pool();
 

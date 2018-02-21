@@ -15,7 +15,7 @@
 #include <vka/utils/buffer_pool.h>
 
 #include <vka/utils/glfw_window_handler.h>
-
+#include <vka/core/screen_target.h>
 
 
 struct VulkanApp :   public vka::GLFW_Window_Handler
@@ -40,9 +40,21 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
       attach_window(m_win);
 
       m_Context.init();
-      m_Context.create_window_surface(m_win); // create the vulkan surface using the window provided
+
+      // need a surface --> device --> swapchaim (screen)
+      auto surface = m_Context.create_window_surface(m_win); // create the vulkan surface using the window provided
       m_Context.create_device(); // find the appropriate device
+
+
+#if 0
       m_Context.create_swap_chain( {w,h}); // create the swap chain
+#else
+      m_screen = m_Context.new_screen("m_win");
+      m_screen->set_extent( vk::Extent2D(w,h) );
+      m_screen->set_surface( surface );
+      m_screen->create();
+#endif
+
   }
 
 
@@ -91,6 +103,7 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
 
       m_default_renderpass->create();
 #else
+      // old way
       m_default_renderpass->attach_color(vk::Format::eB8G8R8A8Unorm);
       m_default_renderpass->attach_depth( m_depth->get_format() );  // [NEW] we will now be using a depth attachment
       m_default_renderpass->create(m_Context);
@@ -151,8 +164,9 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
   }
   //=====================================
 
-  GLFWwindow                  * m_win;
-  vka::context                  m_Context;
+  GLFWwindow            * m_win;
+  vka::context            m_Context;
+  vka::screen           * m_screen;
 
   vka::texture * m_depth ;
   vka::renderpass               *m_default_renderpass;

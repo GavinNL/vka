@@ -7,29 +7,7 @@
 
 vka::offscreen_target::offscreen_target(context * parent) : context_child(parent)
 {
-    std::string name = get_parent_context()->get_name<vka::offscreen_target>(this);;
-    m_renderpass  = get_parent_context()->new_renderpass( name + "_renderpass");
-    m_framebuffer = get_parent_context()->new_framebuffer(name + "_framebuffer");
-    m_framebuffer->set_renderpass(m_renderpass);
-    vk::SubpassDependency S0,S1;
-    S0.srcSubpass    = VK_SUBPASS_EXTERNAL;
-    S0.dstSubpass    = 0;
-    S0.srcStageMask  = vk::PipelineStageFlagBits::eBottomOfPipe;
-    S0.dstStageMask  = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    S0.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
-    S0.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-    S0.dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
-    S1.srcSubpass    = 0;
-    S1.dstSubpass    = VK_SUBPASS_EXTERNAL;
-    S1.srcStageMask  = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    S1.dstStageMask  = vk::PipelineStageFlagBits::eBottomOfPipe;
-    S1.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
-    S1.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-    S1.dependencyFlags = vk::DependencyFlagBits::eByRegion;
-
-    m_renderpass->add_subpass_dependency(S0);
-    m_renderpass->add_subpass_dependency(S1);
 }
 
 vka::offscreen_target* vka::offscreen_target::set_extents( vk::Extent2D size)
@@ -42,6 +20,35 @@ vka::offscreen_target* vka::offscreen_target::set_extents( vk::Extent2D size)
 
 vka::offscreen_target* vka::offscreen_target::add_color_attachment(vk::Extent2D size, vk::Format format)
 {
+    //===================
+    if(!m_renderpass)
+    {
+        std::string name = get_parent_context()->get_name<vka::offscreen_target>(this);;
+        m_renderpass  = get_parent_context()->new_renderpass( name + "_renderpass");
+        m_framebuffer = get_parent_context()->new_framebuffer(name + "_framebuffer");
+        m_framebuffer->set_renderpass(m_renderpass);
+        vk::SubpassDependency S0,S1;
+        S0.srcSubpass    = VK_SUBPASS_EXTERNAL;
+        S0.dstSubpass    = 0;
+        S0.srcStageMask  = vk::PipelineStageFlagBits::eBottomOfPipe;
+        S0.dstStageMask  = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+        S0.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
+        S0.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+        S0.dependencyFlags = vk::DependencyFlagBits::eByRegion;
+
+        S1.srcSubpass    = 0;
+        S1.dstSubpass    = VK_SUBPASS_EXTERNAL;
+        S1.srcStageMask  = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+        S1.dstStageMask  = vk::PipelineStageFlagBits::eBottomOfPipe;
+        S1.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
+        S1.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+        S1.dependencyFlags = vk::DependencyFlagBits::eByRegion;
+
+        m_renderpass->add_subpass_dependency(S0);
+        m_renderpass->add_subpass_dependency(S1);
+    }
+    //==================
+
     std::string name = get_parent_context()->get_name<vka::offscreen_target>(this) + "_texture_" + std::to_string( m_attachments.size() );
     auto * Position_Texture = get_parent_context()->new_texture(name);
     Position_Texture->set_format( format )
@@ -64,6 +71,10 @@ vka::offscreen_target* vka::offscreen_target::add_color_attachment(vk::Extent2D 
     m_clear_values.resize( m_attachments.size() );
 
     m_clear_values.back().color = vk::ClearColorValue( std::array<float,4>( {0.0f, 0.0f, 0.0f, 0.0f} ) );
+
+
+
+
     return this;
 }
 
