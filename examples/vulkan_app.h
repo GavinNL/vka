@@ -57,7 +57,7 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
 
   }
 
-
+#if 0
 
   void init_default_renderpass(uint32_t w, uint32_t h)
   {
@@ -121,7 +121,7 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
       }
   }
 
-
+#endif
 
   virtual void onInit() = 0;
   virtual void onFrame(double dt, double T) = 0;

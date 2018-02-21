@@ -124,19 +124,19 @@ private:
 
 
     //=========== Swap Chain stuff=============
-    vk::SwapchainKHR                  m_swapchain;
-    std::vector<vk::SurfaceFormatKHR> m_swapchain_available_formats;
-    std::vector<vk::PresentModeKHR>   m_swapchain_available_present_modes;
-
-    vk::SurfaceCapabilitiesKHR        m_swapchain_capabilities;
-    vk::SurfaceFormatKHR              m_swapchain_format;
-    vk::PresentModeKHR                m_swapchain_present_mode;
-
-    vk::Extent2D                      m_extent;
-    vk::Format                        m_image_format;
-    std::vector<vk::Image>            m_images;
-    std::vector<vk::ImageView>        m_image_views;
-    std::vector<vk::Framebuffer>      m_framebuffers;
+    // vk::SwapchainKHR                  m_swapchain;
+    // std::vector<vk::SurfaceFormatKHR> m_swapchain_available_formats;
+    // std::vector<vk::PresentModeKHR>   m_swapchain_available_present_modes;
+    //
+    // vk::SurfaceCapabilitiesKHR        m_swapchain_capabilities;
+    // vk::SurfaceFormatKHR              m_swapchain_format;
+    // vk::PresentModeKHR                m_swapchain_present_mode;
+    //
+     vk::Extent2D                      m_extent;
+    // vk::Format                        m_image_format;
+    // std::vector<vk::Image>            m_images;
+    // std::vector<vk::ImageView>        m_image_views;
+    // std::vector<vk::Framebuffer>      m_framebuffers;
     //==========================================
 
 
@@ -237,9 +237,9 @@ public:
     //============================================================
     // Get Methods
     //============================================================
-    std::vector<vk::ImageView> & get_swapchain_imageviews() {
-        return m_image_views;
-    }
+    //std::vector<vk::ImageView> & get_swapchain_imageviews() {
+    //    return m_image_views;
+    //}
     //============================================================
     // Object creation
     //   All objects created with teh following funtions are stored

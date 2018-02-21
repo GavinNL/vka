@@ -203,7 +203,7 @@ public:
 
     pipeline* set_render_pass( vka::renderpass * p);
 
-    pipeline* set_vertex_attribute(uint32_t location, uint32_t offset, vk::Format format , uint32_t size);
+
     pipeline* set_vertex_attribute(uint32_t binding, uint32_t location, uint32_t offset, vk::Format format , uint32_t size);
 
 

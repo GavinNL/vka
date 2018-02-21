@@ -629,6 +629,7 @@ struct App : public VulkanApp
     src_offset += size;
   }
 
+#if 0
   uint32_t UpdateCommandBuffer(vka::command_buffer & cb)
   {
     uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
@@ -713,7 +714,7 @@ struct App : public VulkanApp
     m_Context.present_image( fb_index , m_composition_complete_semaphore);
   //  std::cout <<  s2-s1 << "   " <<  s3-s2 << "   "<<  s4-s3 << "   "<< std::endl;
   }
-
+#endif
 
 
   void build_composition_command_buffer(vka::command_buffer & cb )

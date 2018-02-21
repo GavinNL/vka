@@ -85,11 +85,16 @@ void vka::context::init()
 
 vk::SurfaceKHR vka::context::create_window_surface( GLFWwindow * window )
 {
+
     if (glfwCreateWindowSurface( m_instance, window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_surface) ) != VK_SUCCESS)
     {
         ERROR << "Failed to create window surface!" << ENDL;
         throw std::runtime_error("failed to create window surface!");
     }
+    int w, h;
+    glfwGetWindowSize(window, &w, &h);
+    m_extent.width = w;
+    m_extent.height = h;
     return m_surface;
 
 }
@@ -264,7 +269,7 @@ void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device,
 }
 
 
-
+#if 0
 void vka::context::create_swap_chain(vk::Extent2D extents)
 {
 
@@ -384,6 +389,7 @@ void vka::context::create_swap_chain(vk::Extent2D extents)
     LOG << "Image Views created" << ENDL;
 }
 
+#endif
 
 vka::buffer_pool* vka::context::new_buffer_pool(const std::string & name)
 {
@@ -671,36 +677,36 @@ vka::command_pool* vka::context::new_command_pool(const std::string & name)
     return nullptr;
 }
 
-uint32_t vka::context::get_next_image_index(vka::semaphore *signal_semaphore)
-{
-    return  m_device.acquireNextImageKHR( m_swapchain,
-                                          std::numeric_limits<uint64_t>::max(),
-                                          *signal_semaphore,
-                                          vk::Fence()).value;
-}
+//uint32_t vka::context::get_next_image_index(vka::semaphore *signal_semaphore)
+//{
+//    return  m_device.acquireNextImageKHR( m_swapchain,
+//                                          std::numeric_limits<uint64_t>::max(),
+//                                          *signal_semaphore,
+//                                          vk::Fence()).value;
+//}
 
-void vka::context::present_image(uint32_t image_index,  vka::semaphore * wait_semaphore)
-{
-    ///vk::Semaphore signalSemaphores[] = { m_render_finished_smaphore};
-
-    // uint32_t nextIndex = GetNextImageIndex();
-    //std::cout << "Next Image index: " << image_index << std::endl;
-    //=== finally present the image ====
-    vk::PresentInfoKHR presentInfo;
-    if( wait_semaphore)
-    {
-        presentInfo.waitSemaphoreCount  = 1;
-        presentInfo.pWaitSemaphores     = &wait_semaphore->get();
-    }
-
-    vk::SwapchainKHR swapChains[] = { m_swapchain };
-    presentInfo.swapchainCount    = 1;
-    presentInfo.pSwapchains       = swapChains;
-    presentInfo.pImageIndices     = &image_index;
-    presentInfo.pResults = nullptr;
-
-    m_present_queue.presentKHR( presentInfo );
-}
+// void vka::context::present_image(uint32_t image_index,  vka::semaphore * wait_semaphore)
+// {
+//     ///vk::Semaphore signalSemaphores[] = { m_render_finished_smaphore};
+//
+//     // uint32_t nextIndex = GetNextImageIndex();
+//     //std::cout << "Next Image index: " << image_index << std::endl;
+//     //=== finally present the image ====
+//     vk::PresentInfoKHR presentInfo;
+//     if( wait_semaphore)
+//     {
+//         presentInfo.waitSemaphoreCount  = 1;
+//         presentInfo.pWaitSemaphores     = &wait_semaphore->get();
+//     }
+//
+//     vk::SwapchainKHR swapChains[] = { m_swapchain };
+//     presentInfo.swapchainCount    = 1;
+//     presentInfo.pSwapchains       = swapChains;
+//     presentInfo.pImageIndices     = &image_index;
+//     presentInfo.pResults = nullptr;
+//
+//     m_present_queue.presentKHR( presentInfo );
+// }
 
 void vka::context::present_image(const vk::PresentInfoKHR & info)
 {
@@ -754,16 +760,16 @@ void vka::context::clean()
 X_LIST
 #undef X_MACRO
 
-    for(auto & image_view : m_image_views)
-    {
-        m_device.destroyImageView(image_view);
-    }
-    m_image_views.clear();
+    // for(auto & image_view : m_image_views)
+    // {
+    //     m_device.destroyImageView(image_view);
+    // }
+    // m_image_views.clear();
 
 
-    if( m_swapchain)
-        m_device.destroySwapchainKHR(m_swapchain);
-    m_images.clear();
+    // if( m_swapchain)
+    //     m_device.destroySwapchainKHR(m_swapchain);
+    // m_images.clear();
 
     //if( m_image_available_smaphore)
     //    m_device.destroySemaphore( m_image_available_smaphore );
