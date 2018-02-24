@@ -154,16 +154,23 @@ public:
 
     void operator()( vka::descriptor_set * dset)
     {
+        static uint32_t i=1;
+        uint32_t index = (i/500)%3;
         m_commandbuffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
                              m_pipeline,
                              0, // binding index
                              dset);
+        m_commandbuffer.pushConstants( m_pipeline->get_layout(),
+                                       vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+                                       0,
+                                       sizeof(uint32_t),
+                                       &index);
+
+        i++;
+
+
         m_commandbuffer.draw(6,1,0,0);
-        //m_commandbuffer.pushConstants( m_pipeline->get_layout(),
-        //                               vk::ShaderStageFlagBits::eVertex,
-        //                               0,
-        //                               sizeof(glm::mat4),
-        //                               &mvp);
+
     }
 };
 
@@ -439,7 +446,7 @@ struct App : public VulkanApp
                 ->set_cull_mode(vk::CullModeFlagBits::eNone)
                 // Add a push constant to the layout. It is accessable in the vertex shader
                 // stage only.
-                ->add_push_constant( sizeof(int), 0, vk::ShaderStageFlagBits::eVertex)
+                ->add_push_constant( sizeof(int), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
                 //
                 ->set_render_pass( m_screen->get_renderpass() )
                 ->create();
@@ -629,130 +636,14 @@ struct App : public VulkanApp
     src_offset += size;
   }
 
-#if 0
-  uint32_t UpdateCommandBuffer(vka::command_buffer & cb)
-  {
-    uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
-
-    //  BEGIN RENDER PASS=====================================================
-    // We want the to use the render pass we created earlier
-    vk::RenderPassBeginInfo renderPassInfo;
-    renderPassInfo.renderPass        = *m_default_renderpass;
-    renderPassInfo.framebuffer       = *m_framebuffers[fb_index];
-    renderPassInfo.renderArea.offset = vk::Offset2D{0,0};
-    renderPassInfo.renderArea.extent = vk::Extent2D(WIDTH,HEIGHT);
-
-    // Clear values are used to clear the various frame buffers
-    // we want to clear the colour values to black
-    // at the start of rendering.
-    std::vector<vk::ClearValue> clearValues;
-    clearValues.push_back( vk::ClearValue( vk::ClearColorValue( std::array<float,4>{0.0f, 0.f, 0.f, 1.f} ) ) );
-    clearValues.push_back(vk::ClearValue( vk::ClearDepthStencilValue(1.0f,0) ) );
-
-    renderPassInfo.clearValueCount = clearValues.size();
-    renderPassInfo.pClearValues    = clearValues.data();
-
-    cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-    //========================================================================
-
-
-
-    // Main component renderer
-    ComponentRenderer_t R;
-    for(auto * comp : m_Objs)
-    {
-        R(cb, comp);
-    }
-
-    // Axis renderer
-    AxisRenderer_t A(cb, m_pipelines.axis);
-    for(auto * comp : m_Objs)
-    {
-        A( m_frame_uniform.proj * m_frame_uniform.view  * comp->m_push.model );
-    }
-
-  //  FullScreenQuadRenderer_t Q(cb, m_pipelines.compose);
-  //  Q( m_dsets.renderTargets);
-
-    cb.endRenderPass();
-    //==============
-    return fb_index;
-
-  }
-
-
-  virtual void onFrame2( double dt, double T )
-  {
-
-
-    m_Camera.calculate();
-    //  uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
-
-    m_frame_uniform.view = m_Camera.get_view_matrix();
-    m_frame_uniform.proj = m_Camera.get_proj_matrix();
-    m_frame_uniform.proj[1][1] *= -1;
-
-
-    m_compose_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
-    m_compose_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
-
-        // update uniforms
-
-    auto s1 = microseconds();
-
-    UpdateUniforms(m_compose_buffer);
-    auto s2 = microseconds();
-
-        // Render
-    auto fb_index = UpdateCommandBuffer(m_compose_buffer);
-    auto s3 = microseconds();
-    m_compose_buffer.end();
-
-    m_Context.submit_command_buffer(m_compose_buffer, m_image_available_semaphore, m_composition_complete_semaphore);
-    auto s4 = microseconds();
-
-    m_Context.present_image( fb_index , m_composition_complete_semaphore);
-  //  std::cout <<  s2-s1 << "   " <<  s3-s2 << "   "<<  s4-s3 << "   "<< std::endl;
-  }
-#endif
-
 
   void build_composition_command_buffer(vka::command_buffer & cb )
   {
-#if 0
-    uint32_t fb_index = frame_buffer_index;
-
-    //  BEGIN RENDER PASS=====================================================
-    // We want the to use the render pass we created earlier
-    vk::RenderPassBeginInfo renderPassInfo;
-    renderPassInfo.renderPass        = *m_default_renderpass;
-    renderPassInfo.framebuffer       = *m_framebuffers[fb_index];
-    renderPassInfo.renderArea.offset = vk::Offset2D{0,0};
-    renderPassInfo.renderArea.extent = vk::Extent2D(WIDTH,HEIGHT);
-
-    // Clear values are used to clear the various frame buffers
-    // we want to clear the colour values to black
-    // at the start of rendering.
-    std::vector<vk::ClearValue> clearValues;
-    clearValues.push_back( vk::ClearValue( vk::ClearColorValue( std::array<float,4>{0.0f, 0.f, 0.f, 1.f} ) ) );
-    clearValues.push_back(vk::ClearValue( vk::ClearDepthStencilValue(1.0f,0) ) );
-
-    renderPassInfo.clearValueCount = clearValues.size();
-    renderPassInfo.pClearValues    = clearValues.data();
-
-    cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-
-    //========================================================================
-    FullScreenQuadRenderer_t Q(cb, m_pipelines.compose);
-    Q( m_dsets.renderTargets);
-    cb.endRenderPass();
-#else
 
       m_screen->beginRender(cb);
          FullScreenQuadRenderer_t Q(cb, m_pipelines.compose);
          Q( m_dsets.renderTargets);
       m_screen->endRender(cb);
-#endif
   }
 
   virtual void onFrame(double dt, double T)
@@ -780,45 +671,7 @@ struct App : public VulkanApp
       draw();
   }
 
-#if 0
-  void draw()
-  {
-     uint32_t fb_index = m_Context.get_next_image_index(m_image_available_semaphore);
 
-
-     //=============== Offscreen Rendering =====================================
-     // submit the offscreen buffer, but wait for the "image_available_semaphore"
-     // once the submittion is complete, trigger the "offscreen_complete_semaphore"
-     m_Context.submit_command_buffer(m_offscreen_buffer, m_image_available_semaphore, m_offscreen_complete_semaphore);
-
-
-    //=============== Composition Rendering ====================================
-     // Draw the composition image. Since this is the final stage, we must wait
-    // until the swapchain image is available. Once we submit, trigger the "present_to_screen_complete"
-
-    //============== Composition Section =====================================
-    // Get the index of the next available image in the swapchain. Once the
-    // and trigger the image_avialble_semaphore
-
-
-    m_compose_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
-    m_compose_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
-
-    build_composition_command_buffer(m_compose_buffer, fb_index);
-
-    m_compose_buffer.end();
-
-    m_Context.submit_command_buffer(m_compose_buffer, m_offscreen_complete_semaphore, m_composition_complete_semaphore);
-
-    // Would like to do this eventually:
-    // m_Context.submit_command_buffer(m_compose_buffer).waitfor(m_image_available_semaphore)
-    //                                                  .signal( m_present_to_screen_complete_semaphore);
-
-    //=============== Final Presentation =======================================
-    // Present the final image to the screen. But wait on for the semaphore to be flagged first.
-    m_Context.present_image( fb_index , m_composition_complete_semaphore);
-  }
-#else
   void draw()
   {
      m_screen->prepare_next_frame(m_image_available_semaphore);
@@ -855,7 +708,7 @@ struct App : public VulkanApp
     // Present the final image to the screen. But wait on for the semaphore to be flagged first.
     m_screen->present_frame( m_composition_complete_semaphore );
   }
-#endif
+
 
   void init_scene()
   {
@@ -994,123 +847,8 @@ struct App : public VulkanApp
       m_OffscreenTarget->add_depth_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
       m_OffscreenTarget->set_extents( vk::Extent2D(WIDTH,HEIGHT));
       m_OffscreenTarget->create();
-
-    //==================================================
-    /*  Want to be able to do soemthing like this:
-        A render target consists of images to render onto, a framebuffer, and
-        a renderpass.
-
-      RenderTarget T;
-      T.set_size( 1024, 768 );
-      T.add_color_attachment( 1024, 768, vk::Format::eR32G32B32A32Sfloat );
-      T.add_color_attachment( 1024, 768, vk::Format::eR32G32B32A32Sfloat );
-      T.add_color_attachment( 1024, 768, vk::Format::eR8G8B8A8Unorm );
-      T.add_depth_attachment( 1024, 768, vk::Format::eR8G8B8A8Unorm );
-      T.create();
-
-     */
-    //==================================================
-
-/*
-          auto * Position_Texture = m_Context.new_texture("position_texture");
-          Position_Texture->set_format( vk::Format::eR32G32B32A32Sfloat )
-                          ->set_size( WIDTH,HEIGHT, 1 )
-                          ->set_usage( vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled| vk::ImageUsageFlagBits::eColorAttachment )
-                          ->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal)
-                          ->set_tiling( vk::ImageTiling::eOptimal)
-                          ->set_view_type( vk::ImageViewType::e2D )
-                          ->create();
-          Position_Texture->create_image_view(vk::ImageAspectFlagBits::eColor);
-          m_textures.renderTargets[0] = Position_Texture;
-
-          auto * Normal_Texture = m_Context.new_texture("normal_texture");
-          Normal_Texture->set_format( vk::Format::eR32G32B32A32Sfloat )
-                  ->set_size( WIDTH,HEIGHT,1)
-                  ->set_usage(  vk::ImageUsageFlagBits::eTransferDst |vk::ImageUsageFlagBits::eSampled| vk::ImageUsageFlagBits::eColorAttachment )
-                  ->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal)
-                  ->set_tiling( vk::ImageTiling::eOptimal)
-                  ->set_view_type( vk::ImageViewType::e2D )
-                  ->create();
-          Normal_Texture->create_image_view(vk::ImageAspectFlagBits::eColor);
-          m_textures.renderTargets[1] = Normal_Texture;
-
-          auto * Albedo_Texture = m_Context.new_texture("albedo_texture");
-          Albedo_Texture->set_format( vk::Format::eR8G8B8A8Unorm )
-                  ->set_size( WIDTH,HEIGHT,1)
-                  ->set_usage(  vk::ImageUsageFlagBits::eTransferDst |vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment )
-                  ->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal)
-                  ->set_tiling( vk::ImageTiling::eOptimal)
-                  ->set_view_type( vk::ImageViewType::e2D )
-                  ->create();
-          Albedo_Texture->create_image_view(vk::ImageAspectFlagBits::eColor);
-m_textures.renderTargets[2] = Albedo_Texture;
-
-          auto * Depth_Texture = m_Context.new_depth_texture("depth_texture_2");
-          Depth_Texture->set_size( WIDTH, HEIGHT, 1)
-                       ->set_usage(  vk::ImageUsageFlagBits::eTransferDst |vk::ImageUsageFlagBits::eSampled| vk::ImageUsageFlagBits::eDepthStencilAttachment )
-                       ->create();
-          Depth_Texture->create_image_view( vk::ImageAspectFlagBits::eDepth);
-m_textures.renderTargets[3] = Depth_Texture;
-
-
-          vka::renderpass * R2 = m_Context.new_renderpass("renderpass");
-
-
-          R2->set_num_color_attachments(3);
-
-          // set the layout of the colour and depth attachments
-          R2->set_color_attachment_layout(0, vk::ImageLayout::eColorAttachmentOptimal);
-          R2->set_color_attachment_layout(1, vk::ImageLayout::eColorAttachmentOptimal);
-          R2->set_color_attachment_layout(2, vk::ImageLayout::eColorAttachmentOptimal);
-          R2->set_depth_attachment_layout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
-
-          // Set the format and final layout
-          R2->get_color_attachment_description(0).format      = Position_Texture->get_format();
-          R2->get_color_attachment_description(1).format      = Normal_Texture->get_format();
-          R2->get_color_attachment_description(2).format      = Albedo_Texture->get_format();
-          R2->get_depth_attachment_description().format       = Depth_Texture->get_format();
-
-          R2->get_color_attachment_description(0).finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-          R2->get_color_attachment_description(1).finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-          R2->get_color_attachment_description(2).finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-          R2->get_depth_attachment_description().finalLayout  = vk::ImageLayout::eDepthStencilAttachmentOptimal;;
-
-          vk::SubpassDependency S0,S1;
-          S0.srcSubpass    = VK_SUBPASS_EXTERNAL;
-          S0.dstSubpass    = 0;
-          S0.srcStageMask  = vk::PipelineStageFlagBits::eBottomOfPipe;
-          S0.dstStageMask  = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-          S0.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
-          S0.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-          S0.dependencyFlags = vk::DependencyFlagBits::eByRegion;
-
-          S1.srcSubpass    = 0;
-          S1.dstSubpass    = VK_SUBPASS_EXTERNAL;
-          S1.srcStageMask  = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-          S1.dstStageMask  = vk::PipelineStageFlagBits::eBottomOfPipe;
-          S1.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
-          S1.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-          S1.dependencyFlags = vk::DependencyFlagBits::eByRegion;
-
-          R2->add_subpass_dependency(S0);
-          R2->add_subpass_dependency(S1);
-
-          R2->create();
-
-          m_GBuffer_renderpass = R2;
-
-          m_GBuffer_framebuffer = m_Context.new_framebuffer( "render_target");
-          m_GBuffer_framebuffer->add_attachments(Position_Texture);
-          m_GBuffer_framebuffer->add_attachments(Normal_Texture);
-          m_GBuffer_framebuffer->add_attachments(Albedo_Texture);
-          m_GBuffer_framebuffer->add_attachments(Depth_Texture);
-          m_GBuffer_framebuffer->set_extents( vk::Extent2D{WIDTH,HEIGHT} );
-          m_GBuffer_framebuffer->set_renderpass(m_GBuffer_renderpass);
-          m_GBuffer_framebuffer->create();
-*/
   }
-  // vka::framebuffer * m_GBuffer_framebuffer;
-  // vka::renderpass  * m_GBuffer_renderpass;
+
   //=====================================
 
   vka::descriptor_pool *m_descriptor_pool;

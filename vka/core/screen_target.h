@@ -1,7 +1,7 @@
 #ifndef VKA_SCREEN_TARGET_H
 #define VKA_SCREEN_TARGET_H
 
-#include "render_target.h"
+#include "context_child.h"
 #include "context.h"
 
 namespace vka

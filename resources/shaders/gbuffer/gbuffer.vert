@@ -29,8 +29,8 @@ out gl_PerVertex {
 
 void main()
 {
-    gl_Position = cameraData.proj * cameraData.view * pushConsts.model * vec4(inPosition, 1.0);
-    f_WorldPos  = gl_Position.xyz;
+    f_WorldPos  = (pushConsts.model * vec4(inPosition, 1.0)).xyz;
+    gl_Position = cameraData.proj * cameraData.view * vec4(f_WorldPos,1.0);
     f_Normal    = (pushConsts.model * vec4(inNormal, 1.0)).xyz;
     f_UV        = vec3(inTexCoord.xy, pushConsts.index );
 
