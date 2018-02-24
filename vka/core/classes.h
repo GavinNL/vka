@@ -31,6 +31,8 @@ namespace vka
 X_LIST
 
 #undef X_MACRO
+
+class context;
 }
 #endif
 
