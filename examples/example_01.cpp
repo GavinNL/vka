@@ -77,35 +77,20 @@ int main(int argc, char ** argv)
     vka::context C;
 
     C.init();
-    C.create_window_surface(window); // create the vulkan surface using the window provided
+    auto surface = C.create_window_surface(window); // create the vulkan surface using the window provided
     C.create_device(); // find the appropriate device
-    C.create_swap_chain( {WIDTH,HEIGHT}); // create the swap chain
-
-    //==========================================================================
 
 
+    // The Screen is essentially a wrapper around the Swapchain, a default Renderpass
+    // and framebuffers.
+    // in VKA we present images to the screen object.
+    // This a simple initialization of creating a screen with depth testing
+    auto * screen = C.new_screen("screen");
+    screen = C.new_screen("m_win");
+    screen->set_extent( vk::Extent2D(WIDTH,HEIGHT) );
+    screen->set_surface( surface );
+    screen->create();
 
-    //==========================================================================
-    // Create the Render pass and the frame buffers.
-    //
-    // The Context holds the images that will be used for the swap chain. We need
-    // to create the framebuffers with those images.
-    //
-    // All objects created by the context requires a unique name
-    //==========================================================================
-    vka::renderpass * R = C.new_renderpass("main_renderpass");
-    R->attach_color(vk::Format::eB8G8R8A8Unorm);
-    R->create(C);
-
-    std::vector<vka::framebuffer*> framebuffers;
-
-    std::vector<vk::ImageView> & iv = C.get_swapchain_imageviews();
-    int i=0;
-    for(auto & view : iv)
-    {
-        framebuffers.push_back(  C.new_framebuffer( std::string("fb_") + std::to_string(i++) ) );
-        framebuffers.back()->create( *R, vk::Extent2D{WIDTH,HEIGHT}, view, vk::ImageView());
-    }
     //==========================================================================
 
 
@@ -299,10 +284,10 @@ int main(int argc, char ** argv)
 
                   // tell the pipeline that attribute 0 contains 3 floats
                   // and the data starts at offset 0
-                  ->set_vertex_attribute(0 ,  0,  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
+                  ->set_vertex_attribute(0,0 ,  0,  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
                   // tell the pipeline that attribute 1 contains 3 floats
                   // and the data starts at offset 12
-                  ->set_vertex_attribute(1 , 12,  vk::Format::eR32G32Sfloat,  sizeof(Vertex) )
+                  ->set_vertex_attribute(0,1 , 12,  vk::Format::eR32G32Sfloat,  sizeof(Vertex) )
 
                   // Triangle vertices are drawn in a counter clockwise manner
                   // using the right hand rule which indicates which face is the
@@ -320,7 +305,7 @@ int main(int argc, char ** argv)
                   // in Set #0 binding #0
                   ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
                   //
-                  ->set_render_pass( R )
+                  ->set_render_pass( screen->get_renderpass() )
                   ->create();
 
 
@@ -352,7 +337,7 @@ int main(int argc, char ** argv)
 
     vka::array_view<uniform_buffer_t> staging_buffer_map = staging_buffer->map<uniform_buffer_t>();
 
-    vk::CommandBuffer cb = cp->AllocateCommandBuffer();
+    vka::command_buffer cb = cp->AllocateCommandBuffer();
 
 
     vka::semaphore * image_available_semaphore = C.new_semaphore("image_available_semaphore");
@@ -385,7 +370,7 @@ int main(int argc, char ** argv)
       //============================================================
 
       // Get the next available image in the swapchain
-      uint32_t fb_index = C.get_next_image_index(image_available_semaphore);
+
 
       // reset the command buffer so that we can record from scratch again.
       cb.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
@@ -395,27 +380,9 @@ int main(int argc, char ** argv)
       // Copy the uniform buffer data from the stating buffer to the uniform buffer
       cb.copyBuffer( *staging_buffer , *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
 
-      //  BEGIN RENDER PASS=====================================================
-      // We want the to use the render pass we created earlier
-      vk::RenderPassBeginInfo renderPassInfo;
-      renderPassInfo.renderPass        = *R;
-      renderPassInfo.framebuffer       = *framebuffers[fb_index];
-      renderPassInfo.renderArea.offset = vk::Offset2D{0,0};
 
-      renderPassInfo.renderArea.extent = vk::Extent2D(WIDTH,HEIGHT);
-
-      // Clear values are used to clear the various frame buffers
-      // we want to clear the colour values to black
-      // at the start of rendering.
-      std::vector<vk::ClearValue> clearValues;
-      clearValues.push_back( vk::ClearValue( vk::ClearColorValue( std::array<float,4>{0.0f, 0.f, 0.f, 1.f} ) ) );
-
-      renderPassInfo.clearValueCount = clearValues.size();
-      renderPassInfo.pClearValues    = clearValues.data();
-
-      cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-      //========================================================================
-
+      screen->prepare_next_frame(image_available_semaphore);
+      screen->beginRender(cb);
 
       // bind the pipeline that we want to use next
             cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
@@ -439,7 +406,7 @@ int main(int argc, char ** argv)
     // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
             cb.drawIndexed(3, 1, 0 , 0, 0);
 
-      cb.endRenderPass();
+      screen->endRender(cb);
       cb.end();
 
       // Submit the command buffers, but wait until the image_available_semaphore
@@ -448,7 +415,7 @@ int main(int argc, char ** argv)
 
       // present the image to the surface, but wait for the render_complete_semaphore
       // to be flagged by the submit_command_buffer
-      C.present_image(fb_index, render_complete_semaphore);
+      screen->present_frame(render_complete_semaphore);
 
 
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );

@@ -1,5 +1,6 @@
-#include <vka/core/command_buffer.h>
 #include <vka/utils/buffer_pool.h>
+#include <vka/core/buffer.h>
+#include <vka/core/command_buffer.h>
 #include <vka/core/pipeline.h>
 #include <vka/core/descriptor_set.h>
 
@@ -49,7 +50,7 @@ void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindP
                         vka::descriptor_set const * set,
                         uint32_t dynamic_offset) const
 {
-       bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
+       bindDescriptorSets( pipelineBindPoint,
                            pipeline->get_layout(),
                            firstSet,
                            vk::ArrayProxy<const vk::DescriptorSet>( set->get()),

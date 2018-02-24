@@ -17,15 +17,13 @@ vka::pipeline::~pipeline()
     }
 }
 
-vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t index, uint32_t offset, vk::Format format , uint32_t stride)
+vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t binding, uint32_t location, uint32_t offset, vk::Format format , uint32_t stride)
 {
     auto & ad = m_VertexAttributeDescription;
-    //decltype(get().m_VertexAttributeDescription)::value_type AD;
-
     vk::VertexInputAttributeDescription AD;
 
-    AD.binding  = 0;
-    AD.location = index;
+    AD.binding  = binding;
+    AD.location = location;
     AD.format   = format;
     AD.offset   = offset;
 
@@ -34,18 +32,29 @@ vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t index, uint32_t offs
   //  uint32_t s = size;
 
     LOG  << "Adding vertex attribute: "  <<
-            "index: " << index  << ", " <<
+            "index: " << location  << ", " <<
             "offset:" << offset << ", " <<
             "format:" << vk::to_string(format) << ENDL;
 
 
 
-    m_VertexBindDescription.binding   = 0;
-    m_VertexBindDescription.stride    = stride;
-    m_VertexBindDescription.inputRate = vk::VertexInputRate::eVertex;
+    auto it = std::find_if(m_VertexBindDescriptions.begin(),
+                           m_VertexBindDescriptions.end(),
+                           [=](const vk::VertexInputBindingDescription& obj)
+                           {
+                               return obj.binding == binding;
+                           });
+    if( it == m_VertexBindDescriptions.end())
+    {
+        vk::VertexInputBindingDescription V;
+        V.binding   = binding;
+        V.stride    = stride;
+        V.inputRate = vk::VertexInputRate::eVertex;
+        m_VertexBindDescriptions.push_back(V);
+    }
 
-    m_VertexInputInfo.vertexBindingDescriptionCount   = 1;
-    m_VertexInputInfo.pVertexBindingDescriptions      = &m_VertexBindDescription;
+    m_VertexInputInfo.vertexBindingDescriptionCount   = m_VertexBindDescriptions.size();
+    m_VertexInputInfo.pVertexBindingDescriptions      = m_VertexBindDescriptions.data();
 
     m_VertexInputInfo.vertexAttributeDescriptionCount = m_VertexAttributeDescription.size();
     m_VertexInputInfo.pVertexAttributeDescriptions    = m_VertexAttributeDescription.data();
@@ -148,6 +157,21 @@ void vka::pipeline::create()
 //    {
 //        throw std::runtime_error("Renderpass not created. Make sure you run renderpass->create() first");
 //    }
+    if( m_ColorBlendAttachments.size() == 0)
+    {
+        vk::PipelineColorBlendAttachmentState C;
+        C.colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+        C.blendEnable         = VK_TRUE;
+        C.colorBlendOp        = vk::BlendOp::eAdd;
+        C.srcAlphaBlendFactor = vk::BlendFactor::eSrcAlpha;
+        C.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+        C.dstAlphaBlendFactor = vk::BlendFactor::eOneMinusDstAlpha;
+        C.dstColorBlendFactor = vk::BlendFactor::eOneMinusDstAlpha;
+
+        add_color_blend_attachment_state(C);
+    }
+    m_ColorBlending.attachmentCount   = m_ColorBlendAttachments.size();
+    m_ColorBlending.pAttachments      = m_ColorBlendAttachments.data();
 
     // setup the viewport
     vk::PipelineViewportStateCreateInfo viewportState;

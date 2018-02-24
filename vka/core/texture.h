@@ -20,18 +20,18 @@ class texture : public context_child
 public:
     uint32_t get_layers() const;
     void set_layers(uint32_t l);
-    void set_size(vk::DeviceSize w, vk::DeviceSize h, vk::DeviceSize d);
+    vka::texture* set_size(vk::DeviceSize w, vk::DeviceSize h, vk::DeviceSize d);
     vk::Extent3D get_extents() const;
-    void set_format(vk::Format F);
+    vka::texture *set_format(vk::Format F);
     vk::Format get_format() const;
-    void set_tiling(vk::ImageTiling T);
+    vka::texture *set_tiling(vk::ImageTiling T);
     vk::ImageTiling get_tiling() const;
-    void set_view_type(vk::ImageViewType type);
+    vka::texture *set_view_type(vk::ImageViewType type);
     void set_mipmap_levels(uint32_t levels);
     uint32_t get_mipmap_levels() const;
-    void set_memory_properties(vk::MemoryPropertyFlags flags);
+    vka::texture *set_memory_properties(vk::MemoryPropertyFlags flags);
     vk::ImageUsageFlags get_usage() const;
-    void set_usage(vk::ImageUsageFlags flags);
+    vka::texture *set_usage(vk::ImageUsageFlags flags);
 
     texture* set_mag_filter(vk::Filter f)
     {

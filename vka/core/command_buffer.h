@@ -6,6 +6,7 @@
 namespace vka
 {
 
+class buffer;
 class sub_buffer;
 class pipeline;
 class descriptor_set;
@@ -13,6 +14,8 @@ class descriptor_set;
 class command_buffer : public vk::CommandBuffer
 {
     public:
+
+    command_buffer(){}
 
     command_buffer(const vk::CommandBuffer & C) : vk::CommandBuffer(C)
     {

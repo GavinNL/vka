@@ -400,6 +400,7 @@ public:
 
     void attach_window(GLFWwindow *w)
     {
+        m_Window = w;
         SetupCallbacks(w);
     }
 

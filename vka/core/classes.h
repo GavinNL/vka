@@ -2,6 +2,7 @@
 #define VKA_CLASSES_H
 
 #define X_LIST \
+X_MACRO( screen                )\
 X_MACRO( renderpass            )\
 X_MACRO( command_pool          )\
 X_MACRO( buffer                )\
@@ -17,6 +18,8 @@ X_MACRO( texture2darray        )\
 X_MACRO( descriptor_pool       )\
 X_MACRO( descriptor_set_layout )\
 X_MACRO( descriptor_set        )\
+X_MACRO( render_target         )\
+X_MACRO( offscreen_target      )\
 
 
 

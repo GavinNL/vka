@@ -27,6 +27,19 @@ public:
         LOG << "Registry cleared" << ENDL;
         m_registry.clear();
     }
+
+    std::string get_name( T const * p)
+    {
+        for(auto & f : m_registry)
+        {
+            if( f.second.get() == p)
+            {
+                return f.first;
+            }
+        }
+        return "";
+    }
+
 protected:
     bool insert_object(std::string const & name, std::shared_ptr<T> obj)
     {
@@ -111,19 +124,19 @@ private:
 
 
     //=========== Swap Chain stuff=============
-    vk::SwapchainKHR                  m_swapchain;
-    std::vector<vk::SurfaceFormatKHR> m_swapchain_available_formats;
-    std::vector<vk::PresentModeKHR>   m_swapchain_available_present_modes;
-
-    vk::SurfaceCapabilitiesKHR        m_swapchain_capabilities;
-    vk::SurfaceFormatKHR              m_swapchain_format;
-    vk::PresentModeKHR                m_swapchain_present_mode;
-
-    vk::Extent2D                      m_extent;
-    vk::Format                        m_image_format;
-    std::vector<vk::Image>            m_images;
-    std::vector<vk::ImageView>        m_image_views;
-    std::vector<vk::Framebuffer>      m_framebuffers;
+    // vk::SwapchainKHR                  m_swapchain;
+    // std::vector<vk::SurfaceFormatKHR> m_swapchain_available_formats;
+    // std::vector<vk::PresentModeKHR>   m_swapchain_available_present_modes;
+    //
+    // vk::SurfaceCapabilitiesKHR        m_swapchain_capabilities;
+    // vk::SurfaceFormatKHR              m_swapchain_format;
+    // vk::PresentModeKHR                m_swapchain_present_mode;
+    //
+     vk::Extent2D                      m_extent;
+    // vk::Format                        m_image_format;
+    // std::vector<vk::Image>            m_images;
+    // std::vector<vk::ImageView>        m_image_views;
+    // std::vector<vk::Framebuffer>      m_framebuffers;
     //==========================================
 
 
@@ -146,7 +159,8 @@ private:
 public:
     vk::Device get_device() { return m_device; }
     vk::PhysicalDevice get_physical_device() { return m_physical_device; }
-
+    vk::SurfaceKHR  get_surface() { return m_surface; }
+    queue_family_index_t get_queue_family() { return m_queue_family; }
 
     context() // default constructor
     {
@@ -209,7 +223,7 @@ public:
      *
      * Creates a window surface
      */
-    void create_window_surface( GLFWwindow * window );
+    vk::SurfaceKHR create_window_surface( GLFWwindow * window );
 
     void create_device();
 
@@ -223,9 +237,9 @@ public:
     //============================================================
     // Get Methods
     //============================================================
-    std::vector<vk::ImageView> & get_swapchain_imageviews() {
-        return m_image_views;
-    }
+    //std::vector<vk::ImageView> & get_swapchain_imageviews() {
+    //    return m_image_views;
+    //}
     //============================================================
     // Object creation
     //   All objects created with teh following funtions are stored
@@ -250,6 +264,7 @@ public:
 
 
     void present_image(uint32_t image_index, semaphore *wait_semaphore);
+    void present_image(const vk::PresentInfoKHR & info);
     /**
      * @brief new_buffer
      * @param name
@@ -421,6 +436,10 @@ public:
 
 
     //============================================================
+
+    vka::offscreen_target *new_offscreen_target(const std::string &name);
+    vka::screen           *new_screen(const std::string &name);
+
     vka::command_pool *get_command_pool();
 
     void submit_cmd_buffer(vk::CommandBuffer b)
@@ -460,8 +479,15 @@ public:
         return m_staging_buffer;
     }
 
+    template<typename T>
+    std::string get_name( T const * obj)
+    {
+        return registry_t<T>::get_name(obj);
+    }
 
 private:
+
+
 
     template<typename T>
     T* _new(const std::string & name)
