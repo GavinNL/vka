@@ -37,10 +37,9 @@ vka::sub_buffer *vka::buffer_pool::new_buffer(vk::DeviceSize n, vk::DeviceSize a
 
     if(offset == m_manager.error)
     {
-
+        ERROR << "Could not allocate " << n << " bytes with alignment " << alignment << ENDL;
         return nullptr;
     }
-
 
 
     auto * S = new vka::sub_buffer( this );
@@ -90,6 +89,7 @@ vka::sub_buffer_object vka::sub_buffer::insert(void const * data, vk::DeviceSize
     {
         obj.m_offset = m_manager.error;
         obj.m_size   = 0;
+        ERROR << "Could not copy " << size << " bytes into subbuffer " << this << ENDL;
     }
 
     return obj;

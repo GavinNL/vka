@@ -87,41 +87,6 @@ struct push_constants_t : public push_constants_base_t
     uint8_t _buffer[ 256 - sizeof(push_constants_base_t)];
 };
 
-/**
- * @brief The mesh_info_t struct
- * Information about the mesh, number of indices to draw and
- * offset in the index array
- */
-struct mesh_info_t
-{
-    uint32_t index_offset  = 0; // index offset
-    uint32_t count         = 0; // number of indices or vertices
-    uint32_t vertex_offset = 0; // vertex offset
-
-    std::vector<vka::sub_buffer*> m_buffers;
-    vka::sub_buffer              *m_index_buffer=nullptr;
-
-    void bind(vka::command_buffer & cb)
-    {
-        uint32_t i = 0;
-        if( m_index_buffer)
-        {
-            cb.bindIndexSubBuffer(m_index_buffer, vk::IndexType::eUint16);
-        }
-
-        for(auto & b : m_buffers)
-            cb.bindVertexSubBuffer( i++, b);
-    }
-
-    void draw( vka::command_buffer & cb)
-    {
-        if( m_index_buffer)
-            cb.drawIndexed(count, 1 , index_offset, vertex_offset,0);
-        else
-            cb.draw(count,1,vertex_offset,0);
-    }
-};
-
 
 class PhysicsComponent_t
 {
@@ -137,7 +102,7 @@ public:
 
     push_constants_t         m_push;
 
-    mesh_info_t              m_mesh;
+    std::shared_ptr<vka::mesh> m_mesh_m;
 
     bool m_draw_axis = true;
 };
@@ -202,8 +167,6 @@ public:
 class ComponentRenderer_t
 {
     vka::pipeline  *m_pipeline = nullptr;
-    vka::sub_buffer *m_ibuffer = nullptr;
-    vka::sub_buffer *m_vbuffer = nullptr;
 
 public:
     // given a render component, draw
@@ -215,8 +178,6 @@ public:
         if( obj->m_pipeline != m_pipeline)
         {
             m_pipeline = obj->m_pipeline;
-            //m_vbuffer = obj->m_vbuffer;
-           // m_ibuffer = obj->m_ibuffer;
 
             cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
 
@@ -236,9 +197,8 @@ public:
                           sizeof(push_constants_t),
                           &obj->m_push);
 
-        obj->m_mesh.bind(cb);
-        obj->m_mesh.draw(cb);
-
+        obj->m_mesh_m->bind(cb);
+        obj->m_mesh_m->draw(cb);
     }
 };
 
@@ -283,8 +243,6 @@ struct App : public VulkanApp
       // used for indices/vertices or uniforms.
       m_dbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
       m_ubuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
-
-      m_ibuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
 
       m_sbuffer = m_Context.new_staging_buffer( "staging_buffer", 10*1024*1024);
 
@@ -458,10 +416,20 @@ struct App : public VulkanApp
 
   void load_meshs()
   {
+      m_mesh_manager.set_context(&m_Context);
+      m_mesh_manager.set_buffer_size( 1024*1024*20 );
+
+      std::shared_ptr<vka::mesh> MM[] = {
+                         m_mesh_manager.new_mesh("box"),
+                         m_mesh_manager.new_mesh("sphere") };
+
+
+      //box_mesh->allocate_vertex_data()
       std::vector<vka::mesh_t>   meshs;
       meshs.push_back( vka::box_mesh(1,1,1) );
       meshs.push_back( vka::sphere_mesh(0.5,20,20) );
 
+      uint32_t i=0;
       for( auto & M : meshs)
       {
 
@@ -480,38 +448,18 @@ struct App : public VulkanApp
                 u.push_back( U[i] );
           }
 
-         // #error To DO: we cannot just add the data to the the buffer randomly
-         //        we need 3 individual subbuffers
+         MM[i]->set_num_vertices( M.num_vertices() );
+         MM[i]->set_num_indices( M.num_indices(), sizeof(uint16_t));
+         MM[i]->set_attribute(0, sizeof(glm::vec3) );
+         MM[i]->set_attribute(1, sizeof(glm::vec2) );
+         MM[i]->set_attribute(2, sizeof(glm::vec3) );
+         MM[i]->allocate();
+         MM[i]->copy_attribute_data(0, p.data(), p.size() * sizeof(glm::vec3));
+         MM[i]->copy_attribute_data(1, u.data(), u.size() * sizeof(glm::vec2));
+         MM[i]->copy_attribute_data(2, n.data(), n.size() * sizeof(glm::vec3));
+         MM[i]->copy_index_data( M.index_data(), M.index_data_size() );
 
-          // sub_buffer::insert inserts data into the sub buffer at an available
-          // space and returns a sub_buffer object.
-          mesh_info_t mesh;
-
-          mesh.m_buffers.push_back( m_buffer_pool->new_buffer( p.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) ) );
-          mesh.m_buffers.push_back( m_buffer_pool->new_buffer( u.size() * sizeof(glm::vec2) , sizeof(glm::vec2 ) ) );
-          mesh.m_buffers.push_back( m_buffer_pool->new_buffer( n.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) ) );
-          mesh.m_index_buffer = m_buffer_pool->new_buffer( M.index_data_size(), sizeof(uint16_t) );
-
-          auto m1p = mesh.m_buffers[0]->insert( p.data() , p.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
-          auto m1u = mesh.m_buffers[1]->insert( u.data() , u.size() * sizeof(glm::vec2) , sizeof(glm::vec2 ) );
-          auto m1n = mesh.m_buffers[2]->insert( n.data() , n.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
-
-          auto m1i = mesh.m_index_buffer->insert(  M.index_data() , M.index_data_size()  , M.index_size() );
-
-          // If you wish to free the memory you have allocated, you shoudl call
-          // vertex_buffer->free_buffer_object(m1v);
-
-          //assert( m1v.m_size != 0);
-          //assert( m1i.m_size != 0);
-
-          mesh.count         = M.num_indices();
-
-          // the offset returned is the byte offset, so we need to divide it
-          // by the index/vertex size to get the actual index/vertex offset
-          mesh.index_offset  =  m1i.m_offset  / M.index_size();
-          mesh.vertex_offset =  0;
-
-          m_mesh_info.push_back(mesh);
+          i++;
       }
   }
 
@@ -724,7 +672,7 @@ struct App : public VulkanApp
       {
         auto * obj = new RenderComponent_t();
 
-        obj->m_mesh     = m_mesh_info[ i%2 ];
+        obj->m_mesh_m   = m_mesh_manager.get_mesh("sphere");
         obj->m_pipeline = m_pipelines.gbuffer;
 
         obj->m_descriptor_sets[0] = m_dsets.texture_array;
@@ -858,11 +806,11 @@ struct App : public VulkanApp
 
   vka::buffer_pool * m_buffer_pool;
 
-  //vka::sub_buffer* m_vbuffer;
-  vka::sub_buffer* m_ibuffer;
   vka::sub_buffer* m_ubuffer;
   vka::sub_buffer* m_dbuffer;
   vka::buffer    * m_sbuffer;
+
+  vka::mesh_manager m_mesh_manager;
 
   vka::texture2darray * m_texture_array;
 
@@ -904,7 +852,6 @@ struct App : public VulkanApp
   vka::offscreen_target * m_OffscreenTarget;
   //====================================
 
-  std::vector< mesh_info_t >        m_mesh_info;
   std::vector< RenderComponent_t* > m_Objs;
 
   vka::signal<void(double       , double)>::slot mouseslot;
