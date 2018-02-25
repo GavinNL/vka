@@ -115,10 +115,12 @@ class signal
 
             }
 
-            void detach()
+            id detach()
             {
+                auto x = m_id;
                 m_id = 0;
                 m_Container.reset();
+                return x;
             }
         };
 

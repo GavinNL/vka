@@ -694,11 +694,7 @@ struct App : public VulkanApp
 
   void init_scene()
   {
-      #define ANIMATE(variable, change)\
-      (onPoll << [&](double t)\
-      {                       \
-          variable = change;  \
-      }).detach();
+
 
       ANIMATE(m_light_uniform.lights[0].position, glm::vec4(2*cos(t) , 2.2, 2*sin(t),0));
       ANIMATE(m_light_uniform.lights[1].position, glm::vec4(-2*cos(t) , 2.2, 2*sin(3*t),0));
