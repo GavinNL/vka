@@ -73,6 +73,20 @@ struct per_frame_uniform_t
 #endif
 };
 
+
+struct light_data_t
+{
+    glm::vec4 position    = glm::vec4(0,2,0,1);
+    glm::vec4 color       = glm::vec4(1,1,1,1);
+    glm::vec4 attenuation = glm::vec4(1,0.1,0.01,10); //[constant, linear, quad, cutoff]
+};
+
+struct light_uniform_t
+{
+    //int          num_lights = 0;
+    light_data_t lights[10];
+};
+
 // This data will be written directly to the command buffer to
 // be passed to the shader as a push constant.
 struct push_constants_base_t
@@ -114,19 +128,27 @@ public:
     vka::pipeline * m_pipeline;
     vka::command_buffer m_commandbuffer;
 
-    FullScreenQuadRenderer_t(vka::command_buffer & cb , vka::pipeline * pipeline) : m_pipeline(pipeline) , m_commandbuffer(cb)
+    FullScreenQuadRenderer_t(vka::command_buffer & cb ,
+                             vka::pipeline * pipeline ,
+                             vka::descriptor_set * texture_sets,
+                             vka::descriptor_set * uniform_sets) : m_pipeline(pipeline) , m_commandbuffer(cb)
     {
         m_commandbuffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
+        m_commandbuffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                             m_pipeline,
+                             0, // binding index
+                             texture_sets);
+        m_commandbuffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                             m_pipeline,
+                             1, // binding index
+                             uniform_sets);
     }
 
     void operator()( vka::descriptor_set * dset)
     {
         static uint32_t i=1;
-        uint32_t index = (i/500)%3;
-        m_commandbuffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
-                             m_pipeline,
-                             0, // binding index
-                             dset);
+        uint32_t index = 2;//(i/500)%3;
+
         m_commandbuffer.pushConstants( m_pipeline->get_layout(),
                                        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
                                        0,
@@ -224,7 +246,7 @@ struct App : public VulkanApp
       //==========================================================================
       m_descriptor_pool = m_Context.new_descriptor_pool("main_desc_pool");
       m_descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 25);
-      m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
+      m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 5);
       m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
       m_descriptor_pool->create();
 
@@ -242,7 +264,9 @@ struct App : public VulkanApp
       // Allocate sub buffers from the buffer pool. These buffers can be
       // used for indices/vertices or uniforms.
       m_dbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
-      m_ubuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
+
+      m_ubuffer_lights = m_buffer_pool->new_buffer( sizeof(light_uniform_t), 256 );
+      m_ubuffer        = m_buffer_pool->new_buffer( 10*1024*1024 ,256);
 
       m_sbuffer = m_Context.new_staging_buffer( "staging_buffer", 10*1024*1024);
 
@@ -311,8 +335,8 @@ struct App : public VulkanApp
         m_pipelines.main->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                 ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                ->set_vertex_shader(   "resources/shaders/push_consts_default/push_consts_default_v.spv", "main" )   // the shaders we want to use
-                ->set_fragment_shader( "resources/shaders/push_consts_default/push_consts_default_f.spv", "main" ) // the shaders we want to use
+                ->set_vertex_shader(   "resources/shaders/deferred_basic/deferred_basic_v.spv", "main" )   // the shaders we want to use
+                ->set_fragment_shader( "resources/shaders/deferred_basic/deferred_basic_f.spv", "main" ) // the shaders we want to use
 
                 // tell the pipeline that attribute 0 contains 3 floats
                 // and the data starts at offset 0
@@ -407,6 +431,8 @@ struct App : public VulkanApp
                 // Add a push constant to the layout. It is accessable in the vertex shader
                 // stage only.
                 ->add_push_constant( sizeof(int), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+
+                ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eFragment)
                 //
                 ->set_render_pass( m_screen->get_renderpass() )
                 ->create();
@@ -421,13 +447,15 @@ struct App : public VulkanApp
 
       std::shared_ptr<vka::mesh> MM[] = {
                          m_mesh_manager.new_mesh("box"),
-                         m_mesh_manager.new_mesh("sphere") };
+                         m_mesh_manager.new_mesh("sphere") ,
+                         m_mesh_manager.new_mesh("plane")};
 
 
       //box_mesh->allocate_vertex_data()
       std::vector<vka::mesh_t>   meshs;
       meshs.push_back( vka::box_mesh(1,1,1) );
       meshs.push_back( vka::sphere_mesh(0.5,20,20) );
+      meshs.push_back( vka::plane_mesh(10,10) );
 
       uint32_t i=0;
       for( auto & M : meshs)
@@ -485,15 +513,19 @@ struct App : public VulkanApp
   void init_descriptor_sets()
   {
       // we want a descriptor set for set #0 in the pipeline.
-      m_dsets.texture_array = m_pipelines.main->create_new_descriptor_set(0, m_descriptor_pool);
+      m_dsets.texture_array = m_pipelines.gbuffer->create_new_descriptor_set(0, m_descriptor_pool);
       //  attach our texture to binding 0 in the set.
       m_dsets.texture_array->attach_sampler(0, m_texture_array);
       m_dsets.texture_array->update();
 
-      m_dsets.uniform_buffer = m_pipelines.main->create_new_descriptor_set(1, m_descriptor_pool);
+      m_dsets.uniform_buffer = m_pipelines.gbuffer->create_new_descriptor_set(1, m_descriptor_pool);
       m_dsets.uniform_buffer->attach_uniform_buffer(0, m_ubuffer, sizeof(per_frame_uniform_t), m_ubuffer->offset());
       m_dsets.uniform_buffer->update();
 
+
+      m_dsets.light_uniform_buffer = m_pipelines.compose->create_new_descriptor_set(1, m_descriptor_pool);
+      m_dsets.light_uniform_buffer->attach_uniform_buffer(0, m_ubuffer_lights, sizeof(light_uniform_t), m_ubuffer_lights->offset());
+      m_dsets.light_uniform_buffer->update();
 
       m_dsets.renderTargets = m_pipelines.compose->create_new_descriptor_set(0, m_descriptor_pool);
       m_dsets.renderTargets->attach_sampler(0, m_OffscreenTarget->get_image(0) );
@@ -524,9 +556,9 @@ struct App : public VulkanApp
       init_descriptor_sets();
 
 
-      m_image_available_semaphore = m_Context.new_semaphore("image_available_semaphore");
+      m_image_available_semaphore      = m_Context.new_semaphore("image_available_semaphore");
       m_composition_complete_semaphore = m_Context.new_semaphore("render_complete_semaphore");
-      m_offscreen_complete_semaphore = m_Context.new_semaphore("offscreen_complete_semaphore");
+      m_offscreen_complete_semaphore   = m_Context.new_semaphore("offscreen_complete_semaphore");
 
       m_compose_buffer   = m_command_pool->AllocateCommandBuffer();
       m_offscreen_buffer = m_command_pool->AllocateCommandBuffer();
@@ -571,19 +603,19 @@ struct App : public VulkanApp
 
   void UpdateUniforms(vka::command_buffer & cb)
   {
-#define SINGLE_COPY
-    auto alignment = 256;
+
 
     auto S = static_cast<unsigned char*>(m_sbuffer->map_memory());
-    vk::DeviceSize src_offset  = 0;
-    vk::DeviceSize dst_offset  = 0;
-
-    vk::DeviceSize size = sizeof( per_frame_uniform_t );
-    memcpy( &S[src_offset], &m_frame_uniform, size );
 
 
-    cb.copySubBuffer( *m_sbuffer, m_ubuffer, vk::BufferCopy(src_offset, 0 ,size)  );
-    src_offset += size;
+    memcpy( &S[0]                            , &m_frame_uniform, sizeof(per_frame_uniform_t) );
+    memcpy( &S[0+sizeof(per_frame_uniform_t)], &m_light_uniform, sizeof(light_uniform_t)     );
+
+
+    cb.copySubBuffer( *m_sbuffer, m_ubuffer       , vk::BufferCopy(0, 0 ,sizeof(per_frame_uniform_t))  );
+    cb.copySubBuffer( *m_sbuffer, m_ubuffer_lights, vk::BufferCopy(sizeof(per_frame_uniform_t), 0 ,sizeof(light_uniform_t))  );
+
+
   }
 
 
@@ -591,7 +623,7 @@ struct App : public VulkanApp
   {
 
       m_screen->beginRender(cb);
-         FullScreenQuadRenderer_t Q(cb, m_pipelines.compose);
+         FullScreenQuadRenderer_t Q(cb, m_pipelines.compose, m_dsets.renderTargets, m_dsets.light_uniform_buffer);
          Q( m_dsets.renderTargets);
       m_screen->endRender(cb);
   }
@@ -662,17 +694,37 @@ struct App : public VulkanApp
 
   void init_scene()
   {
-      #define MAX_OBJ 3
+      #define ANIMATE(variable, change)\
+      (onPoll << [&](double t)\
+      {                       \
+          variable = change;  \
+      }).detach();
+
+      ANIMATE(m_light_uniform.lights[0].position, glm::vec4(2*cos(t) , 2.2, 2*sin(t),0));
+      ANIMATE(m_light_uniform.lights[1].position, glm::vec4(-2*cos(t) , 2.2, 2*sin(3*t),0));
+
+      m_light_uniform.lights[0].position    = glm::vec4(-2,2.2,-2,0);
+      m_light_uniform.lights[0].color       = glm::vec4(10.0,0.0,0.1,0);
+      m_light_uniform.lights[0].attenuation = glm::vec4(1, 0.8 ,0.0, 10);
+
+      m_light_uniform.lights[1].position    = glm::vec4(2,2.2,2,0);
+      m_light_uniform.lights[1].color       = glm::vec4(0.0,10.0,0.0,1.0);
+      m_light_uniform.lights[1].attenuation = glm::vec4(1, 0.0 ,0.8, 10);
+       //m_light_uniform.lights[1].position    = glm::vec3(-5,5.1,-5);
+      // m_light_uniform.lights[1].attenuation = glm::vec4(1, 0.001 ,0.001, 10);
+      #define MAX_OBJ 1
 
       float x = 0;
       float y = 0;
       float z = 0;
 
+      std::string mesh[] = {"sphere", "box"};
+
       for(int i=0; i<MAX_OBJ ;i++)
       {
         auto * obj = new RenderComponent_t();
 
-        obj->m_mesh_m   = m_mesh_manager.get_mesh("sphere");
+        obj->m_mesh_m   = m_mesh_manager.get_mesh( "plane");
         obj->m_pipeline = m_pipelines.gbuffer;
 
         obj->m_descriptor_sets[0] = m_dsets.texture_array;
@@ -689,7 +741,7 @@ struct App : public VulkanApp
 
 
         obj->m_push.model    = vka::transform( 1.25f*glm::vec3( x , y, z)   ).get_matrix(); // T.get_matrix();
-        obj->m_push.index    = i%2;
+        obj->m_push.index    = 1;
         obj->m_push.miplevel = -1;
 
 
@@ -708,11 +760,6 @@ struct App : public VulkanApp
 
         m_Objs.push_back(obj);
     }
-
-
-   //   m_Objs[1]->m_uniform_data.model = vka::transform( glm::vec3(0,3,0) ).get_matrix(); // T.get_matrix();
-   //   m_Objs[2]->m_uniform_data.model = vka::transform( glm::vec3(0,0,4) ).get_matrix(); // T.get_matrix();
-
 
 
     //======================
@@ -748,35 +795,13 @@ struct App : public VulkanApp
    */
   void build_offscreen_commandbuffer( vka::command_buffer & cb )
   {
-      //  BEGIN RENDER PASS=====================================================
-      // We want the to use the render pass we created earlier
-      vk::RenderPassBeginInfo renderPassInfo;
-      renderPassInfo.renderPass        = *m_OffscreenTarget->get_renderpass();
-      renderPassInfo.framebuffer       = *m_OffscreenTarget->get_framebuffer();
-      renderPassInfo.renderArea.offset = vk::Offset2D{0,0};
-      renderPassInfo.renderArea.extent = vk::Extent2D(WIDTH,HEIGHT);
-
-      // Clear values are used to clear the various frame buffers
-      // we want to clear the colour values to black
-      // at the start of rendering.
-      std::array<vk::ClearValue,4> clearValues;
-      clearValues[0].color = vk::ClearColorValue( std::array<float,4>( {0.0f, 0.0f, 0.0f, 0.0f} ) );
-      clearValues[1].color = vk::ClearColorValue( std::array<float,4>( {0.0f, 0.0f, 0.0f, 0.0f} ) );
-      clearValues[2].color = vk::ClearColorValue( std::array<float,4>( {0.0f, 0.0f, 0.0f, 0.0f} ) );
-      clearValues[3].depthStencil = vk::ClearDepthStencilValue(1.0f, 0.0f );
-
-      renderPassInfo.clearValueCount = clearValues.size();
-      renderPassInfo.pClearValues    = clearValues.data();
-
-      //cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-      //========================================================================
 
       m_OffscreenTarget->clear_value(0).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f}));
       m_OffscreenTarget->clear_value(1).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f}));
       m_OffscreenTarget->clear_value(2).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f }));
 
-
       m_OffscreenTarget->beginRender(cb);
+
       // Main component renderer
       ComponentRenderer_t R;
       for(auto * comp : m_Objs)
@@ -784,7 +809,6 @@ struct App : public VulkanApp
           R(cb, comp);
       }
       m_OffscreenTarget->endRender(cb);
-      //cb.endRenderPass();
   }
 
 
@@ -806,6 +830,7 @@ struct App : public VulkanApp
 
   vka::buffer_pool * m_buffer_pool;
 
+  vka::sub_buffer* m_ubuffer_lights;
   vka::sub_buffer* m_ubuffer;
   vka::sub_buffer* m_dbuffer;
   vka::buffer    * m_sbuffer;
@@ -821,20 +846,17 @@ struct App : public VulkanApp
   //========================================
           vka::camera m_Camera;
    per_frame_uniform_t m_frame_uniform;
+   light_uniform_t     m_light_uniform;
 
   struct
   {
     vka::descriptor_set * texture_array;
     vka::descriptor_set * uniform_buffer;
+    vka::descriptor_set * light_uniform_buffer;
     vka::descriptor_set * dynamic_uniform_buffer;
 
     vka::descriptor_set * renderTargets;
   } m_dsets;
-
-  struct textures
-  {
-    vka::texture * renderTargets[4];
-  } m_textures;
 
   struct
   {

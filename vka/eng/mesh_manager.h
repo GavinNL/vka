@@ -8,6 +8,13 @@ namespace vka
 
 class mesh_manager;
 
+
+/**
+ * @brief The mesh class
+ *
+ * The mesh class is used to hold mesh/model information.
+ *
+ */
 class mesh
 {
 #define MAX_ATTRIBUTES 10
@@ -46,7 +53,6 @@ class mesh
 
     void set_num_indices(uint32_t i, uint32_t index_size)
     {
-   //     m_submesh_info.m_index_count = i;
         m_index_count = i;
         m_index_size = index_size;
     }
@@ -116,15 +122,27 @@ class mesh
        vka::sub_buffer                             * m_index_buffer = nullptr;
        uint32_t                                      m_num_attributes=0;
 
-       uint32_t                                      m_index_count = 0;
-       uint32_t                                      m_index_size = 0;
+       uint32_t                                      m_index_count  = 0;
+       uint32_t                                      m_index_size   = 0;
        uint32_t                                      m_vertex_count = 0;
-       //submesh_info_t                                m_submesh_info;
 
        friend class mesh_manager;
 
 };
 
+
+/**
+ * @brief The mesh_manager class
+ *
+ * The mesh manager class is a class which catalogues mesh data.
+ *
+ * A single memory buffer is allocated and data for vertex attributes
+ * are allocated from that memory.
+ *
+ * Each vertex attribute buffer is a separate subbuffer (same buffer but different offsets)
+ *
+ *
+ */
 class mesh_manager : public manager_base
 {
     public:

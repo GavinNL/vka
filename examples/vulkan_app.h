@@ -137,7 +137,8 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
       {
           dt  = get_elapsed_time()-T;
           T  += dt;
-          glfwPollEvents();
+
+          Poll();
 
           onFrame(dt, T);
 
