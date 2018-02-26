@@ -37,7 +37,8 @@ struct light_data_t
 
 
 layout(set=1, binding = 0, std140) uniform UniformBufferObject {
-    //int visible_lights;
+    vec2 num_lights;
+    vec2 num_lights2;
     light_data_t light[10];
 } u_lights;
 
@@ -85,7 +86,8 @@ void main()
     //out_Color =  vec4(surface_color*0.1 , 1);
 
     vec3 color = surface_color * 0.01;
-    for(int i=0; i < 2 ; i++)
+    int num =  int(u_lights.num_lights[0]);
+    for(int i=0; i < num ; i++)
     {
         vec3 light_dir = (  u_lights.light[i].position.xyz - frag_position).xyz;
 
@@ -98,22 +100,4 @@ void main()
     }
     out_Color =   vec4(color,1);
 
-   // out_Color = vec4(frag_position,1.0);
-/*
-    switch(pushConsts.layer)
-    {
-        case 0:
-            out_Color = texture(texSampler0, f_UV.xy ).rgba;
-            break;
-        case 1:
-            out_Color = texture(texSampler1, f_UV.xy ).rgba;
-            break;
-        case 2:
-            out_Color = texture(texSampler2, f_UV.xy ).rgba;
-            break;
-        default:
-            out_Color = texture(texSampler2, f_UV.xy ).rgba;
-            reak;
-    }
-*/
 }

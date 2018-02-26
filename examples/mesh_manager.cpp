@@ -77,13 +77,14 @@ struct per_frame_uniform_t
 struct light_data_t
 {
     glm::vec4 position    = glm::vec4(0,2,0,1);
-    glm::vec4 color       = glm::vec4(1,1,1,1);
-    glm::vec4 attenuation = glm::vec4(1,0.1,0.01,10); //[constant, linear, quad, cutoff]
+    glm::vec4 color       = glm::vec4(10,1,1,1);
+    glm::vec4 attenuation = glm::vec4(1, 5.8 ,0.0, 10); //[constant, linear, quad, cutoff]
 };
 
 struct light_uniform_t
 {
-    //int          num_lights = 0;
+    glm::vec2    num_lights = glm::vec2(5,0);
+    glm::vec2    num_lights2 = glm::vec2(10,0);
     light_data_t lights[10];
 };
 
@@ -440,6 +441,35 @@ struct App : public VulkanApp
   }
 
 
+  std::pair<glm::vec3, glm::vec3>
+  calculate_tangent_bitangent( glm::vec3 const & p0,  glm::vec3 const & p1,  glm::vec3 const & p2,
+          glm::vec2 const & uv0, glm::vec2 const & uv1, glm::vec2 const & uv2
+          )
+  {
+
+      auto deltaUV1 = uv1-uv0;
+      auto deltaUV2 = uv2-uv0;
+
+      auto edge1 = p1-p0;
+      auto edge2 = p2-p0;
+
+      float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+      std::pair<glm::vec3, glm::vec3> tbt;
+
+      tbt.first.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+      tbt.first.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+      tbt.first.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+      tbt.first = glm::normalize(tbt.first);
+
+      tbt.second.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+      tbt.second.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+      tbt.second.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+      tbt.second = glm::normalize(tbt.second);
+
+      return tbt;
+  }
+
   void load_meshs()
   {
       m_mesh_manager.set_context(&m_Context);
@@ -464,10 +494,23 @@ struct App : public VulkanApp
           auto P = M.get_attribute_view<glm::vec3>( vka::VertexAttribute::ePosition);
           auto U = M.get_attribute_view<glm::vec2>( vka::VertexAttribute::eUV    );
           auto N = M.get_attribute_view<glm::vec3>( vka::VertexAttribute::eNormal);
+          auto I = M.get_index_view<uint16_t>();
+
 
           std::vector< glm::vec3> p;
           std::vector< glm::vec3> n;
           std::vector< glm::vec2> u;
+          std::vector< glm::vec3> t;
+          std::vector< glm::vec3> b;
+
+          for(uint32_t i=0; i<I.size(); i+=3)
+          {
+              auto tbt = calculate_tangent_bitangent( P[ I[i] ] , P[ I[i+1] ], P[ I[i+2] ],
+                                                      U[ I[i] ] , U[ I[i+1] ], U[ I[i+2] ]);
+
+              t.push_back(tbt.first);
+              t.push_back(tbt.second);
+          }
 
           for(uint32_t i=0;i<P.size();i++)
           {
@@ -496,7 +539,8 @@ struct App : public VulkanApp
       // 1. First load host_image into memory, and specifcy we want 4 channels.
           std::vector<std::string> image_paths = {
               "resources/textures/Brick-2852a.jpg",
-              "resources/textures/noise.jpg"
+              "resources/textures/noise.jpg",
+              "resources/textures/normal.jpg"
           };
 
           uint32_t layer = 0;
@@ -695,17 +739,30 @@ struct App : public VulkanApp
   void init_scene()
   {
 
+#define S (2.0*3.141592653/10.0)
 
-      ANIMATE(m_light_uniform.lights[0].position, glm::vec4(2*cos(t) , 2.2, 2*sin(t),0));
-      ANIMATE(m_light_uniform.lights[1].position, glm::vec4(-2*cos(t) , 2.2, 2*sin(3*t),0));
+      ANIMATE(m_light_uniform.lights[0].position, glm::vec4( 4*cos(t+0*S)   , 1.2,  4*sin(t + 0*S),0));
+      ANIMATE(m_light_uniform.lights[1].position, glm::vec4( 4*cos(t+1*S)   , 1.2,  4*sin(t + 1*S),0));
+      ANIMATE(m_light_uniform.lights[2].position, glm::vec4( 4*cos(t+2*S)   , 1.2,  4*sin(t + 2*S),0));
+      ANIMATE(m_light_uniform.lights[3].position, glm::vec4( 4*cos(t+3*S)   , 1.2,  4*sin(t + 3*S),0));
+      ANIMATE(m_light_uniform.lights[4].position, glm::vec4( 4*cos(t+4*S)   , 1.2,  4*sin(t + 4*S),0));
+      ANIMATE(m_light_uniform.lights[5].position, glm::vec4( 4*cos(t+5*S)   , 1.2,  4*sin(t + 5*S),0));
+      ANIMATE(m_light_uniform.lights[6].position, glm::vec4( 4*cos(t+6*S)   , 1.2,  4*sin(t + 6*S),0));
+      ANIMATE(m_light_uniform.lights[7].position, glm::vec4( 4*cos(t+7*S)   , 1.2,  4*sin(t + 7*S),0));
+      ANIMATE(m_light_uniform.lights[8].position, glm::vec4( 4*cos(t+8*S)   , 1.2,  4*sin(t + 8*S),0));
+      ANIMATE(m_light_uniform.lights[9].position, glm::vec4( 4*cos(t+9*S)   , 1.2,  4*sin(t + 9*S),0));
 
       m_light_uniform.lights[0].position    = glm::vec4(-2,2.2,-2,0);
       m_light_uniform.lights[0].color       = glm::vec4(10.0,0.0,0.1,0);
-      m_light_uniform.lights[0].attenuation = glm::vec4(1, 0.8 ,0.0, 10);
+    //  m_light_uniform.lights[0].attenuation = glm::vec4(1, 0.8 ,0.0, 10);
 
       m_light_uniform.lights[1].position    = glm::vec4(2,2.2,2,0);
       m_light_uniform.lights[1].color       = glm::vec4(0.0,10.0,0.0,1.0);
-      m_light_uniform.lights[1].attenuation = glm::vec4(1, 0.0 ,0.8, 10);
+   //   m_light_uniform.lights[1].attenuation = glm::vec4(1, 0.0 ,0.8, 10);
+
+      m_light_uniform.lights[2].position    = glm::vec4(2,2.2,2,0);
+      m_light_uniform.lights[2].color       = glm::vec4(0.0,0.0,10.0,1.0);
+    //  m_light_uniform.lights[2].attenuation = glm::vec4(1, 0.0 ,0.8, 10);
        //m_light_uniform.lights[1].position    = glm::vec3(-5,5.1,-5);
       // m_light_uniform.lights[1].attenuation = glm::vec4(1, 0.001 ,0.001, 10);
       #define MAX_OBJ 1
