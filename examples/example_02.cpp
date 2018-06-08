@@ -387,8 +387,8 @@ int main(int argc, char ** argv)
       // Copy the uniform buffer data from the stating buffer to the uniform buffer
       cb.copyBuffer( *staging_buffer , *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
 
-      screen->prepare_next_frame(image_available_semaphore);
-      screen->beginRender(cb);
+      uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
+      screen->beginRender(cb, frame_index);
 
       // bind the pipeline that we want to use next
             cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );

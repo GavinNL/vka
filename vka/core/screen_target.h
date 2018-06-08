@@ -62,7 +62,7 @@ class screen : public context_child
         uint32_t prepare_next_frame(vka::semaphore * signal_semaphore);
         void present_frame(vka::semaphore * wait_semaphore);
 
-        void beginRender(vka::command_buffer & cb);
+        void beginRender(vka::command_buffer & cb, uint32_t frame_index);
         void endRender(vka::command_buffer & cb);
 };
 

@@ -463,8 +463,8 @@ int main(int argc, char ** argv)
           cb.copyBuffer( *staging_buffer , *du_buffer , vk::BufferCopy{ srcOffset,dstOffset, size } );
       }
 
-      screen->prepare_next_frame(image_available_semaphore);
-      screen->beginRender(cb);
+      uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
+      screen->beginRender(cb, frame_index);
 
 
       // bind the pipeline that we want to use next

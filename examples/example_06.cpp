@@ -167,7 +167,7 @@ int main(int argc, char ** argv)
     auto surface = C.create_window_surface(window); // create the vulkan surface using the window provided
     C.create_device(); // find the appropriate device
 
-    auto * screen = C.new_screen("screen");
+    vka::screen * screen = C.new_screen("screen");
     screen = C.new_screen("m_win");
     screen->set_extent( vk::Extent2D(WIDTH,HEIGHT) );
     screen->set_surface( surface );
@@ -567,8 +567,8 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
 
 
-      screen->prepare_next_frame(image_available_semaphore);
-      screen->beginRender(cb);
+      uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
+      screen->beginRender(cb, frame_index);
 
       // bind the pipeline that we want to use next
         cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );

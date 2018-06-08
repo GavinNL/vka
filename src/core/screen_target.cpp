@@ -261,10 +261,10 @@ void vka::screen::present_frame(vka::semaphore * wait_semaphore)
 }
 
 
-void vka::screen::beginRender(vka::command_buffer & cb )
+void vka::screen::beginRender(vka::command_buffer & cb , uint32_t frame_index)
 {
     m_renderpass_info.renderPass        = *get_renderpass();
-    m_renderpass_info.framebuffer       = *m_framebuffers[m_next_frame_index];
+    m_renderpass_info.framebuffer       = *m_framebuffers[frame_index];
     m_renderpass_info.renderArea.offset = vk::Offset2D(0,0);
     m_renderpass_info.renderArea.extent = m_extent;
     m_renderpass_info.clearValueCount   = m_clear_values.size();

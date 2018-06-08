@@ -544,8 +544,8 @@ int main(int argc, char ** argv)
 
 
 
-      screen->prepare_next_frame(image_available_semaphore);
-      screen->beginRender(cb);
+      uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
+      screen->beginRender(cb, frame_index);
 
       // bind the pipeline that we want to use next
         cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
