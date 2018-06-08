@@ -629,7 +629,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
       // present the image to the surface, but wait for the render_complete_semaphore
       // to be flagged by the submit_command_buffer
-      screen->present_frame(render_complete_semaphore);
+      screen->present_frame(frame_index,render_complete_semaphore);
 
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );
     }
