@@ -498,7 +498,7 @@ vka::texture * vka::context::new_depth_texture(const std::string & name, vk::Ima
     t->set_usage( flags | vk::ImageUsageFlagBits::eDepthStencilAttachment );
     t->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal);
     t->set_tiling( vk::ImageTiling::eOptimal);
-
+    t->set_view_type(vk::ImageViewType::e2D);
     return t;
 }
 
