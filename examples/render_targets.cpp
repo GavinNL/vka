@@ -156,6 +156,7 @@ public:
     {
         static uint32_t i=1;
         uint32_t index = (i/500)%3;
+        index = 3;
         m_commandbuffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
                              m_pipeline,
                              0, // binding index
@@ -448,6 +449,7 @@ struct App : public VulkanApp
                 // stage only.
                 ->add_push_constant( sizeof(int), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
                 //
+                ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eFragment)
                 ->set_render_pass( m_screen->get_renderpass() )
                 ->create();
         //======================================================================
@@ -798,28 +800,6 @@ struct App : public VulkanApp
    */
   void build_offscreen_commandbuffer( vka::command_buffer & cb )
   {
-      //  BEGIN RENDER PASS=====================================================
-      // We want the to use the render pass we created earlier
-      vk::RenderPassBeginInfo renderPassInfo;
-      renderPassInfo.renderPass        = *m_OffscreenTarget->get_renderpass();
-      renderPassInfo.framebuffer       = *m_OffscreenTarget->get_framebuffer();
-      renderPassInfo.renderArea.offset = vk::Offset2D{0,0};
-      renderPassInfo.renderArea.extent = vk::Extent2D(WIDTH,HEIGHT);
-
-      // Clear values are used to clear the various frame buffers
-      // we want to clear the colour values to black
-      // at the start of rendering.
-      std::array<vk::ClearValue,4> clearValues;
-      clearValues[0].color = vk::ClearColorValue( std::array<float,4>( {0.0f, 0.0f, 0.0f, 0.0f} ) );
-      clearValues[1].color = vk::ClearColorValue( std::array<float,4>( {0.0f, 0.0f, 0.0f, 0.0f} ) );
-      clearValues[2].color = vk::ClearColorValue( std::array<float,4>( {0.0f, 0.0f, 0.0f, 0.0f} ) );
-      clearValues[3].depthStencil = vk::ClearDepthStencilValue(1.0f, 0.0f );
-
-      renderPassInfo.clearValueCount = clearValues.size();
-      renderPassInfo.pClearValues    = clearValues.data();
-
-      //cb.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-      //========================================================================
 
       m_OffscreenTarget->clear_value(0).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f}));
       m_OffscreenTarget->clear_value(1).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f}));
@@ -838,6 +818,17 @@ struct App : public VulkanApp
   }
 
 
+  /**
+   * @brief init_render_targets
+   *
+   * The render target is what we will be drawing to. Usually it's just the
+   * screen. but this time we want to draw to a buffer offscreen.
+   *
+   * The render target is a full wrapper around the following items:
+   *   images
+   *   frame buffers
+   *   render pass
+   */
   void init_render_targets()
   {
       m_OffscreenTarget = m_Context.new_offscreen_target("offscreen_target");
@@ -846,6 +837,7 @@ struct App : public VulkanApp
       m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
       m_OffscreenTarget->add_depth_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
       m_OffscreenTarget->set_extents( vk::Extent2D(WIDTH,HEIGHT));
+
       m_OffscreenTarget->create();
   }
 

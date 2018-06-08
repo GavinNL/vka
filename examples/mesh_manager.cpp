@@ -76,7 +76,8 @@ struct per_frame_uniform_t
 
 struct light_data_t
 {
-    glm::vec4 position    = glm::vec4(0,2,0,1);
+    glm::vec4 position    = glm::vec4(0,2,0,1); // position.xyz, type [0 - omni, 1 - spot, 2 - directional
+                                                // if position.a == 2, then position.xyz -> direction.xyz
     glm::vec4 color       = glm::vec4(10,1,1,1);
     glm::vec4 attenuation = glm::vec4(1, 5.8 ,0.0, 10); //[constant, linear, quad, cutoff]
 };
@@ -126,7 +127,7 @@ public:
 class FullScreenQuadRenderer_t
 {
 public:
-    vka::pipeline * m_pipeline;
+    vka::pipeline     * m_pipeline;
     vka::command_buffer m_commandbuffer;
 
     FullScreenQuadRenderer_t(vka::command_buffer & cb ,
@@ -148,7 +149,7 @@ public:
     void operator()( vka::descriptor_set * dset)
     {
         static uint32_t i=1;
-        uint32_t index = 2;//(i/500)%3;
+        uint32_t index = -1;//(i/500)%3;
 
         m_commandbuffer.pushConstants( m_pipeline->get_layout(),
                                        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
@@ -509,7 +510,7 @@ struct App : public VulkanApp
                                                       U[ I[i] ] , U[ I[i+1] ], U[ I[i+2] ]);
 
               t.push_back(tbt.first);
-              t.push_back(tbt.second);
+              b.push_back(tbt.second);
           }
 
           for(uint32_t i=0;i<P.size();i++)
@@ -647,19 +648,13 @@ struct App : public VulkanApp
 
   void UpdateUniforms(vka::command_buffer & cb)
   {
-
-
     auto S = static_cast<unsigned char*>(m_sbuffer->map_memory());
-
 
     memcpy( &S[0]                            , &m_frame_uniform, sizeof(per_frame_uniform_t) );
     memcpy( &S[0+sizeof(per_frame_uniform_t)], &m_light_uniform, sizeof(light_uniform_t)     );
 
-
     cb.copySubBuffer( *m_sbuffer, m_ubuffer       , vk::BufferCopy(0, 0 ,sizeof(per_frame_uniform_t))  );
     cb.copySubBuffer( *m_sbuffer, m_ubuffer_lights, vk::BufferCopy(sizeof(per_frame_uniform_t), 0 ,sizeof(light_uniform_t))  );
-
-
   }
 
 
@@ -773,7 +768,7 @@ struct App : public VulkanApp
 
       std::string mesh[] = {"sphere", "box"};
 
-      for(int i=0; i<MAX_OBJ ;i++)
+      for(int i=0; i < MAX_OBJ ; i++)
       {
         auto * obj = new RenderComponent_t();
 
@@ -794,7 +789,7 @@ struct App : public VulkanApp
 
 
         obj->m_push.model    = vka::transform( 1.25f*glm::vec3( x , y, z)   ).get_matrix(); // T.get_matrix();
-        obj->m_push.index    = 1;
+        obj->m_push.index    = 0;
         obj->m_push.miplevel = -1;
 
 

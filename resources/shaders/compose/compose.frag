@@ -81,7 +81,16 @@ void main()
     vec3 frag_position = texture(texSampler0, f_UV.xy).xyz;
     vec3 normal        = texture(texSampler1, f_UV.xy).xyz;
     vec3 surface_color = texture(texSampler2, f_UV.xy).xyz;
+    vec3 surface_depth = texture(texSampler3, f_UV.xy).xyz;
 
+    switch( pushConsts.layer )
+    {
+        case 0:  out_Color = vec4( frag_position , 1.0); return;
+        case 1:  out_Color = vec4( normal , 1.0); return;
+        case 2:  out_Color = vec4( surface_color , 1.0); return;
+        case 3:  out_Color = vec4(surface_depth.rrr , 1.0); return;
+        default: break;
+    }
 
     //out_Color =  vec4(surface_color*0.1 , 1);
 
