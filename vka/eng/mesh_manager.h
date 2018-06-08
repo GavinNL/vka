@@ -117,14 +117,14 @@ class mesh
     }
    private:
 
-       mesh_manager                                * m_manager = nullptr;
-       std::array< attribute_data_t, MAX_ATTRIBUTES> m_attributes;
-       vka::sub_buffer                             * m_index_buffer = nullptr;
-       uint32_t                                      m_num_attributes=0;
-
-       uint32_t                                      m_index_count  = 0;
-       uint32_t                                      m_index_size   = 0;
-       uint32_t                                      m_vertex_count = 0;
+       mesh_manager                                * m_manager = nullptr;     // The parent manager
+       std::array< attribute_data_t, MAX_ATTRIBUTES> m_attributes;            // Information about each attribute (eg position/normal)
+       vka::sub_buffer                             * m_index_buffer = nullptr;// // pointer to the index sub_buffer
+       uint32_t                                      m_num_attributes=0;      //
+                                                                              //
+       uint32_t                                      m_index_count  = 0;      //
+       uint32_t                                      m_index_size   = 0;      //
+       uint32_t                                      m_vertex_count = 0;      //
 
        friend class mesh_manager;
 
