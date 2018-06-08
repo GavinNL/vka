@@ -92,6 +92,7 @@ bool vka::buffer::copy(const void *data, size_t _size, size_t offset)
         copy_cmd.end();
         C->submit_cmd_buffer(copy_cmd);
         cp->FreeCommandBuffer(copy_cmd);
+        LOG << "Copied " << _size << " bytes to buffer " << sb << " at offset " << offset << ENDL;
         return true;
     }
     return false;

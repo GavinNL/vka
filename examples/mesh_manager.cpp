@@ -58,6 +58,8 @@
 
 #include "vulkan_app.h"
 
+#include <vka/eng/mesh_manager.h>
+
 // This is the structure of the uniform buffer we want.
 // it needs to match the structure in the shader.
 struct per_frame_uniform_t
@@ -69,6 +71,22 @@ struct per_frame_uniform_t
 #else
     int use_uniform = 0;
 #endif
+};
+
+
+struct light_data_t
+{
+    glm::vec4 position    = glm::vec4(0,2,0,1); // position.xyz, type [0 - omni, 1 - spot, 2 - directional
+                                                // if position.a == 2, then position.xyz -> direction.xyz
+    glm::vec4 color       = glm::vec4(10,1,1,1);
+    glm::vec4 attenuation = glm::vec4(1, 5.8 ,0.0, 10); //[constant, linear, quad, cutoff]
+};
+
+struct light_uniform_t
+{
+    glm::vec2    num_lights = glm::vec2(5,0);
+    glm::vec2    num_lights2 = glm::vec2(10,0);
+    light_data_t lights[10];
 };
 
 // This data will be written directly to the command buffer to
@@ -83,41 +101,6 @@ struct push_constants_base_t
 struct push_constants_t : public push_constants_base_t
 {
     uint8_t _buffer[ 256 - sizeof(push_constants_base_t)];
-};
-
-/**
- * @brief The mesh_info_t struct
- * Information about the mesh, number of indices to draw and
- * offset in the index array
- */
-struct mesh_info_t
-{
-    uint32_t index_offset  = 0; // index offset
-    uint32_t count         = 0; // number of indices or vertices
-    uint32_t vertex_offset = 0; // vertex offset
-
-    std::vector<vka::sub_buffer*> m_buffers;
-    vka::sub_buffer              *m_index_buffer=nullptr;
-
-    void bind(vka::command_buffer & cb)
-    {
-        uint32_t i = 0;
-        if( m_index_buffer)
-        {
-            cb.bindIndexSubBuffer(m_index_buffer, vk::IndexType::eUint16);
-        }
-
-        for(auto & b : m_buffers)
-            cb.bindVertexSubBuffer( i++, b);
-    }
-
-    void draw( vka::command_buffer & cb)
-    {
-        if( m_index_buffer)
-            cb.drawIndexed(count, 1 , index_offset, vertex_offset,0);
-        else
-            cb.draw(count,1,vertex_offset,0);
-    }
 };
 
 
@@ -135,7 +118,7 @@ public:
 
     push_constants_t         m_push;
 
-    mesh_info_t              m_mesh;
+    std::shared_ptr<vka::mesh> m_mesh_m;
 
     bool m_draw_axis = true;
 };
@@ -144,23 +127,30 @@ public:
 class FullScreenQuadRenderer_t
 {
 public:
-    vka::pipeline * m_pipeline;
+    vka::pipeline     * m_pipeline;
     vka::command_buffer m_commandbuffer;
 
-    FullScreenQuadRenderer_t(vka::command_buffer & cb , vka::pipeline * pipeline) : m_pipeline(pipeline) , m_commandbuffer(cb)
+    FullScreenQuadRenderer_t(vka::command_buffer & cb ,
+                             vka::pipeline * pipeline ,
+                             vka::descriptor_set * texture_sets,
+                             vka::descriptor_set * uniform_sets) : m_pipeline(pipeline) , m_commandbuffer(cb)
     {
         m_commandbuffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
+        m_commandbuffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                             m_pipeline,
+                             0, // binding index
+                             texture_sets);
+        m_commandbuffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
+                             m_pipeline,
+                             1, // binding index
+                             uniform_sets);
     }
 
     void operator()( vka::descriptor_set * dset)
     {
         static uint32_t i=1;
-        uint32_t index = (i/500)%3;
-        index = 3;
-        m_commandbuffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
-                             m_pipeline,
-                             0, // binding index
-                             dset);
+        uint32_t index = -1;//(i/500)%3;
+
         m_commandbuffer.pushConstants( m_pipeline->get_layout(),
                                        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
                                        0,
@@ -201,8 +191,6 @@ public:
 class ComponentRenderer_t
 {
     vka::pipeline  *m_pipeline = nullptr;
-    vka::sub_buffer *m_ibuffer = nullptr;
-    vka::sub_buffer *m_vbuffer = nullptr;
 
 public:
     // given a render component, draw
@@ -214,8 +202,6 @@ public:
         if( obj->m_pipeline != m_pipeline)
         {
             m_pipeline = obj->m_pipeline;
-            //m_vbuffer = obj->m_vbuffer;
-           // m_ibuffer = obj->m_ibuffer;
 
             cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
 
@@ -235,9 +221,8 @@ public:
                           sizeof(push_constants_t),
                           &obj->m_push);
 
-        obj->m_mesh.bind(cb);
-        obj->m_mesh.draw(cb);
-
+        obj->m_mesh_m->bind(cb);
+        obj->m_mesh_m->draw(cb);
     }
 };
 
@@ -263,7 +248,7 @@ struct App : public VulkanApp
       //==========================================================================
       m_descriptor_pool = m_Context.new_descriptor_pool("main_desc_pool");
       m_descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 25);
-      m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
+      m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 5);
       m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
       m_descriptor_pool->create();
 
@@ -281,9 +266,9 @@ struct App : public VulkanApp
       // Allocate sub buffers from the buffer pool. These buffers can be
       // used for indices/vertices or uniforms.
       m_dbuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
-      m_ubuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
 
-      m_ibuffer = m_buffer_pool->new_buffer( 10*1024*1024 );
+      m_ubuffer_lights = m_buffer_pool->new_buffer( sizeof(light_uniform_t), 256 );
+      m_ubuffer        = m_buffer_pool->new_buffer( 10*1024*1024 ,256);
 
       m_sbuffer = m_Context.new_staging_buffer( "staging_buffer", 10*1024*1024);
 
@@ -352,8 +337,8 @@ struct App : public VulkanApp
         m_pipelines.main->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                 ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                ->set_vertex_shader(   "resources/shaders/push_consts_default/push_consts_default_v.spv", "main" )   // the shaders we want to use
-                ->set_fragment_shader( "resources/shaders/push_consts_default/push_consts_default_f.spv", "main" ) // the shaders we want to use
+                ->set_vertex_shader(   "resources/shaders/deferred_basic/deferred_basic_v.spv", "main" )   // the shaders we want to use
+                ->set_fragment_shader( "resources/shaders/deferred_basic/deferred_basic_f.spv", "main" ) // the shaders we want to use
 
                 // tell the pipeline that attribute 0 contains 3 floats
                 // and the data starts at offset 0
@@ -448,30 +433,85 @@ struct App : public VulkanApp
                 // Add a push constant to the layout. It is accessable in the vertex shader
                 // stage only.
                 ->add_push_constant( sizeof(int), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
-                //
+
                 ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eFragment)
+                //
                 ->set_render_pass( m_screen->get_renderpass() )
                 ->create();
         //======================================================================
   }
 
 
+  std::pair<glm::vec3, glm::vec3>
+  calculate_tangent_bitangent( glm::vec3 const & p0,  glm::vec3 const & p1,  glm::vec3 const & p2,
+          glm::vec2 const & uv0, glm::vec2 const & uv1, glm::vec2 const & uv2
+          )
+  {
+
+      auto deltaUV1 = uv1-uv0;
+      auto deltaUV2 = uv2-uv0;
+
+      auto edge1 = p1-p0;
+      auto edge2 = p2-p0;
+
+      float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+      std::pair<glm::vec3, glm::vec3> tbt;
+
+      tbt.first.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+      tbt.first.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+      tbt.first.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+      tbt.first = glm::normalize(tbt.first);
+
+      tbt.second.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+      tbt.second.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+      tbt.second.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+      tbt.second = glm::normalize(tbt.second);
+
+      return tbt;
+  }
+
   void load_meshs()
   {
+      m_mesh_manager.set_context(&m_Context);
+      m_mesh_manager.set_buffer_size( 1024*1024*20 );
+
+      std::shared_ptr<vka::mesh> MM[] = {
+                         m_mesh_manager.new_mesh("box"),
+                         m_mesh_manager.new_mesh("sphere") ,
+                         m_mesh_manager.new_mesh("plane")};
+
+
+      //box_mesh->allocate_vertex_data()
       std::vector<vka::mesh_t>   meshs;
       meshs.push_back( vka::box_mesh(1,1,1) );
       meshs.push_back( vka::sphere_mesh(0.5,20,20) );
+      meshs.push_back( vka::plane_mesh(10,10) );
 
+      uint32_t i=0;
       for( auto & M : meshs)
       {
 
           auto P = M.get_attribute_view<glm::vec3>( vka::VertexAttribute::ePosition);
           auto U = M.get_attribute_view<glm::vec2>( vka::VertexAttribute::eUV    );
           auto N = M.get_attribute_view<glm::vec3>( vka::VertexAttribute::eNormal);
+          auto I = M.get_index_view<uint16_t>();
+
 
           std::vector< glm::vec3> p;
           std::vector< glm::vec3> n;
           std::vector< glm::vec2> u;
+          std::vector< glm::vec3> t;
+          std::vector< glm::vec3> b;
+
+          for(uint32_t i=0; i<I.size(); i+=3)
+          {
+              auto tbt = calculate_tangent_bitangent( P[ I[i] ] , P[ I[i+1] ], P[ I[i+2] ],
+                                                      U[ I[i] ] , U[ I[i+1] ], U[ I[i+2] ]);
+
+              t.push_back(tbt.first);
+              b.push_back(tbt.second);
+          }
 
           for(uint32_t i=0;i<P.size();i++)
           {
@@ -480,38 +520,18 @@ struct App : public VulkanApp
                 u.push_back( U[i] );
           }
 
-         // #error To DO: we cannot just add the data to the the buffer randomly
-         //        we need 3 individual subbuffers
+         MM[i]->set_num_vertices( M.num_vertices() );
+         MM[i]->set_num_indices( M.num_indices(), sizeof(uint16_t));
+         MM[i]->set_attribute(0, sizeof(glm::vec3) );
+         MM[i]->set_attribute(1, sizeof(glm::vec2) );
+         MM[i]->set_attribute(2, sizeof(glm::vec3) );
+         MM[i]->allocate();
+         MM[i]->copy_attribute_data(0, p.data(), p.size() * sizeof(glm::vec3));
+         MM[i]->copy_attribute_data(1, u.data(), u.size() * sizeof(glm::vec2));
+         MM[i]->copy_attribute_data(2, n.data(), n.size() * sizeof(glm::vec3));
+         MM[i]->copy_index_data( M.index_data(), M.index_data_size() );
 
-          // sub_buffer::insert inserts data into the sub buffer at an available
-          // space and returns a sub_buffer object.
-          mesh_info_t mesh;
-
-          mesh.m_buffers.push_back( m_buffer_pool->new_buffer( p.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) ) );
-          mesh.m_buffers.push_back( m_buffer_pool->new_buffer( u.size() * sizeof(glm::vec2) , sizeof(glm::vec2 ) ) );
-          mesh.m_buffers.push_back( m_buffer_pool->new_buffer( n.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) ) );
-          mesh.m_index_buffer = m_buffer_pool->new_buffer( M.index_data_size(), sizeof(uint16_t) );
-
-          auto m1p = mesh.m_buffers[0]->insert( p.data() , p.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
-          auto m1u = mesh.m_buffers[1]->insert( u.data() , u.size() * sizeof(glm::vec2) , sizeof(glm::vec2 ) );
-          auto m1n = mesh.m_buffers[2]->insert( n.data() , n.size() * sizeof(glm::vec3) , sizeof(glm::vec3 ) );
-
-          auto m1i = mesh.m_index_buffer->insert(  M.index_data() , M.index_data_size()  , M.index_size() );
-
-          // If you wish to free the memory you have allocated, you shoudl call
-          // vertex_buffer->free_buffer_object(m1v);
-
-          //assert( m1v.m_size != 0);
-          //assert( m1i.m_size != 0);
-
-          mesh.count         = M.num_indices();
-
-          // the offset returned is the byte offset, so we need to divide it
-          // by the index/vertex size to get the actual index/vertex offset
-          mesh.index_offset  =  m1i.m_offset  / M.index_size();
-          mesh.vertex_offset =  0;
-
-          m_mesh_info.push_back(mesh);
+          i++;
       }
   }
 
@@ -520,7 +540,8 @@ struct App : public VulkanApp
       // 1. First load host_image into memory, and specifcy we want 4 channels.
           std::vector<std::string> image_paths = {
               "resources/textures/Brick-2852a.jpg",
-              "resources/textures/noise.jpg"
+              "resources/textures/noise.jpg",
+              "resources/textures/normal.jpg"
           };
 
           uint32_t layer = 0;
@@ -537,15 +558,19 @@ struct App : public VulkanApp
   void init_descriptor_sets()
   {
       // we want a descriptor set for set #0 in the pipeline.
-      m_dsets.texture_array = m_pipelines.main->create_new_descriptor_set(0, m_descriptor_pool);
+      m_dsets.texture_array = m_pipelines.gbuffer->create_new_descriptor_set(0, m_descriptor_pool);
       //  attach our texture to binding 0 in the set.
       m_dsets.texture_array->attach_sampler(0, m_texture_array);
       m_dsets.texture_array->update();
 
-      m_dsets.uniform_buffer = m_pipelines.main->create_new_descriptor_set(1, m_descriptor_pool);
+      m_dsets.uniform_buffer = m_pipelines.gbuffer->create_new_descriptor_set(1, m_descriptor_pool);
       m_dsets.uniform_buffer->attach_uniform_buffer(0, m_ubuffer, sizeof(per_frame_uniform_t), m_ubuffer->offset());
       m_dsets.uniform_buffer->update();
 
+
+      m_dsets.light_uniform_buffer = m_pipelines.compose->create_new_descriptor_set(1, m_descriptor_pool);
+      m_dsets.light_uniform_buffer->attach_uniform_buffer(0, m_ubuffer_lights, sizeof(light_uniform_t), m_ubuffer_lights->offset());
+      m_dsets.light_uniform_buffer->update();
 
       m_dsets.renderTargets = m_pipelines.compose->create_new_descriptor_set(0, m_descriptor_pool);
       m_dsets.renderTargets->attach_sampler(0, m_OffscreenTarget->get_image(0) );
@@ -576,9 +601,9 @@ struct App : public VulkanApp
       init_descriptor_sets();
 
 
-      m_image_available_semaphore = m_Context.new_semaphore("image_available_semaphore");
+      m_image_available_semaphore      = m_Context.new_semaphore("image_available_semaphore");
       m_composition_complete_semaphore = m_Context.new_semaphore("render_complete_semaphore");
-      m_offscreen_complete_semaphore = m_Context.new_semaphore("offscreen_complete_semaphore");
+      m_offscreen_complete_semaphore   = m_Context.new_semaphore("offscreen_complete_semaphore");
 
       m_compose_buffer   = m_command_pool->AllocateCommandBuffer();
       m_offscreen_buffer = m_command_pool->AllocateCommandBuffer();
@@ -623,19 +648,13 @@ struct App : public VulkanApp
 
   void UpdateUniforms(vka::command_buffer & cb)
   {
-#define SINGLE_COPY
-    auto alignment = 256;
-
     auto S = static_cast<unsigned char*>(m_sbuffer->map_memory());
-    vk::DeviceSize src_offset  = 0;
-    vk::DeviceSize dst_offset  = 0;
 
-    vk::DeviceSize size = sizeof( per_frame_uniform_t );
-    memcpy( &S[src_offset], &m_frame_uniform, size );
+    memcpy( &S[0]                            , &m_frame_uniform, sizeof(per_frame_uniform_t) );
+    memcpy( &S[0+sizeof(per_frame_uniform_t)], &m_light_uniform, sizeof(light_uniform_t)     );
 
-
-    cb.copySubBuffer( *m_sbuffer, m_ubuffer, vk::BufferCopy(src_offset, 0 ,size)  );
-    src_offset += size;
+    cb.copySubBuffer( *m_sbuffer, m_ubuffer       , vk::BufferCopy(0, 0 ,sizeof(per_frame_uniform_t))  );
+    cb.copySubBuffer( *m_sbuffer, m_ubuffer_lights, vk::BufferCopy(sizeof(per_frame_uniform_t), 0 ,sizeof(light_uniform_t))  );
   }
 
 
@@ -643,7 +662,7 @@ struct App : public VulkanApp
   {
 
       m_screen->beginRender(cb);
-         FullScreenQuadRenderer_t Q(cb, m_pipelines.compose);
+         FullScreenQuadRenderer_t Q(cb, m_pipelines.compose, m_dsets.renderTargets, m_dsets.light_uniform_buffer);
          Q( m_dsets.renderTargets);
       m_screen->endRender(cb);
   }
@@ -714,17 +733,46 @@ struct App : public VulkanApp
 
   void init_scene()
   {
-      #define MAX_OBJ 3
+
+#define S (2.0*3.141592653/10.0)
+
+      ANIMATE(m_light_uniform.lights[0].position, glm::vec4( 4*cos(t+0*S)   , 1.2,  4*sin(t + 0*S),0));
+      ANIMATE(m_light_uniform.lights[1].position, glm::vec4( 4*cos(t+1*S)   , 1.2,  4*sin(t + 1*S),0));
+      ANIMATE(m_light_uniform.lights[2].position, glm::vec4( 4*cos(t+2*S)   , 1.2,  4*sin(t + 2*S),0));
+      ANIMATE(m_light_uniform.lights[3].position, glm::vec4( 4*cos(t+3*S)   , 1.2,  4*sin(t + 3*S),0));
+      ANIMATE(m_light_uniform.lights[4].position, glm::vec4( 4*cos(t+4*S)   , 1.2,  4*sin(t + 4*S),0));
+      ANIMATE(m_light_uniform.lights[5].position, glm::vec4( 4*cos(t+5*S)   , 1.2,  4*sin(t + 5*S),0));
+      ANIMATE(m_light_uniform.lights[6].position, glm::vec4( 4*cos(t+6*S)   , 1.2,  4*sin(t + 6*S),0));
+      ANIMATE(m_light_uniform.lights[7].position, glm::vec4( 4*cos(t+7*S)   , 1.2,  4*sin(t + 7*S),0));
+      ANIMATE(m_light_uniform.lights[8].position, glm::vec4( 4*cos(t+8*S)   , 1.2,  4*sin(t + 8*S),0));
+      ANIMATE(m_light_uniform.lights[9].position, glm::vec4( 4*cos(t+9*S)   , 1.2,  4*sin(t + 9*S),0));
+
+      m_light_uniform.lights[0].position    = glm::vec4(-2,2.2,-2,0);
+      m_light_uniform.lights[0].color       = glm::vec4(10.0,0.0,0.1,0);
+    //  m_light_uniform.lights[0].attenuation = glm::vec4(1, 0.8 ,0.0, 10);
+
+      m_light_uniform.lights[1].position    = glm::vec4(2,2.2,2,0);
+      m_light_uniform.lights[1].color       = glm::vec4(0.0,10.0,0.0,1.0);
+   //   m_light_uniform.lights[1].attenuation = glm::vec4(1, 0.0 ,0.8, 10);
+
+      m_light_uniform.lights[2].position    = glm::vec4(2,2.2,2,0);
+      m_light_uniform.lights[2].color       = glm::vec4(0.0,0.0,10.0,1.0);
+    //  m_light_uniform.lights[2].attenuation = glm::vec4(1, 0.0 ,0.8, 10);
+       //m_light_uniform.lights[1].position    = glm::vec3(-5,5.1,-5);
+      // m_light_uniform.lights[1].attenuation = glm::vec4(1, 0.001 ,0.001, 10);
+      #define MAX_OBJ 1
 
       float x = 0;
       float y = 0;
       float z = 0;
 
-      for(int i=0; i<MAX_OBJ ;i++)
+      std::string mesh[] = {"sphere", "box"};
+
+      for(int i=0; i < MAX_OBJ ; i++)
       {
         auto * obj = new RenderComponent_t();
 
-        obj->m_mesh     = m_mesh_info[ i%2 ];
+        obj->m_mesh_m   = m_mesh_manager.get_mesh( "plane");
         obj->m_pipeline = m_pipelines.gbuffer;
 
         obj->m_descriptor_sets[0] = m_dsets.texture_array;
@@ -741,7 +789,7 @@ struct App : public VulkanApp
 
 
         obj->m_push.model    = vka::transform( 1.25f*glm::vec3( x , y, z)   ).get_matrix(); // T.get_matrix();
-        obj->m_push.index    = i%2;
+        obj->m_push.index    = 0;
         obj->m_push.miplevel = -1;
 
 
@@ -760,11 +808,6 @@ struct App : public VulkanApp
 
         m_Objs.push_back(obj);
     }
-
-
-   //   m_Objs[1]->m_uniform_data.model = vka::transform( glm::vec3(0,3,0) ).get_matrix(); // T.get_matrix();
-   //   m_Objs[2]->m_uniform_data.model = vka::transform( glm::vec3(0,0,4) ).get_matrix(); // T.get_matrix();
-
 
 
     //======================
@@ -805,8 +848,8 @@ struct App : public VulkanApp
       m_OffscreenTarget->clear_value(1).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f}));
       m_OffscreenTarget->clear_value(2).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f }));
 
-
       m_OffscreenTarget->beginRender(cb);
+
       // Main component renderer
       ComponentRenderer_t R;
       for(auto * comp : m_Objs)
@@ -814,21 +857,9 @@ struct App : public VulkanApp
           R(cb, comp);
       }
       m_OffscreenTarget->endRender(cb);
-      //cb.endRenderPass();
   }
 
 
-  /**
-   * @brief init_render_targets
-   *
-   * The render target is what we will be drawing to. Usually it's just the
-   * screen. but this time we want to draw to a buffer offscreen.
-   *
-   * The render target is a full wrapper around the following items:
-   *   images
-   *   frame buffers
-   *   render pass
-   */
   void init_render_targets()
   {
       m_OffscreenTarget = m_Context.new_offscreen_target("offscreen_target");
@@ -837,7 +868,6 @@ struct App : public VulkanApp
       m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
       m_OffscreenTarget->add_depth_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
       m_OffscreenTarget->set_extents( vk::Extent2D(WIDTH,HEIGHT));
-
       m_OffscreenTarget->create();
   }
 
@@ -848,11 +878,12 @@ struct App : public VulkanApp
 
   vka::buffer_pool * m_buffer_pool;
 
-  //vka::sub_buffer* m_vbuffer;
-  vka::sub_buffer* m_ibuffer;
+  vka::sub_buffer* m_ubuffer_lights;
   vka::sub_buffer* m_ubuffer;
   vka::sub_buffer* m_dbuffer;
   vka::buffer    * m_sbuffer;
+
+  vka::mesh_manager m_mesh_manager;
 
   vka::texture2darray * m_texture_array;
 
@@ -863,20 +894,17 @@ struct App : public VulkanApp
   //========================================
           vka::camera m_Camera;
    per_frame_uniform_t m_frame_uniform;
+   light_uniform_t     m_light_uniform;
 
   struct
   {
     vka::descriptor_set * texture_array;
     vka::descriptor_set * uniform_buffer;
+    vka::descriptor_set * light_uniform_buffer;
     vka::descriptor_set * dynamic_uniform_buffer;
 
     vka::descriptor_set * renderTargets;
   } m_dsets;
-
-  struct textures
-  {
-    vka::texture * renderTargets[4];
-  } m_textures;
 
   struct
   {
@@ -894,7 +922,6 @@ struct App : public VulkanApp
   vka::offscreen_target * m_OffscreenTarget;
   //====================================
 
-  std::vector< mesh_info_t >        m_mesh_info;
   std::vector< RenderComponent_t* > m_Objs;
 
   vka::signal<void(double       , double)>::slot mouseslot;

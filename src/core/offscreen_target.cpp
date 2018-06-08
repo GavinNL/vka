@@ -81,16 +81,21 @@ vka::offscreen_target* vka::offscreen_target::add_color_attachment(vk::Extent2D 
 vka::offscreen_target* vka::offscreen_target::add_depth_attachment(vk::Extent2D size, vk::Format format)
 {
     std::string name = get_parent_context()->get_name<vka::offscreen_target>(this) + "_texture_" + std::to_string( m_attachments.size() );
+
+    //====================== Create the depth texture ==========================
     auto * Depth_Texture = get_parent_context()->new_depth_texture(name);
     Depth_Texture->set_size( size.width, size.height, 1)
-                 ->set_usage(  vk::ImageUsageFlagBits::eTransferDst |vk::ImageUsageFlagBits::eSampled| vk::ImageUsageFlagBits::eDepthStencilAttachment )
+                 ->set_usage(  vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled| vk::ImageUsageFlagBits::eDepthStencilAttachment )
                  ->create();
     Depth_Texture->create_image_view( vk::ImageAspectFlagBits::eDepth);
+    //==========================================================================
+
     m_attachments.push_back(Depth_Texture);
 
+
     m_renderpass->set_depth_attachment_layout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
-    m_renderpass->get_depth_attachment_description().finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-    m_renderpass->get_depth_attachment_description().format       = Depth_Texture->get_format();
+    m_renderpass->get_depth_attachment_description().finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+    m_renderpass->get_depth_attachment_description().format      = Depth_Texture->get_format();
     m_framebuffer->add_attachments(Depth_Texture);
 
     m_depth_index = m_attachments.size()-1;

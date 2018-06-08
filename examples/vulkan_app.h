@@ -20,6 +20,12 @@
 
 struct VulkanApp :   public vka::GLFW_Window_Handler
 {
+#define ANIMATE(variable, change)\
+(onPoll << [&](double t)\
+{                       \
+    variable = change;  \
+}).detach();
+
   VulkanApp()
   {
       static int init__=false;
@@ -137,7 +143,8 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
       {
           dt  = get_elapsed_time()-T;
           T  += dt;
-          glfwPollEvents();
+
+          Poll();
 
           onFrame(dt, T);
 

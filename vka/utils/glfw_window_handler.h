@@ -80,6 +80,7 @@ class signal
                 m_Container = std::move( other.m_Container);
             }
 
+
             virtual ~slot()
             {
                 disconnect();
@@ -114,10 +115,12 @@ class signal
 
             }
 
-            void detach()
+            id detach()
             {
+                auto x = m_id;
                 m_id = 0;
                 m_Container.reset();
+                return x;
             }
         };
 
@@ -394,6 +397,7 @@ public:
     {
         if(m_Window)
         {
+            m_start_time = std::chrono::system_clock::now();
             SetupCallbacks(m_Window);
         }
     }
@@ -434,8 +438,9 @@ public:
 
     void Poll()
     {
+        double t = std::chrono::duration<double>(std::chrono::system_clock::now() - m_start_time).count();
         glfwPollEvents();
-        onPoll();
+        onPoll(t);
     }
 
     operator bool()
@@ -466,7 +471,7 @@ public:
     signal<void(double  , double)>    onMouseMove;
     signal<void(Button  , int   )>    onMouseButton;
     signal<void(Key,      int   )>    onKey;
-    signal<void()>                    onPoll;
+    signal<void(double)>              onPoll;
 
 
 
@@ -477,6 +482,7 @@ public:
         double m_mouse_x;
         double m_mouse_y;
 
+        std::chrono::system_clock::time_point m_start_time;
         static int & count()
         {
             static std::shared_ptr<int> c = std::make_shared<int>(0);
