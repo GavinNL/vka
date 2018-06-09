@@ -1,24 +1,19 @@
 /*
- * Example 6: Camera,  Transformation, and Window Inputs
+ * Example 7: Mesh Manager
  *
- * This example demonstrates the use of three classes: vka::camera,
- * vka::transform and vka::GLFW_Window_Handler.
+ * This example demonstrates how to use the vka::mesh_manager.
  *
- * vka::transform is a class which makes manipulating the postion/orientation
- * of an object easier.
+ * The Mesh Manager is a wrapper around a single large buffer, which can
+ * then allocate sub-buffers. The sub buffers are used for storing the
+ * attributes of a mesh such as position/normals/UV coords/colors, etc.
  *
- * The vka::camera class assists in creating the matrices required for
- * the view and projection matrices. In addition it also provides some basic
- * physics to provide motion.
+ * To use the Mesh Manager, you first initalize it with a certain size
+ * of memory. Then you create new meshs from it and set them up with the
+ * appropriate attributes. Then allocate the memory for the mesh.
  *
- * call camera.calculate() in the main loop to do the physics calcations
- *
- * vka::GLFW_Window_Handler is a wrapper a around the GLFWWindow, it provides
- * callbacks for input events such as key presses and mouse motion.
- *
- * In this example we are going to use all three of these classes.  In addition
- * we are going to take Example_05 and remove all the verbose methods and replace
- * them with vka specific helper functions.
+ * To draw a mesh. Use the vka::command_buffer::bind( mesh ) function
+ * follows by the vka::command_bufer::draw( mesh ) command. Under the hood
+ * these two fucntions
  *
  */
 
@@ -221,6 +216,16 @@ public:
 };
 
 
+/**
+ * @brief The App struct
+ *
+ * This is the main structure of our app. We will inherit from VulkanApp which
+ * performs some low level stuff we do not need to worry to much about. It
+ * performs things like creating the window, providing callback functions
+ * for mouse/keyboard/window events.
+ *
+ * It also intializes the Screen object to draw to
+ */
 struct App : public VulkanApp
 {
 
@@ -383,8 +388,9 @@ struct App : public VulkanApp
    * @param M
    * @return
    *
-   * This function takes a host Mesh and copies it to the GPU and returns
-   * a reference to the GPU mesh which can be used to render.
+   * This function takes a host Mesh and copies it to the GPU via the Mesh Manager.
+   *
+   * It returns a reference to the mesh which can be used to draw.
    */
   std::shared_ptr<vka::mesh> convert_to_gpu_mesh( const std::string & name, vka::mesh_t & M)
   {
@@ -493,30 +499,41 @@ struct App : public VulkanApp
       m_dsets.uniform_buffer->update();
 
   }
+
+  /**
+   * @brief onInit
+   *
+   * This is called as soon as the VulkanApp starts. We will
+   * use this to initalize all the data we need
+   */
   virtual void onInit()
   {
+      // create all the pools required
       init_pools();
 
-
+      // initalize all the memory we need
       init_memory();
 
+      // load 3d meshs
       load_meshs();
 
-
+      // load textures
       load_textures();
 
-
+      // create the pipelines
       init_pipelines();
 
-
+      // create the descriptor sets
       init_descriptor_sets();
 
 
       m_image_available_semaphore = m_Context.new_semaphore("image_available_semaphore");
       m_render_complete_semaphore = m_Context.new_semaphore("render_complete_semaphore");
 
+      // create the main command buffer
       m_commandbuffer = m_command_pool->AllocateCommandBuffer();
 
+      // Initalize the scene we are going to render
       init_scene();
 
 
