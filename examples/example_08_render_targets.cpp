@@ -110,6 +110,12 @@ struct push_constants_t : public push_constants_base_t
     uint8_t _buffer[ 128 - sizeof(push_constants_base_t)];
 };
 
+struct compose_pipeline_push_consts
+{
+    glm::vec2 position;
+    glm::vec2 size;
+    int layer;
+};
 
 
 /**
@@ -198,10 +204,11 @@ public:
         m_commandbuffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
     }
 
-    void operator()( vka::descriptor_set * dset)
+    void operator()( vka::descriptor_set * dset, compose_pipeline_push_consts const & pc )
     {
         static uint32_t i=1;
-        uint32_t index = (i/500)%3;
+        //uint32_t index = (i/500)%3;
+
         m_commandbuffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
                              m_pipeline,
                              0, // binding index
@@ -209,8 +216,8 @@ public:
         m_commandbuffer.pushConstants( m_pipeline->get_layout(),
                                        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
                                        0,
-                                       sizeof(uint32_t),
-                                       &index);
+                                       sizeof(compose_pipeline_push_consts),
+                                       &pc);
 
         i++;
 
@@ -488,12 +495,13 @@ struct App : public VulkanApp
               ->set_cull_mode(vk::CullModeFlagBits::eNone)
               // Add a push constant to the layout. It is accessable in the vertex shader
               // stage only.
-              ->add_push_constant( sizeof(int), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+              ->add_push_constant( sizeof(compose_pipeline_push_consts), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
               // Since we are drawing this to the screen, we need the screen's
               // renderpass.
               ->set_render_pass( m_screen->get_renderpass() )
               ->create();
       //======================================================================
+
 
       //======================================================================
       // Each attachment in the render target is an image. Once we draw to the
@@ -777,6 +785,10 @@ struct App : public VulkanApp
       //========================================================================
 
       // Now we are going to build the command buffer to render to the screen
+      // We are going to draw 4 quads onto the screen, each quad will
+      // use a different color component from the previous rendering stage
+      // as a texture so we can see what image is drawn to each of the components.
+
 
       // Prepare the next frame for rendering and get the frame_index
       // that we will be drawing to.
@@ -791,7 +803,23 @@ struct App : public VulkanApp
           m_screen->beginRender(m_compose_cmd_buffer, frame_index);
           {
               FullScreenQuadRenderer_t Q(m_compose_cmd_buffer, m_pipelines.compose);
-              Q( m_dsets.renderTargets);
+
+              compose_pipeline_push_consts pc;
+              pc.layer = 0;
+
+              pc.size     = glm::vec2(1,1);
+
+              pc.layer = 0; pc.position = glm::vec2(-1,-1);
+              Q( m_dsets.renderTargets, pc);
+
+              pc.layer = 1; pc.position = glm::vec2( 0,0);
+              Q( m_dsets.renderTargets, pc);
+
+              pc.layer = 2; pc.position = glm::vec2( 0,-1);
+              Q( m_dsets.renderTargets, pc);
+
+              pc.layer = 3; pc.position = glm::vec2( -1,0);
+              Q( m_dsets.renderTargets, pc);
           }
           m_screen->endRender(m_compose_cmd_buffer);
       }
