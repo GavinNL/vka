@@ -24,6 +24,8 @@ layout(set=0, binding = 3) uniform sampler2D texSampler3;
 // Push constants. This should be in all stages.
 //========================================================================
 layout(push_constant) uniform PushConsts {
+        vec2 position;
+        vec2 size;
         int layer;
 } pushConsts;
 
@@ -39,6 +41,9 @@ void main()
             break;
         case 2:
             out_Color = texture(texSampler2, f_UV.xy ).rgba;
+            break;
+        case 3:
+            out_Color = vec4(texture(texSampler3, f_UV.xy ).rrr,1);
             break;
     }
 
