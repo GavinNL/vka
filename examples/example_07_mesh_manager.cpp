@@ -145,10 +145,28 @@ public:
     push_constants_t                         m_push;
     std::shared_ptr<vka::mesh>               m_mesh_m;
 
+    //======================================
     bool m_draw_axis = true;
+
+
+    // We are going to use these variables to make the object
+    // orbit around the origin at various speeds/distances
+    double m_orbital_speed;
+    double m_orbital_radius;
+    double m_orbital_phase;
 };
 
-
+/**
+ * @brief The AxisRenderer_t class
+ *
+ * The axis renderer is used to render an simple 3 dimensional axis
+ * We initalize it with a command buffer and the pipeline used to
+ * draw it.
+ *
+ * Then when we call the class using the () operator, we simply
+ * pass in the model-view-projection matrix  (P * V* M )
+ * and it will draw the axiss
+ */
 class AxisRenderer_t
 {
 public:
@@ -592,6 +610,24 @@ struct App : public VulkanApp
   }
 
 
+
+  void calculate(double T)
+  {
+      m_Camera.calculate();
+
+      m_frame_uniform.view = m_Camera.get_view_matrix();
+      m_frame_uniform.proj = m_Camera.get_proj_matrix();
+      m_frame_uniform.proj[1][1] *= -1;
+
+     for(RenderComponent_t * m : m_Objs)
+     {
+        auto th = T * m->m_orbital_speed * 2.0*3.14159 + m->m_orbital_phase;
+
+        auto p = glm::vec3( m->m_orbital_radius * cos( th ), 0.0, m->m_orbital_radius * sin( th ) );
+
+        m->m_push.model = vka::transform( p ).get_matrix();
+     }
+  }
   /**
    * @brief onFrame
    * @param dt
@@ -611,11 +647,9 @@ struct App : public VulkanApp
   {
       //========================================================================
       // 1. Calculate the positions of the new objects/cameras
-      m_Camera.calculate();
+      //m_Camera.calculate();
+      calculate(T);
 
-      m_frame_uniform.view = m_Camera.get_view_matrix();
-      m_frame_uniform.proj = m_Camera.get_proj_matrix();
-      m_frame_uniform.proj[1][1] *= -1;
 
       //========================================================================
 
@@ -654,6 +688,14 @@ struct App : public VulkanApp
           {
               R(m_commandbuffer, comp);
           }
+
+          AxisRenderer_t A( m_commandbuffer, m_pipelines.axis);
+          auto VP = m_frame_uniform.proj * m_frame_uniform.view;
+          for(auto * comp : m_Objs)
+          {
+              A(VP * comp->m_push.model);
+          }
+
       // end the rendering
       m_screen->endRender(m_commandbuffer);
       //========================================================================
@@ -692,11 +734,13 @@ struct App : public VulkanApp
       float y = 0;
       float z = 0;
 
+      std::string meshs[] = {"box", "sphere"};
       for(int i=0; i<MAX_OBJ ;i++)
       {
         auto * obj = new RenderComponent_t();
 
-        obj->m_mesh_m   = m_mesh_manager.get_mesh("sphere");
+
+        obj->m_mesh_m   = m_mesh_manager.get_mesh( meshs[i%2] );
 
         obj->m_pipeline = m_pipelines.main;
 
@@ -704,12 +748,11 @@ struct App : public VulkanApp
         obj->m_descriptor_sets[1] = m_dsets.uniform_buffer;
 
 
-        vka::transform T;
-        T.set_position( glm::vec3(0,0,0));
-        T.set_scale( glm::vec3(1,1,1));
+        obj->m_orbital_radius = std::rand() % 20+1;
+        obj->m_orbital_speed  = 1.0 / ( obj->m_orbital_radius );
+        obj->m_orbital_phase = ((std::rand()%10000) / 10000.0) * 2.0*3.141592653589;
 
 
-        obj->m_push.model    = vka::transform( 1.25f*glm::vec3( x , y, z)   ).get_matrix(); // T.get_matrix();
         obj->m_push.index    = i%2;
         obj->m_push.miplevel = -1;
 
