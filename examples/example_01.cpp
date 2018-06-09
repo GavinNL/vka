@@ -381,8 +381,8 @@ int main(int argc, char ** argv)
       cb.copyBuffer( *staging_buffer , *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
 
 
-      screen->prepare_next_frame(image_available_semaphore);
-      screen->beginRender(cb);
+      uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
+      screen->beginRender(cb, frame_index);
 
       // bind the pipeline that we want to use next
             cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
@@ -415,7 +415,7 @@ int main(int argc, char ** argv)
 
       // present the image to the surface, but wait for the render_complete_semaphore
       // to be flagged by the submit_command_buffer
-      screen->present_frame(render_complete_semaphore);
+      screen->present_frame( frame_index, render_complete_semaphore);
 
 
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );

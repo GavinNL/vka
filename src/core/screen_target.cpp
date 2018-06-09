@@ -233,16 +233,9 @@ uint32_t vka::screen::prepare_next_frame(vka::semaphore *signal_semaphore)
                                           vk::Fence()).value;
     return m_next_frame_index;
 }
-uint32_t vka::screen::get_next_image_index(vka::semaphore *signal_semaphore)
-{
-    m_next_frame_index  = get_device().acquireNextImageKHR( m_swapchain,
-                                          std::numeric_limits<uint64_t>::max(),
-                                          *signal_semaphore,
-                                          vk::Fence()).value;
-    return m_next_frame_index;
-}
 
-void vka::screen::present_frame(vka::semaphore * wait_semaphore)
+
+void vka::screen::present_frame(uint32_t frame_index, vka::semaphore * wait_semaphore)
 {
     vk::PresentInfoKHR presentInfo;
     if( wait_semaphore)
@@ -254,17 +247,17 @@ void vka::screen::present_frame(vka::semaphore * wait_semaphore)
     vk::SwapchainKHR swapChains[] = { m_swapchain };
     presentInfo.swapchainCount    = 1;
     presentInfo.pSwapchains       = swapChains;
-    presentInfo.pImageIndices     = &m_next_frame_index;
+    presentInfo.pImageIndices     = &frame_index;
     presentInfo.pResults = nullptr;
 
     get_parent_context()->present_image( presentInfo );
 }
 
 
-void vka::screen::beginRender(vka::command_buffer & cb )
+void vka::screen::beginRender(vka::command_buffer & cb , uint32_t frame_index)
 {
     m_renderpass_info.renderPass        = *get_renderpass();
-    m_renderpass_info.framebuffer       = *m_framebuffers[m_next_frame_index];
+    m_renderpass_info.framebuffer       = *m_framebuffers[frame_index];
     m_renderpass_info.renderArea.offset = vk::Offset2D(0,0);
     m_renderpass_info.renderArea.extent = m_extent;
     m_renderpass_info.clearValueCount   = m_clear_values.size();

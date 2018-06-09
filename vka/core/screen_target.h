@@ -58,11 +58,27 @@ class screen : public context_child
 
         vka::renderpass* get_renderpass() { return m_renderpass; }
 
-        uint32_t get_next_image_index(vka::semaphore * signal_semaphore);
-        uint32_t prepare_next_frame(vka::semaphore * signal_semaphore);
-        void present_frame(vka::semaphore * wait_semaphore);
 
-        void beginRender(vka::command_buffer & cb);
+        /**
+         * @brief prepare_next_frame
+         * @param signal_semaphore
+         * @return Index of the next frame
+         *
+         * Prepares the next frame in the swap chain for rendering,
+         * Signal the semaphore when it is complete
+         */
+        uint32_t prepare_next_frame(vka::semaphore * signal_semaphore);
+
+        /**
+         * @brief present_frame
+         * @param frame_index
+         * @param wait_semaphore
+         *
+         * Present the frame to the screen, but wait on the semaphore
+         */
+        void present_frame(uint32_t frame_index, vka::semaphore * wait_semaphore);
+
+        void beginRender(vka::command_buffer & cb, uint32_t frame_index);
         void endRender(vka::command_buffer & cb);
 };
 
