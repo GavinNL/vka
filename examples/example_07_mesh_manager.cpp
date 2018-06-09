@@ -62,19 +62,29 @@
 
 // This is the structure of the uniform buffer we want.
 // it needs to match the structure in the shader.
+
+/**
+ * @brief The per_frame_uniform_t struct
+ *
+ * This structure will hold the information the scene will require per frame.
+ * This includes the camera's position/projection informaiton
+ * and anything else that only changes once per frame.
+ */
 struct per_frame_uniform_t
 {
     glm::mat4 view;
     glm::mat4 proj;
-#if defined ENABLE_UNIFORM
-    int use_uniform = 1;
-#else
-    int use_uniform = 0;
-#endif
 };
 
-// This data will be written directly to the command buffer to
-// be passed to the shader as a push constant.
+/**
+ * @brief The push_constants_base_t struct
+ *
+ * We are goign to use this structure to hold any information that
+ * must be passed to the shader. We can use this block of
+ * data to pass in the model matrix for each object
+ * plus any additional information we might need such as
+ * the mipmap level or the index into the texture layer
+ */
 struct push_constants_base_t
 {
     glm::mat4 model;
@@ -82,46 +92,17 @@ struct push_constants_base_t
     int miplevel; // mipmap level we want to use, -1 for shader chosen.
 };
 
+/**
+ * @brief The push_constants_t struct
+ *
+ * Push constants can only be a certain size. It must be a minimum of 128bytes
+ * according to the Vulkan spec, but some video cards can go up to 256
+ */
 struct push_constants_t : public push_constants_base_t
 {
-    uint8_t _buffer[ 256 - sizeof(push_constants_base_t)];
+    static_assert( sizeof(push_constants_base_t) <= 128, "Push constants size is too large");
+    uint8_t _buffer[ 128 - sizeof(push_constants_base_t)];
 };
-
-/**
- * @brief The mesh_info_t struct
- * Information about the mesh, number of indices to draw and
- * offset in the index array
- */
-struct mesh_info_t
-{
-    uint32_t index_offset  = 0; // index offset
-    uint32_t count         = 0; // number of indices or vertices
-    uint32_t vertex_offset = 0; // vertex offset
-
-    std::vector<vka::sub_buffer*> m_buffers;
-    vka::sub_buffer              *m_index_buffer=nullptr;
-
-    void bind(vka::command_buffer & cb)
-    {
-        uint32_t i = 0;
-        if( m_index_buffer)
-        {
-            cb.bindIndexSubBuffer(m_index_buffer, vk::IndexType::eUint16);
-        }
-
-        for(auto & b : m_buffers)
-            cb.bindVertexSubBuffer( i++, b);
-    }
-
-    void draw( vka::command_buffer & cb)
-    {
-        if( m_index_buffer)
-            cb.drawIndexed(count, 1 , index_offset, vertex_offset,0);
-        else
-            cb.draw(count,1,vertex_offset,0);
-    }
-};
-
 
 
 
