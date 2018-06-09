@@ -2,3 +2,4 @@
 *.txt.user
 build*
 *.spv
+*.autosave
