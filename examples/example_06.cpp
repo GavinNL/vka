@@ -233,9 +233,9 @@ int main(int argc, char ** argv)
 
         std::vector< mesh_info_t > m_mesh_info;
 
-        std::vector<vka::mesh_t>   meshs;
-        meshs.push_back( vka::box_mesh(1,1,1) );
-        meshs.push_back( vka::sphere_mesh(0.5,20,20) );
+        std::vector<vka::host_mesh>   meshs;
+        meshs.push_back( vka::box_mesh_host(1,1,1) );
+        meshs.push_back( vka::sphere_mesh_host(0.5,20,20) );
 
         // Allocate sub buffers from the buffer pool. These buffers can be
         // used for indices/vertices or uniforms.
@@ -251,12 +251,41 @@ int main(int argc, char ** argv)
 
         for( auto & M : meshs)
         {
+            // The Vertex attribute information within the host_mesh is stored
+            // as separate arrays. We want to interleave the attributes so that
+            // the attributes in the GPU look like:
+            //  P1U1N1P2U2N2....
+            //
+            // We are going to create a single vector of bytes to store all
+            // the data
+            std::vector<uint8_t> m_data;
+
+            // Get an array_view of each of the attributes
+            auto P = M.get_attribute(vka::VertexAttribute::ePosition).view<glm::vec3>();
+            auto U = M.get_attribute(vka::VertexAttribute::eUV).view<glm::vec2>();
+            auto N = M.get_attribute(vka::VertexAttribute::eNormal).view<glm::vec3>();
+
+            for(uint32_t i=0;i<P.size();i++)
+            {
+                // insert zero bytes at the end of the vector
+                m_data.insert( m_data.end() , sizeof(glm::vec3) , 0);
+                // and then fill those bytes with the Position data
+                memcpy( &m_data.back() - sizeof(glm::vec3)+1, &P[i], sizeof(glm::vec3) );
+
+                // Do the same for the UV and Normals
+                m_data.insert( m_data.end() , sizeof(glm::vec2) ,0 );
+                memcpy( &m_data.back() - sizeof(glm::vec2)+1, &U[i], sizeof(glm::vec2) );
+
+                m_data.insert( m_data.end() , sizeof(glm::vec3) , 0);
+                memcpy( &m_data.back() - sizeof(glm::vec3)+1, &N[i], sizeof(glm::vec3) );
+            }
 
             // sub_buffer::insert inserts data into the sub buffer at an available
             // space and returns a sub_buffer object.
 
-            auto m1v = vertex_buffer->insert( M.vertex_data(), M.vertex_data_size() );
-            auto m1i = index_buffer->insert(  M.index_data() , M.index_data_size()  );
+            auto m1v = vertex_buffer->insert( m_data.data(), m_data.size() );
+            auto m1i = index_buffer->insert(  M.get_attribute(vka::VertexAttribute::eIndex).data(),
+                                              M.get_attribute(vka::VertexAttribute::eIndex).data_size()  );
 
             // If you wish to free the memory you have allocated, you shoudl call
             // vertex_buffer->free_buffer_object(m1v);
@@ -265,12 +294,19 @@ int main(int argc, char ** argv)
             assert( m1i.m_size != 0);
 
             mesh_info_t m_box_mesh;
-            m_box_mesh.count         = M.num_indices();
+            m_box_mesh.count         =  M.get_attribute(vka::VertexAttribute::eIndex).count();
+
 
             // the offset returned is the byte offset, so we need to divide it
             // by the index/vertex size to get the actual index/vertex offset
-            m_box_mesh.offset        =  m1i.m_offset  / M.index_size();
-            m_box_mesh.vertex_offset =  m1v.m_offset  / M.vertex_size();
+            m_box_mesh.offset        =  m1i.m_offset  / M.get_attribute(vka::VertexAttribute::eIndex).attribute_size();
+
+            auto vertex_size = M.get_attribute(vka::VertexAttribute::ePosition).attribute_size() +
+                               M.get_attribute(vka::VertexAttribute::eUV).attribute_size() +
+                               M.get_attribute(vka::VertexAttribute::eNormal).attribute_size();
+
+            LOG << "Vertex size: " << vertex_size << ENDL;
+            m_box_mesh.vertex_offset =  m1v.m_offset  / vertex_size;
 
             m_mesh_info.push_back(m_box_mesh);
         }
@@ -326,7 +362,19 @@ int main(int argc, char ** argv)
 
         vka::pipeline* pipeline = C.new_pipeline("triangle");
 
+
         auto & M = meshs.front();
+
+        auto & P = M.get_attribute(vka::VertexAttribute::ePosition);
+        auto & U = M.get_attribute(vka::VertexAttribute::eUV);
+        auto & N = M.get_attribute(vka::VertexAttribute::eNormal);
+
+        auto p_offset = 0;
+        auto u_offset = p_offset + P.attribute_size();
+        auto n_offset = u_offset + U.attribute_size();
+
+        auto vertex_size = n_offset + N.attribute_size();
+
         // Create the graphics Pipeline
           pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                   ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
@@ -336,12 +384,12 @@ int main(int argc, char ** argv)
 
                   // tell the pipeline that attribute 0 contains 3 floats
                   // and the data starts at offset 0
-                  ->set_vertex_attribute(0,0 ,  M.offset( vka::VertexAttribute::ePosition) , M.format( vka::VertexAttribute::ePosition) , M.vertex_size() )
+                  ->set_vertex_attribute(0,0 ,  p_offset, P.format() , vertex_size )
                   // tell the pipeline that attribute 1 contains 3 floats
                   // and the data starts at offset 12
-                  ->set_vertex_attribute(0,1 ,  M.offset( vka::VertexAttribute::eUV)       , M.format( vka::VertexAttribute::eUV) , M.vertex_size() )
+                  ->set_vertex_attribute(0,1 ,  u_offset       , U.format() , vertex_size )
 
-                  ->set_vertex_attribute(0,2 ,  M.offset( vka::VertexAttribute::eNormal)   , M.format( vka::VertexAttribute::eNormal) , M.vertex_size() )
+                  ->set_vertex_attribute(0,2 ,  n_offset      , N.format() , vertex_size )
 
                   // Triangle vertices are drawn in a counter clockwise manner
                   // using the right hand rule which indicates which face is the

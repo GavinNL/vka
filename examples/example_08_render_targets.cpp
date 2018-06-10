@@ -298,23 +298,64 @@ struct App : public VulkanApp
       m_mesh_manager.set_context(&m_Context);
       m_mesh_manager.set_buffer_size( 1024*1024*20 );
 
-
-
-      //===============
-      std::vector<vka::mesh_t>   meshs;
-
-      // create the box and sphere mesh on the host memory
-      meshs.push_back( vka::box_mesh(1,1,1) );
-      meshs.push_back( vka::sphere_mesh(0.5,20,20) );
-
       // convert the meshs into gpu meshes so that they can
       // be rendered. convert_to_gpu_mesh returns a shared pointer to
       // the mesh object. But this mesh object is also stored within the
       // mesh manager. We can always get the reference by identifying it
       // with the name provided: "box", "sphere"
-      convert_to_gpu_mesh("box",    meshs[0]);
-      convert_to_gpu_mesh("sphere", meshs[1]);
+      auto box = vka::box_mesh_host(1,1,1);
+      //auto sphere = vka::sphere_mesh_host(0.5,20,20);
 
+      auto sphere = vka::plane_mesh_host(2,2);
+      host_to_gpu_mesh("box",    box);
+      host_to_gpu_mesh("sphere", sphere);
+  }
+
+  /**
+   * @brief convert_to_gpu_mesh
+   * @param name
+   * @param M
+   * @return
+   *
+   * This function takes a host Mesh and copies it to the GPU via the Mesh Manager.
+   *
+   * It returns a reference to the mesh which can be used to draw.
+   */
+  std::shared_ptr<vka::mesh> host_to_gpu_mesh( const std::string & name, vka::host_mesh & M)
+  {
+        // Create a new mesh from the mesh_manager
+        auto m = m_mesh_manager.new_mesh(name);
+
+        // Get an attribute view for the Position/UV/Normals
+        auto & P = M.get_attribute( vka::VertexAttribute::ePosition);
+        auto & U = M.get_attribute( vka::VertexAttribute::eUV    );
+        auto & N = M.get_attribute( vka::VertexAttribute::eNormal);
+        auto & I = M.get_attribute( vka::VertexAttribute::eIndex);
+
+
+        assert( P.count() == U.count() );
+        assert( P.count() == N.count() );
+
+        // Set the total number of vertices/indices
+        m->set_num_vertices( P.count() );
+        m->set_num_indices( I.count(), I.attribute_size()==2 ?sizeof(uint16_t) : sizeof(uint32_t) );
+
+        // Set the type of attributes we want for the gpu_mesh
+        m->set_attribute(0, P.attribute_size() ); // position
+        m->set_attribute(1, U.attribute_size() ); // UV
+        m->set_attribute(2, P.attribute_size() ); // Normals
+
+        // We can now allocate the data for the mesh on the gpu
+        m->allocate();
+
+        // and copy the data
+        m->copy_attribute_data(0, P.data(), P.data_size() );
+        m->copy_attribute_data(1, U.data(), U.data_size() );
+        m->copy_attribute_data(2, N.data(), N.data_size() );
+
+        m->copy_index_data( I.data(), I.data_size() );
+
+        return m;
   }
 
   /**

@@ -363,22 +363,16 @@ struct App : public VulkanApp
       m_mesh_manager.set_context(&m_Context);
       m_mesh_manager.set_buffer_size( 1024*1024*20 );
 
-
-
-      //===============
-      std::vector<vka::mesh_t>   meshs;
-
-      // create the box and sphere mesh on the host memory
-      meshs.push_back( vka::box_mesh(1,1,1) );
-      meshs.push_back( vka::sphere_mesh(0.5,20,20) );
-
       // convert the meshs into gpu meshes so that they can
       // be rendered. convert_to_gpu_mesh returns a shared pointer to
       // the mesh object. But this mesh object is also stored within the
       // mesh manager. We can always get the reference by identifying it
       // with the name provided: "box", "sphere"
-      convert_to_gpu_mesh("box",    meshs[0]);
-      convert_to_gpu_mesh("sphere", meshs[1]);
+      auto box    = vka::box_mesh_host(1,1,1);
+      auto sphere = vka::sphere_mesh_host(0.5,20,20);
+
+      host_to_gpu_mesh("box",    box);
+      host_to_gpu_mesh("sphere", sphere);
 
   }
 
@@ -392,49 +386,39 @@ struct App : public VulkanApp
    *
    * It returns a reference to the mesh which can be used to draw.
    */
-  std::shared_ptr<vka::mesh> convert_to_gpu_mesh( const std::string & name, vka::mesh_t & M)
+  std::shared_ptr<vka::mesh> host_to_gpu_mesh( const std::string & name, vka::host_mesh & M)
   {
         // Create a new mesh from the mesh_manager
         auto m = m_mesh_manager.new_mesh(name);
 
         // Get an attribute view for the Position/UV/Normals
-        auto P = M.get_attribute_view<glm::vec3>( vka::VertexAttribute::ePosition);
-        auto U = M.get_attribute_view<glm::vec2>( vka::VertexAttribute::eUV    );
-        auto N = M.get_attribute_view<glm::vec3>( vka::VertexAttribute::eNormal);
-        auto I = M.get_index_view<uint16_t>();
+        auto & P = M.get_attribute( vka::VertexAttribute::ePosition);
+        auto & U = M.get_attribute( vka::VertexAttribute::eUV    );
+        auto & N = M.get_attribute( vka::VertexAttribute::eNormal);
+        auto & I = M.get_attribute( vka::VertexAttribute::eIndex);
 
-        // Temporary vectors to store the data so they can be easily copied
-        std::vector< glm::vec3> p;
-        std::vector< glm::vec3> n;
-        std::vector< glm::vec2> u;
 
-        // Push the data onto the vectors so that the data is contigiuos
-        // in memory for easy copying
-        for(uint32_t i=0;i<P.size();i++)
-        {
-            p.push_back( P[i] );
-            n.push_back( N[i] );
-            u.push_back( U[i] );
-        }
+        assert( P.count() == U.count() );
+        assert( P.count() == N.count() );
 
         // Set the total number of vertices/indices
-        m->set_num_vertices( M.num_vertices() );
-        m->set_num_indices( M.num_indices(), sizeof(uint16_t));
+        m->set_num_vertices( P.count() );
+        m->set_num_indices( I.count(), I.attribute_size()==2 ?sizeof(uint16_t) : sizeof(uint32_t) );
 
         // Set the type of attributes we want for the gpu_mesh
-        m->set_attribute(0, sizeof(glm::vec3) ); // position
-        m->set_attribute(1, sizeof(glm::vec2) ); // UV
-        m->set_attribute(2, sizeof(glm::vec3) ); // Normals
+        m->set_attribute(0, P.attribute_size() ); // position
+        m->set_attribute(1, U.attribute_size() ); // UV
+        m->set_attribute(2, P.attribute_size() ); // Normals
 
         // We can now allocate the data for the mesh on the gpu
         m->allocate();
 
         // and copy the data
-        m->copy_attribute_data(0, p.data(), p.size() * sizeof(glm::vec3));
-        m->copy_attribute_data(1, u.data(), u.size() * sizeof(glm::vec2));
-        m->copy_attribute_data(2, n.data(), n.size() * sizeof(glm::vec3));
+        m->copy_attribute_data(0, P.data(), P.data_size() );
+        m->copy_attribute_data(1, U.data(), U.data_size() );
+        m->copy_attribute_data(2, N.data(), N.data_size() );
 
-        m->copy_index_data( M.index_data(), M.index_data_size() );
+        m->copy_index_data( I.data(), I.data_size() );
 
         return m;
   }
