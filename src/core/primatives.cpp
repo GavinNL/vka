@@ -317,13 +317,13 @@ vka::host_mesh vka::plane_mesh(uint32_t Nx, uint32_t Nz)
         {
             #define to_index(x,z) ((z)*(Nx+1)+(x))
 
-            I.push_back( to_index(x+1,z+1));
-            I.push_back( to_index(x+1,z));
-            I.push_back( to_index(x,z));
+            I.push_back( (uint16_t)to_index(x+1,z+1));
+            I.push_back( (uint16_t)to_index(x+1,z));
+            I.push_back( (uint16_t)to_index(x,z));
 
-            I.push_back( to_index(x , z+1));
-            I.push_back( to_index(x+1 , z+1));
-            I.push_back( to_index(x , z));
+            I.push_back( (uint16_t)to_index(x , z+1));
+            I.push_back( (uint16_t)to_index(x+1 , z+1));
+            I.push_back( (uint16_t)to_index(x , z));
         }
 
     }
