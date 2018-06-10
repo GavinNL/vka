@@ -54,8 +54,8 @@ SCENARIO("mesh_t")
 
 SCENARIO("Merging Meshs")
 {
-    auto M = vka::box_mesh(1,1,1);
-    auto S = vka::sphere_mesh(0.5,10,10);
+    auto M = vka::box_mesh_OLD(1,1,1);
+    auto S = vka::sphere_mesh_OLD(0.5,10,10);
 
     auto v = M.num_vertices() + S.num_vertices();
     auto i = M.num_indices()  + S.num_indices() ;

@@ -284,7 +284,7 @@ struct App : public VulkanApp
   void init_pipelines()
   {
       // Create the graphics Pipeline
-      auto M = vka::box_mesh(1,1,1);
+      auto M = vka::box_mesh_OLD(1,1,1);
 
       m_pipelines.gbuffer = m_Context.new_pipeline("gbuffer_pipeline");
       m_pipelines.gbuffer->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
@@ -484,11 +484,11 @@ struct App : public VulkanApp
 
       //box_mesh->allocate_vertex_data()
       std::vector<vka::mesh_t>   meshs;
-      meshs.push_back( vka::box_mesh(1,1,1) );
-      meshs.push_back( vka::sphere_mesh(0.5,20,20) );
-      meshs.push_back( vka::plane_mesh(10,10) );
+      meshs.push_back( vka::box_mesh_OLD(1,1,1) );
+      meshs.push_back( vka::sphere_mesh_OLD(0.5,20,20) );
+      meshs.push_back( vka::plane_mesh_OLD(10,10) );
 
-      uint32_t i=0;
+      uint32_t k=0;
       for( auto & M : meshs)
       {
 
@@ -520,18 +520,18 @@ struct App : public VulkanApp
                 u.push_back( U[i] );
           }
 
-         MM[i]->set_num_vertices( M.num_vertices() );
-         MM[i]->set_num_indices( M.num_indices(), sizeof(uint16_t));
-         MM[i]->set_attribute(0, sizeof(glm::vec3) );
-         MM[i]->set_attribute(1, sizeof(glm::vec2) );
-         MM[i]->set_attribute(2, sizeof(glm::vec3) );
-         MM[i]->allocate();
-         MM[i]->copy_attribute_data(0, p.data(), p.size() * sizeof(glm::vec3));
-         MM[i]->copy_attribute_data(1, u.data(), u.size() * sizeof(glm::vec2));
-         MM[i]->copy_attribute_data(2, n.data(), n.size() * sizeof(glm::vec3));
-         MM[i]->copy_index_data( M.index_data(), M.index_data_size() );
+         MM[k]->set_num_vertices( M.num_vertices() );
+         MM[k]->set_num_indices( M.num_indices(), sizeof(uint16_t));
+         MM[k]->set_attribute(0, sizeof(glm::vec3) );
+         MM[k]->set_attribute(1, sizeof(glm::vec2) );
+         MM[k]->set_attribute(2, sizeof(glm::vec3) );
+         MM[k]->allocate();
+         MM[k]->copy_attribute_data(0, p.data(), p.size() * sizeof(glm::vec3));
+         MM[k]->copy_attribute_data(1, u.data(), u.size() * sizeof(glm::vec2));
+         MM[k]->copy_attribute_data(2, n.data(), n.size() * sizeof(glm::vec3));
+         MM[k]->copy_index_data( M.index_data(), M.index_data_size() );
 
-          i++;
+          k++;
       }
   }
 
@@ -661,10 +661,7 @@ struct App : public VulkanApp
   void build_composition_command_buffer(vka::command_buffer & cb )
   {
 
-      m_screen->beginRender(cb);
-         FullScreenQuadRenderer_t Q(cb, m_pipelines.compose, m_dsets.renderTargets, m_dsets.light_uniform_buffer);
-         Q( m_dsets.renderTargets);
-      m_screen->endRender(cb);
+
   }
 
   virtual void onFrame(double dt, double T)
@@ -695,7 +692,7 @@ struct App : public VulkanApp
 
   void draw()
   {
-     m_screen->prepare_next_frame(m_image_available_semaphore);
+     uint32_t frame_index = m_screen->prepare_next_frame(m_image_available_semaphore);
 
      //=============== Offscreen Rendering =====================================
      // submit the offscreen buffer, but wait for the "image_available_semaphore"
@@ -715,8 +712,10 @@ struct App : public VulkanApp
     m_compose_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
     m_compose_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
 
-    build_composition_command_buffer(m_compose_buffer);
-
+    m_screen->beginRender(m_compose_buffer, frame_index);
+       FullScreenQuadRenderer_t Q(m_compose_buffer, m_pipelines.compose, m_dsets.renderTargets, m_dsets.light_uniform_buffer);
+       Q( m_dsets.renderTargets);
+    m_screen->endRender(m_compose_buffer);
     m_compose_buffer.end();
 
     m_Context.submit_command_buffer(m_compose_buffer, m_offscreen_complete_semaphore, m_composition_complete_semaphore);
@@ -727,7 +726,7 @@ struct App : public VulkanApp
 
     //=============== Final Presentation =======================================
     // Present the final image to the screen. But wait on for the semaphore to be flagged first.
-    m_screen->present_frame( m_composition_complete_semaphore );
+    m_screen->present_frame( frame_index, m_composition_complete_semaphore );
   }
 
 

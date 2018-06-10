@@ -72,7 +72,7 @@ vka::host_mesh vka::box_mesh_host(float dx , float dy , float dz )
 
 }
 
-vka::mesh_t vka::box_mesh(float dx , float dy , float dz )
+vka::mesh_t vka::box_mesh_OLD(float dx , float dy , float dz )
 {
 
     mesh_t vertices;
@@ -202,7 +202,7 @@ vka::host_mesh vka::sphere_mesh_host(float radius , uint32_t rings, uint32_t sec
     return M;
 }
 
-vka::mesh_t vka::sphere_mesh(float radius , uint32_t rings, uint32_t sectors)
+vka::mesh_t vka::sphere_mesh_OLD(float radius , uint32_t rings, uint32_t sectors)
 {
 
     using namespace glm;
@@ -336,7 +336,7 @@ vka::host_mesh vka::plane_mesh_host(uint32_t Nx, uint32_t Nz)
 
 
 
-vka::mesh_t vka::plane_mesh(uint32_t Nx, uint32_t Nz)
+vka::mesh_t vka::plane_mesh_OLD(uint32_t Nx, uint32_t Nz)
 {
     mesh_t vertices;
 

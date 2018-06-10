@@ -566,7 +566,7 @@ struct App : public VulkanApp
       // We are now going to create the graphics pipeline to be able to
       // draw our geometry to the render target instead of the screen.
       // This pipeline is very similar to the main pipeline in example 07.
-      auto M = vka::box_mesh(1,1,1);
+      auto M = vka::box_mesh_OLD(1,1,1);
 
       m_pipelines.gbuffer = m_Context.new_pipeline("gbuffer_pipeline");
       m_pipelines.gbuffer->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )

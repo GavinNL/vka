@@ -272,7 +272,7 @@ struct App : public VulkanApp
   void init_pipelines()
   {
       // Create the graphics Pipeline
-      auto M = vka::box_mesh(1,1,1);
+      auto M = vka::box_mesh_OLD(1,1,1);
 
         m_pipelines.main = m_Context.new_pipeline("main_pipeline");
         m_pipelines.main->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
