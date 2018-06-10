@@ -234,8 +234,8 @@ int main(int argc, char ** argv)
         std::vector< mesh_info_t > m_mesh_info;
 
         std::vector<vka::host_mesh>   meshs;
-        meshs.push_back( vka::box_mesh_host(1,1,1) );
-        meshs.push_back( vka::sphere_mesh_host(0.5,20,20) );
+        meshs.push_back( vka::box_mesh(1,1,1) );
+        meshs.push_back( vka::sphere_mesh(0.5,20,20) );
 
         // Allocate sub buffers from the buffer pool. These buffers can be
         // used for indices/vertices or uniforms.

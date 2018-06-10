@@ -6,9 +6,9 @@
 namespace vka
 {
 
-vka::host_mesh box_mesh_host(float dx , float dy , float dz );
-vka::host_mesh sphere_mesh_host(float radius , uint32_t rings, uint32_t sectors);
-vka::host_mesh plane_mesh_host(uint32_t Nx, uint32_t Nz);
+vka::host_mesh box_mesh(float dx , float dy , float dz );
+vka::host_mesh sphere_mesh(float radius , uint32_t rings, uint32_t sectors);
+vka::host_mesh plane_mesh(uint32_t Nx, uint32_t Nz);
 
 mesh_t box_mesh_OLD( float dx, float dy, float dz);
 mesh_t sphere_mesh_OLD(float radius , uint32_t rings, uint32_t sectors);

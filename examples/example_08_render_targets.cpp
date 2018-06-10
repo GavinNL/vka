@@ -303,10 +303,10 @@ struct App : public VulkanApp
       // the mesh object. But this mesh object is also stored within the
       // mesh manager. We can always get the reference by identifying it
       // with the name provided: "box", "sphere"
-      auto box = vka::box_mesh_host(1,1,1);
+      auto box = vka::box_mesh(1,1,1);
       //auto sphere = vka::sphere_mesh_host(0.5,20,20);
 
-      auto sphere = vka::plane_mesh_host(2,2);
+      auto sphere = vka::plane_mesh(2,2);
       host_to_gpu_mesh("box",    box);
       host_to_gpu_mesh("sphere", sphere);
   }

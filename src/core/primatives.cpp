@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <iostream>
 
-vka::host_mesh vka::box_mesh_host(float dx , float dy , float dz )
+vka::host_mesh vka::box_mesh(float dx , float dy , float dz )
 {
     host_mesh M;
 
@@ -147,7 +147,7 @@ vka::mesh_t vka::box_mesh_OLD(float dx , float dy , float dz )
 }
 
 
-vka::host_mesh vka::sphere_mesh_host(float radius , uint32_t rings, uint32_t sectors)
+vka::host_mesh vka::sphere_mesh(float radius , uint32_t rings, uint32_t sectors)
 {
 
     using namespace glm;
@@ -281,7 +281,7 @@ vka::mesh_t vka::sphere_mesh_OLD(float radius , uint32_t rings, uint32_t sectors
     return M;
 }
 
-vka::host_mesh vka::plane_mesh_host(uint32_t Nx, uint32_t Nz)
+vka::host_mesh vka::plane_mesh(uint32_t Nx, uint32_t Nz)
 {
     host_mesh M;
 
