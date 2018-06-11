@@ -99,11 +99,14 @@ void main()
     for(int i=0; i < num ; i++)
     {
         vec3 light_dir = (  u_lights.light[i].position.xyz - frag_position).xyz;
+        float r = length(light_dir);
+        if(r > u_lights.light[i].attenuation[3]) continue;
 
-         float  a       = attenuation( length(light_dir), u_lights.light[i].attenuation[0] ,
+         float  a       = attenuation( r                , u_lights.light[i].attenuation[0] ,
                                                           u_lights.light[i].attenuation[1],
                                                           u_lights.light[i].attenuation[2]);
         //float  a       = attenuation( length(light_dir), 1 , 0.1, 0.01);
+
 
         color          += diffuse_light( normal, normalize(light_dir), surface_color, u_lights.light[i].color.xyz ) * a;
     }

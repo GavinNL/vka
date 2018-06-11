@@ -87,13 +87,20 @@ struct light_data_t
 {
     glm::vec4 position    = glm::vec4(0,2,0,1); // position.xyz, type [0 - omni, 1 - spot, 2 - directional
                                                 // if position.a == 2, then position.xyz -> direction.xyz
-    glm::vec4 color       = glm::vec4(10,1,1,1);
-    glm::vec4 attenuation = glm::vec4(1, 5.8 ,0.0, 10); //[constant, linear, quad, cutoff]
+    glm::vec4 color       = glm::vec4(100,0,0,1);
+    glm::vec4 attenuation = glm::vec4(1, 1.8 ,3.0, 7); //[constant, linear, quad, cutoff]
+
+    light_data_t()
+    {
+        color.x = rand()%20;
+        color.y = rand()%20;
+        color.z = rand()%20;
+    }
 };
 
 struct light_uniform_t
 {
-    glm::vec2    num_lights = glm::vec2(5,0);
+    glm::vec2    num_lights = glm::vec2(10,0);
     glm::vec2    num_lights2 = glm::vec2(10,0);
     light_data_t lights[10];
 };
@@ -384,64 +391,6 @@ struct App : public VulkanApp
 
         return m;
   }
-
-  /**
-   * @brief convert_to_gpu_mesh
-   * @param name
-   * @param M
-   * @return
-   *
-   * This function takes a host Mesh and copies it to the GPU via the Mesh Manager.
-   *
-   * It returns a reference to the mesh which can be used to draw.
-   */
-  std::shared_ptr<vka::mesh> convert_to_gpu_mesh( const std::string & name, vka::mesh_t & M)
-  {
-        // Create a new mesh from the mesh_manager
-        auto m = m_mesh_manager.new_mesh(name);
-
-        // Get an attribute view for the Position/UV/Normals
-        auto P = M.get_attribute_view<glm::vec3>( vka::VertexAttribute::ePosition);
-        auto U = M.get_attribute_view<glm::vec2>( vka::VertexAttribute::eUV    );
-        auto N = M.get_attribute_view<glm::vec3>( vka::VertexAttribute::eNormal);
-        auto I = M.get_index_view<uint16_t>();
-
-        // Temporary vectors to store the data so they can be easily copied
-        std::vector< glm::vec3> p;
-        std::vector< glm::vec3> n;
-        std::vector< glm::vec2> u;
-
-        // Push the data onto the vectors so that the data is contigiuos
-        // in memory for easy copying
-        for(uint32_t i=0;i<P.size();i++)
-        {
-            p.push_back( P[i] );
-            n.push_back( N[i] );
-            u.push_back( U[i] );
-        }
-
-        // Set the total number of vertices/indices
-        m->set_num_vertices( M.num_vertices() );
-        m->set_num_indices( M.num_indices(), sizeof(uint16_t));
-
-        // Set the type of attributes we want for the gpu_mesh
-        m->set_attribute(0, sizeof(glm::vec3) ); // position
-        m->set_attribute(1, sizeof(glm::vec2) ); // UV
-        m->set_attribute(2, sizeof(glm::vec3) ); // Normals
-
-        // We can now allocate the data for the mesh on the gpu
-        m->allocate();
-
-        // and copy the data
-        m->copy_attribute_data(0, p.data(), p.size() * sizeof(glm::vec3));
-        m->copy_attribute_data(1, u.data(), u.size() * sizeof(glm::vec2));
-        m->copy_attribute_data(2, n.data(), n.size() * sizeof(glm::vec3));
-
-        m->copy_index_data( M.index_data(), M.index_data_size() );
-
-        return m;
-  }
-
 
   /**
    * @brief load_textures
@@ -944,28 +893,31 @@ struct App : public VulkanApp
 
       // ANIMATE is a simple macro which allows us to quickly animate a variable
       // based on time. We are going to make all the lights move in a circle
-      #define S (2.0*3.141592653/10.0)
-      ANIMATE(m_light_uniform.lights[0].position, glm::vec4( 4*cos(t+0*S)   , 1.2,  4*sin(t + 0*S),0));
-      ANIMATE(m_light_uniform.lights[1].position, glm::vec4( 4*cos(t+1*S)   , 1.2,  4*sin(t + 1*S),0));
-      ANIMATE(m_light_uniform.lights[2].position, glm::vec4( 4*cos(t+2*S)   , 1.2,  4*sin(t + 2*S),0));
-      ANIMATE(m_light_uniform.lights[3].position, glm::vec4( 4*cos(t+3*S)   , 1.2,  4*sin(t + 3*S),0));
-      ANIMATE(m_light_uniform.lights[4].position, glm::vec4( 4*cos(t+4*S)   , 1.2,  4*sin(t + 4*S),0));
-      ANIMATE(m_light_uniform.lights[5].position, glm::vec4( 4*cos(t+5*S)   , 1.2,  4*sin(t + 5*S),0));
-      ANIMATE(m_light_uniform.lights[6].position, glm::vec4( 4*cos(t+6*S)   , 1.2,  4*sin(t + 6*S),0));
-      ANIMATE(m_light_uniform.lights[7].position, glm::vec4( 4*cos(t+7*S)   , 1.2,  4*sin(t + 7*S),0));
-      ANIMATE(m_light_uniform.lights[8].position, glm::vec4( 4*cos(t+8*S)   , 1.2,  4*sin(t + 8*S),0));
-      ANIMATE(m_light_uniform.lights[9].position, glm::vec4( 4*cos(t+9*S)   , 1.2,  4*sin(t + 9*S),0));
+      #define S (2.0*3.141592653)
+      ANIMATE(m_light_uniform.lights[0].position, glm::vec4( 4*cos( S*(0.1*t+0.0) )   , 1.2,  4*sin( S*(0.1*t + 0.0)),0));
+      ANIMATE(m_light_uniform.lights[1].position, glm::vec4( 4*cos( S*(0.1*t+0.1) )   , 1.2,  4*sin( S*(0.1*t + 0.1)),0));
+      ANIMATE(m_light_uniform.lights[2].position, glm::vec4( 4*cos( S*(0.1*t+0.2) )   , 1.2,  4*sin( S*(0.1*t + 0.2)),0));
+      ANIMATE(m_light_uniform.lights[3].position, glm::vec4( 4*cos( S*(0.1*t+0.3) )   , 1.2,  4*sin( S*(0.1*t + 0.3)),0));
+      ANIMATE(m_light_uniform.lights[4].position, glm::vec4( 4*cos( S*(0.1*t+0.4) )   , 1.2,  4*sin( S*(0.1*t + 0.4)),0));
+      ANIMATE(m_light_uniform.lights[5].position, glm::vec4( 4*cos( S*(0.1*t+0.5) )   , 1.2,  4*sin( S*(0.1*t + 0.5)),0));
+      ANIMATE(m_light_uniform.lights[6].position, glm::vec4( 4*cos( S*(0.1*t+0.6) )   , 1.2,  4*sin( S*(0.1*t + 0.6)),0));
+      ANIMATE(m_light_uniform.lights[7].position, glm::vec4( 4*cos( S*(0.1*t+0.7) )   , 1.2,  4*sin( S*(0.1*t + 0.7)),0));
+      ANIMATE(m_light_uniform.lights[8].position, glm::vec4( 4*cos( S*(0.1*t+0.8) )   , 1.2,  4*sin( S*(0.1*t + 0.8)),0));
+      ANIMATE(m_light_uniform.lights[9].position, glm::vec4( 4*cos( S*(0.1*t+0.9) )   , 1.2,  4*sin( S*(0.1*t + 0.9)),0));
 
       m_light_uniform.lights[0].position    = glm::vec4(-2,2.2,-2,0);
-      m_light_uniform.lights[0].color       = glm::vec4(10.0,0.0,0.1,0);
+     // m_light_uniform.lights[0].color       = glm::vec4(10.0,0.0,0.1,0);
     //  m_light_uniform.lights[0].attenuation = glm::vec4(1, 0.8 ,0.0, 10);
 
       m_light_uniform.lights[1].position    = glm::vec4(2,2.2,2,0);
-      m_light_uniform.lights[1].color       = glm::vec4(0.0,10.0,0.0,1.0);
+    //  m_light_uniform.lights[1].color       = glm::vec4(1.0,10.0,0.0,1.0);
    //   m_light_uniform.lights[1].attenuation = glm::vec4(1, 0.0 ,0.8, 10);
 
       m_light_uniform.lights[2].position    = glm::vec4(2,2.2,2,0);
-      m_light_uniform.lights[2].color       = glm::vec4(0.0,0.0,10.0,1.0);
+    //  m_light_uniform.lights[2].color       = glm::vec4(0.0,0.0,10.0,1.0);
+
+      m_light_uniform.lights[9].position    = glm::vec4(2,2.2,2,0);
+    //  m_light_uniform.lights[9].color       = glm::vec4(10.0,10.0,10.0,1.0);
     //  m_light_uniform.lights[2].attenuation = glm::vec4(1, 0.0 ,0.8, 10);
        //m_light_uniform.lights[1].position    = glm::vec3(-5,5.1,-5);
       // m_light_uniform.lights[1].attenuation = glm::vec4(1, 0.001 ,0.001, 10);
@@ -981,51 +933,12 @@ struct App : public VulkanApp
 
 
       obj->m_mesh_m   = m_mesh_manager.get_mesh( "plane" );
-
+      obj->m_push.index = 1;
       obj->m_pipeline = m_pipelines.gbuffer;
       obj->m_descriptor_sets[0] = m_dsets.texture_array;
       obj->m_descriptor_sets[1] = m_dsets.uniform_buffer;
       m_Objs.push_back(obj);
 
-      if(0)
-      for(int i=0; i<MAX_OBJ ;i++)
-      {
-        auto * obj = new RenderComponent_t();
-
-
-        obj->m_mesh_m   = m_mesh_manager.get_mesh( "box" );
-
-        obj->m_pipeline = m_pipelines.gbuffer;
-
-        obj->m_descriptor_sets[0] = m_dsets.texture_array;
-        obj->m_descriptor_sets[1] = m_dsets.uniform_buffer;
-
-
-        // obj->m_orbital_radius = std::rand() % 20+1;
-        // obj->m_orbital_speed  = 1.0 / ( obj->m_orbital_radius );
-        // obj->m_orbital_phase = ((std::rand()%10000) / 10000.0) * 2.0*3.141592653589;
-
-
-        obj->m_push.index    = i%2;
-        obj->m_push.miplevel = -1;
-
-
-        x += 1;
-        if( x > pow(MAX_OBJ,1.0/3.0) )
-        {
-            x =0;
-            y += 1;
-        }
-        if(y > pow(MAX_OBJ,1.0/3.0) )
-        {
-            y = 0;
-            z += 1;
-        }
-
-        m_Objs.push_back(obj);
-    }
-
-    //======================
 
     //========================
     // Initialize the camera
