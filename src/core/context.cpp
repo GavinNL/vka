@@ -35,7 +35,8 @@ vka::context*            vka::context_child::get_parent_context()
     return m_parent;
 }
 
-void vka::context::init()
+
+void vka::context::init( std::vector<char const*> const & required_extensions)
 {
     LOG << "Initializing vka context" << ENDL;
 
@@ -45,7 +46,7 @@ void vka::context::init()
     }
 
 
-    auto required_extensions = get_required_extensions();
+    //auto required_extensions = get_required_extensions();
 
     INFO<< "Required Extensions: " <<  required_extensions.size() << ENDL;
     for(auto & e : required_extensions) INFO << e << ENDL;
@@ -99,8 +100,9 @@ vk::SurfaceKHR vka::context::create_window_surface( GLFWwindow * window )
 
 }
 
-void vka::context::create_device()
+void vka::context::create_device( vk::SurfaceKHR surface_to_use)
 {
+    m_surface = surface_to_use;
     if( !m_surface)
     {
         ERROR << "Surface not created. Must create a window surface using create_window_surface( ) first." << ENDL;
@@ -895,8 +897,6 @@ bool vka::context::check_validation_layer_support()
     {
         INFO << "Validation Layer: " << layers.layerName << ENDL;
     }
-
-    std::vector<vk::LayerProperties> m_LayerProperties = vk::enumerateInstanceLayerProperties();
 
     for (const char* layerName : m_required_validation_layers)
     {

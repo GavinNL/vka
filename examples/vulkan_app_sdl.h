@@ -43,25 +43,13 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
       glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
 
       m_win = glfwCreateWindow(w,h,title,nullptr,nullptr);
-
-      unsigned int glfwExtensionCount = 0;
-      const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-      std::vector<char const *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount );
-      extensions.push_back( "VK_EXT_debug_report");
-
       attach_window(m_win);
 
-      m_Context.init(extensions);
+      m_Context.init();
 
       // need a surface --> device --> swapchaim (screen)
-      vk::SurfaceKHR surface;
-      if (glfwCreateWindowSurface( m_Context.get_instance(), m_win, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surface) ) != VK_SUCCESS)
-      {
-          ERROR << "Failed to create window surface!" << ENDL;
-          throw std::runtime_error("failed to create window surface!");
-      }
-
-      m_Context.create_device(surface); // find the appropriate device
+      auto surface = m_Context.create_window_surface(m_win); // create the vulkan surface using the window provided
+      m_Context.create_device(); // find the appropriate device
 
 
 #if 0

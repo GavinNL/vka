@@ -66,7 +66,7 @@ set_target_properties(vkacore PROPERTIES LINKER_LANGUAGE CXX)
 #set_target_properties(stb PROPERTIES LINKER_LANGUAGE CXX)
 
 #SET(LIBS glfw vulkan core utils stb)
-SET(LIBS vkacore glfw vulkan)
+SET(LIBS vkacore SDL2main SDL2 glfw vulkan)
 
 
 #file(GLOB files "*.cpp")

@@ -21,8 +21,10 @@
 
 
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_main.h>
+#include <SDL2/SDL_vulkan.h>
+
 #include <vulkan/vulkan.hpp>
 #include <iostream>
 #include <chrono>
@@ -57,19 +59,47 @@ float get_elapsed_time()
 
 }
 
+SDL_Window* initWindow()
+{
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS );
+
+    if(SDL_Vulkan_LoadLibrary(NULL) == -1)
+    {
+        std::cout << "Error loading vulkan" << std::endl;
+        exit(1);
+    }
+    atexit(SDL_Quit);
+
+    auto window = SDL_CreateWindow("APPLICATION_NAME",
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        WIDTH,
+        HEIGHT,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+
+    if(window == NULL)
+    {
+        std::cout << "Couldn\'t set video mode: " << SDL_GetError() << std::endl;
+        exit(1);
+    }
+    return window;
+}
+
+
 int main(int argc, char ** argv)
 {
     //==========================================================================
-    // 1. Initlize the library and create a GLFW window
+    // 1. Initlize the library and create a window
     //==========================================================================
-    glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
+    auto * window  = initWindow();
 
-    unsigned int glfwExtensionCount = 0;
-    const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-    std::vector<char const *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount );
+
+    unsigned int count = 0;
+    SDL_Vulkan_GetInstanceExtensions(window, &count, NULL);
+    const char **names = new const char *[count];
+    SDL_Vulkan_GetInstanceExtensions(window, &count, names);
+
+    std::vector<char const *> extensions(names, names + count );
     extensions.push_back( "VK_EXT_debug_report");
 
     // the context is the main class for the vka library. It is keeps track of
@@ -81,13 +111,13 @@ int main(int argc, char ** argv)
     C.init(extensions);
 
     vk::SurfaceKHR surface;
-    if (glfwCreateWindowSurface( C.get_instance(), window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surface) ) != VK_SUCCESS)
+    if( !SDL_Vulkan_CreateSurface( window, C.get_instance(), reinterpret_cast<VkSurfaceKHR*>(&surface)  ) )
     {
-        ERROR << "Failed to create window surface!" << ENDL;
-        throw std::runtime_error("failed to create window surface!");
+        ERROR << "Failed to create surface" << ENDL;
     }
 
-    C.create_device(surface); // find the appropriate device
+    C.create_device(surface); // find the appropriate device which can draw to that surface.
+
 
     // The Screen is essentially a wrapper around the Swapchain, a default Renderpass
     // and framebuffers.
@@ -357,10 +387,25 @@ int main(int argc, char ** argv)
     // The steps required are:
     //    a. update the uniform buffer with the MVP matrices
     //
-    while (!glfwWindowShouldClose(window) )
+    SDL_Event event;
+    bool quit=false;
+    while(!quit)
     {
 
-      glfwPollEvents();
+        while (SDL_PollEvent(&event))
+        {
+            if( event.type == SDL_QUIT )
+            {
+                quit = true;
+            }
+            printf("SDL Event type :: %d\n", event.type);
+            if (event.type == SDL_MOUSEBUTTONDOWN)
+                printf("SDL_MOUSEBUTTONDOWN Event!!\n");
+            if (event.type == SDL_MOUSEMOTION)
+                printf("SDL_MOUSEMOTION Event!!\n");
+        }
+
+    //  glfwPollEvents();
 
       //============ Update the uniform buffer=====================
       float t = get_elapsed_time();

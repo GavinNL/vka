@@ -82,15 +82,17 @@ void create_box_mesh(float dx , float dy , float dz , std::vector<Vertex> & vert
 int main(int argc, char ** argv)
 {
     //==========================================================================
-    // 1. Initlize the library and create a window
+    // 1. Initlize the library and create a GLFW window
     //==========================================================================
     glfwInit();
-
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
-
     GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
 
+    unsigned int glfwExtensionCount = 0;
+    const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    std::vector<char const *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount );
+    extensions.push_back( "VK_EXT_debug_report");
 
     // the context is the main class for the vka library. It is keeps track of
     // all the vulkan objects and releases them appropriately when it is destroyed
@@ -98,12 +100,22 @@ int main(int argc, char ** argv)
     // command pools, etc.
     vka::context C;
 
-    C.init();
-    auto surface = C.create_window_surface(window); // create the vulkan surface using the window provided
-    C.create_device(); // find the appropriate device
+    C.init(extensions);
 
+    vk::SurfaceKHR surface;
+    if (glfwCreateWindowSurface( C.get_instance(), window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surface) ) != VK_SUCCESS)
+    {
+        ERROR << "Failed to create window surface!" << ENDL;
+        throw std::runtime_error("failed to create window surface!");
+    }
+
+    C.create_device(surface); // find the appropriate device
+
+    // The Screen is essentially a wrapper around the Swapchain, a default Renderpass
+    // and framebuffers.
+    // in VKA we present images to the screen object.
+    // This a simple initialization of creating a screen with depth testing
     auto * screen = C.new_screen("screen");
-    screen = C.new_screen("m_win");
     screen->set_extent( vk::Extent2D(WIDTH,HEIGHT) );
     screen->set_surface( surface );
     screen->create();
