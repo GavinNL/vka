@@ -1,6 +1,8 @@
 #ifndef VKA_IMAGE
 #define VKA_IMAGE
 
+#include <string.h>
+#include <cassert>
 #include<type_traits>
 #include<functional>
 #include<cstdint>
