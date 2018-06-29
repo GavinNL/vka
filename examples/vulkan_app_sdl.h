@@ -73,7 +73,7 @@ struct VulkanApp :   public vka::SDL_Window_Handler
       SDL_Vulkan_GetInstanceExtensions(window, &count, names);
 
       std::vector<char const *> extensions(names, names + count );
-      extensions.push_back( "VK_EXT_debug_report");
+      extensions.push_back( VK_EXT_DEBUG_REPORT_EXTENSION_NAME );
 
       m_Context.init(extensions);
 
