@@ -501,7 +501,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
     // must save the returned slot otherwise, the signal will be
     // unregistered
-    auto keyslot = m_Window.onKey << [&] (vka::Key k, bool down)
+    auto keyslot = m_Window.onKey << [&] (vka::KeyEvent E)
     {
         float x=0;
         float y=0;
@@ -515,10 +515,12 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
     };
 
-    auto mouseslot =  m_Window.onMouseMove << [&] (double dx, double dy)
+    // create a callback function for the onMouseMove event.
+    // We will use this to control the camera.
+    auto mouseslot = m_Window.onMouseMove << [&] (vka::MouseMoveEvent E)
     {
-      dx = m_Window.mouse_x() - dx;
-      dy = m_Window.mouse_y() - dy;
+      const auto dx = E.dx;
+      const auto dy = E.dy;
       if( m_Window.is_pressed( vka::Button::RIGHT))
       {
           m_Window.show_cursor(false);
@@ -529,7 +531,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
       {
           m_Window.show_cursor(true);
       }
-      //std::cout << "Moving: " << dx << ", " << dy << std::endl;
+
     };
 
 

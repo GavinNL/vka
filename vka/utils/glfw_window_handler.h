@@ -9,8 +9,11 @@
 
 #include <GLFW/glfw3.h>
 #include "signals.h"
+
+
 namespace vka
 {
+
 
 enum class Button
 {
@@ -155,6 +158,26 @@ enum class Key
     LAST               =GLFW_KEY_LAST
 };
 
+struct MouseMoveEvent
+{
+    double x;
+    double y;
+    double dx;
+    double dy;
+};
+
+struct MouseButtonEvent
+{
+    Button button;
+    bool   down;
+};
+
+struct KeyEvent
+{
+    Key  key;
+    bool down;
+};
+
 class GLFW_Window_Handler
 {
 
@@ -176,22 +199,33 @@ public:
     {
         auto * THIS = static_cast<GLFW_Window_Handler*>( glfwGetWindowUserPointer(window) );
         THIS->m_button[ static_cast<Button>(button) ] = action;
-        static_cast<GLFW_Window_Handler*>(glfwGetWindowUserPointer(window))->onMouseButton( static_cast<Button>(button) ,action);
+
+        MouseButtonEvent M{static_cast<Button>(button), action};
+        static_cast<GLFW_Window_Handler*>(glfwGetWindowUserPointer(window))->onMouseButton( M );
+
     }
 
     static void __OnMousePosition(GLFWwindow* window,double x, double y)
     {
         auto * THIS = static_cast<GLFW_Window_Handler*>( glfwGetWindowUserPointer(window) );
-        static_cast<GLFW_Window_Handler*>(glfwGetWindowUserPointer(window))->onMouseMove(x,y);
+
+        double dx = x - THIS->m_mouse_x;
+        double dy = y - THIS->m_mouse_y;
         THIS->m_mouse_x = x;
         THIS->m_mouse_y = y;
+        MouseMoveEvent M{x,y,dx,dy};
+
+        static_cast<GLFW_Window_Handler*>(glfwGetWindowUserPointer(window))->onMouseMove(M);
+
     }
 
     static void __OnKey(GLFWwindow* window,int key, int scancode, int action, int mods)
     {
         auto * THIS = static_cast<GLFW_Window_Handler*>( glfwGetWindowUserPointer(window) );
         THIS->m_key[ static_cast<Key>(key) ] = action;
-        static_cast<GLFW_Window_Handler*>(glfwGetWindowUserPointer(window))->onKey( static_cast<Key>(key) , action);
+        KeyEvent E{ static_cast<Key>(key), action};
+
+        static_cast<GLFW_Window_Handler*>(glfwGetWindowUserPointer(window))->onKey( E );
     }
 
     GLFW_Window_Handler(GLFWwindow * w = nullptr) : m_Window(w)
@@ -269,10 +303,10 @@ public:
         return f->second;
     }
 
-    signal<void(double  , double)>    onMouseMove;
-    signal<void(Button  , int   )>    onMouseButton;
-    signal<void(Key,      int   )>    onKey;
-    signal<void(double)>              onPoll;
+    signal<void(MouseMoveEvent)>    onMouseMove;
+    signal<void(MouseButtonEvent)>  onMouseButton;
+    signal<void(KeyEvent)>          onKey;
+    signal<void(double)>                              onPoll;
 
 
 
