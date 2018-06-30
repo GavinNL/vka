@@ -31,10 +31,7 @@
 #include <vka/vka.h>
 
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include <vka/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
@@ -367,7 +364,7 @@ int main(int argc, char ** argv)
 
       const float AR = WIDTH / ( float )HEIGHT;
 
-      staging_buffer_map[0].model = glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+      staging_buffer_map[0].model = glm::rotate( glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
       staging_buffer_map[0].view  = glm::lookAt( glm::vec3(5.0f, 5.0f, 5.0f),
                                                  glm::vec3(0.0f, 0.0f, 0.0f),
                                                  glm::vec3(0.0f, 1.0f, 0.0f));

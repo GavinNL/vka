@@ -30,12 +30,7 @@
 #ifndef VKA_TRANSFORM_H
 #define VKA_TRANSFORM_H
 
-//#define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
-//#define GLM_FORCE_RADIANS
-#include <glm/gtc/quaternion.hpp>
-//#define GLM_FORCE_RADIANS
-#include <glm/gtc/matrix_transform.hpp>
+#include <vka/linalg.h>
 
 namespace vka
 {

@@ -25,7 +25,7 @@
 #ifndef GLA_BOUNDING_RECT
 #define GLA_BOUNDING_RECT
 
-#include <glm/glm.hpp>
+#include <vka/linalg.h>
 
 namespace vka
 {

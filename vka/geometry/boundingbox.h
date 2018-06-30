@@ -25,7 +25,7 @@
 #ifndef GLA_BOUNDINGBOX
 #define GLA_BOUNDINGBOX
 
-#include <glm/glm.hpp>
+#include <vka/linalg.h>
 #include "boundingrect.h"
 #include <algorithm>
 #include <type_traits>

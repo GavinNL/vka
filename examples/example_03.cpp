@@ -33,11 +33,7 @@
 #include <vka/core/screen_target.h>
 #include <vka/vka.h>
 
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include <vka/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
@@ -442,8 +438,8 @@ int main(int argc, char ** argv)
       staging_buffer_map[0].proj[1][1] *= -1;
 
       // Copy the dynamic uniform buffer data into the staging buffer
-      staging_dbuffer_map[0].model       =  glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
-      staging_dbuffer_map[1].model       =  glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
+      staging_dbuffer_map[0].model       =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
+      staging_dbuffer_map[1].model       =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
 
 
       // +------------------------------------------------------+

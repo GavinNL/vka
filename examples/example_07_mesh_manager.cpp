@@ -25,12 +25,7 @@
 #include <vka/core/image.h>
 #include <vka/vka.h>
 
-
-
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
+#include <vka/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768

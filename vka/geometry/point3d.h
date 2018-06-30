@@ -25,7 +25,7 @@
 #ifndef GLA_POINT3D_HPP
 #define GLA_POINT3D_HPP
 
-#include <glm/glm.hpp>
+#include <vka/linalg.h>
 #include <cmath>
 
 namespace vka

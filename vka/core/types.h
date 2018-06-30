@@ -1,7 +1,7 @@
 #include <vulkan/vulkan.hpp>
 #include <exception>
 
-#include <glm/glm.hpp>
+#include <vka/linalg.h>
 
 namespace vka
 {

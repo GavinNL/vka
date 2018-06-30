@@ -24,7 +24,7 @@ std::string readFile(const std::string &filename)
     buffer.resize(fileSize);
 
     file.seekg(0);
-    file.read(buffer.data(), fileSize);
+    file.read(&buffer[0], fileSize);
 
     file.close();
 
