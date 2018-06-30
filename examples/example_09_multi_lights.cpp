@@ -676,7 +676,7 @@ struct App : public VulkanApp
         if( is_pressed( vka::Button::RIGHT))
         {
             show_cursor(false);
-            if( fabs(dx) < 10) m_Camera.yaw(   -dx*0.001f);
+            if( fabs(dx) < 10) m_Camera.yaw(   dx*0.001f);
             if( fabs(dy) < 10) m_Camera.pitch( dy*0.001f);
         }
         else

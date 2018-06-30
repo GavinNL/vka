@@ -524,7 +524,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
       if( m_Window.is_pressed( vka::Button::RIGHT))
       {
           m_Window.show_cursor(false);
-          if( fabs(dx) < 10) m_Camera.yaw(   -dx*0.001f);
+          if( fabs(dx) < 10) m_Camera.yaw(   dx*0.001f);
           if( fabs(dy) < 10) m_Camera.pitch( dy*0.001f);
       }
       else
