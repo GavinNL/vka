@@ -217,9 +217,10 @@ public:
                 onMouseButton( static_cast<Button>(event.button.button), event.type==SDL_MOUSEBUTTONDOWN?1:0);
                 break;
             case SDL_MOUSEMOTION:
-                onMouseMove( (double)event.motion.x, (double)event.motion.y);
-                m_mouse_x = (double)event.motion.x;
-                m_mouse_y = (double)event.motion.y;
+
+                onMouseMove( (double)event.motion.xrel, (double)event.motion.yrel);
+                m_mouse_x += (double)event.motion.xrel;
+                m_mouse_y += (double)event.motion.yrel;
                 break;
             case SDL_KEYDOWN:
             case SDL_KEYUP:
@@ -233,6 +234,7 @@ public:
     }
 
     bool m_quit = false;
+    bool m_cursor_hidden = false;
     operator bool()
     {
         return m_quit;
@@ -241,7 +243,9 @@ public:
 
     inline void show_cursor(bool b)
     {
-        SDL_ShowCursor(b);
+        SDL_SetRelativeMouseMode( b ? SDL_FALSE : SDL_TRUE);
+        //SDL_ShowCursor(b);
+        m_cursor_hidden =  !b;
     }
 
     bool is_pressed(Button b) const
