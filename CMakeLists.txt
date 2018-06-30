@@ -61,5 +61,6 @@ add_subdirectory(examples_sdl)
 
 add_custom_command(TARGET vkacore
                    POST_BUILD
+                   COMMAND rm -rf ${CMAKE_CURRENT_BINARY_DIR}/resources
                    COMMAND ln -s -f ${CMAKE_SOURCE_DIR}/resources ${CMAKE_CURRENT_BINARY_DIR}/resources
                    )
