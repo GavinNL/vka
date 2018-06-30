@@ -7,8 +7,8 @@ find_package(Vulkan)
 #============================================
 find_package(SDL2 REQUIRED)
 
-message( ${SDL2_LIBRARIES} )
-message( ${SDL2_INCLUDE_DIRS} )
+#message( ${SDL2_LIBRARIES} )
+#message( ${SDL2_INCLUDE_DIRS} )
 
 #============================================
 
@@ -35,7 +35,7 @@ add_definitions(
                 #-Werror=switch
                 )
 
-SET(LIBS vkacore SDL2main SDL2 vulkan)
+SET(LIBS vkacore SDL2 ${Vulkan_LIBRARIES})
 
 file(GLOB files "*.cpp")
 foreach(file ${files})

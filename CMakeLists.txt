@@ -2,9 +2,12 @@ cmake_minimum_required(VERSION 2.8)
 
 project(vka)
 
+find_package(Vulkan)
 SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
 
-
+# GLM has some problerms with gcc 7.3 and 8 and requires
+# this to be defined.
+add_definitions(-DGLM_FORCE_CTOR_INIT)
 
 #FILE(GLOB_RECURSE SourceFiles
 #                                "vka/*.h"
@@ -20,7 +23,9 @@ FILE(GLOB  TextFiles           "README.md"
                                 )
 FILE(GLOB_RECURSE ResourceFiles "./resources/*")
 
-INCLUDE_DIRECTORIES(.)
+INCLUDE_DIRECTORIES( ".")
+INCLUDE_DIRECTORIES( "glm")
+INCLUDE_DIRECTORIES( ${Vulkan_INCLUDE_DIRS} )
 
 add_definitions(
                  -std=c++17

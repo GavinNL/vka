@@ -31,7 +31,7 @@ add_definitions(
                 #-Werror=switch
                 )
 
-SET(LIBS vkacore glfw vulkan)
+SET(LIBS vkacore glfw ${Vulkan_LIBRARIES})
 
 file(GLOB files "*.cpp")
 foreach(file ${files})
