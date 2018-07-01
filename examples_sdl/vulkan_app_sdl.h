@@ -38,7 +38,9 @@ struct VulkanApp :   public vka::SDL_Window_Handler
       }
   }
 
-  void init(uint32_t w, uint32_t h, const char* title)
+  void init(uint32_t w, uint32_t h, const char* title,
+            std::vector<std::string> const & extra_instance_extensions = std::vector<std::string>(),
+            std::vector<std::string> const & extra_device_extensions = std::vector<std::string>())
   {
 
       SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS );
@@ -75,7 +77,9 @@ struct VulkanApp :   public vka::SDL_Window_Handler
       for(uint i=0;i<count;i++)  m_Context.enable_extension( names[i] );
 
       m_Context.enable_extension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-      m_Context.enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+
+      for(auto & v : extra_instance_extensions)
+          m_Context.enable_extension( &v[0] );
 
       //m_Context.enable_validation_layer("VK_LAYER_LUNARG_parameter_validation");
       //m_Context.enable_validation_layer("VK_LAYER_LUNARG_object_tracker");
@@ -83,7 +87,8 @@ struct VulkanApp :   public vka::SDL_Window_Handler
       //m_Context.enable_validation_layer("VK_LAYER_GOOGLE_unique_objects");
 
       m_Context.enable_device_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-      m_Context.enable_device_extension(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+      for(auto & v : extra_device_extensions)
+          m_Context.enable_device_extension( &v[0] );
 
       m_Context.init( );
 
