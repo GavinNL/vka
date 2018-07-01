@@ -17,8 +17,13 @@
 #include <vka/core/screen_target.h>
 #include <vulkan/vulkan.hpp>
 #include <vka/core/context_child.h>
+#include <vka/core/extensions.h>
 #include <set>
 
+namespace vka
+{
+    vka::ExtensionDispatcher ExtDispatcher;
+}
 
 vk::Device          vka::context_child::get_device()
 {
