@@ -789,39 +789,12 @@ struct App : public VulkanApp
               {
                   m_offscreen_cmd_buffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *obj->m_pipeline );
 
-                  //====================================================================================================
-                  // When using Push Descriptors, we can only have one
-                  //====================================================================================================
-                   // Descriptor set 0 binding 0  is the texture array
-                  WDS[0].dstSet = vk::DescriptorSet();
-                  WDS[0].dstBinding = 0;
-                  WDS[0].descriptorCount = 1;
-                  WDS[0].descriptorType = vk::DescriptorType::eCombinedImageSampler;//VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
-                  vk::DescriptorImageInfo img;
-                  img.imageLayout = m_texture_array->get_layout();
-                  img.imageView   = m_texture_array->get_image_view();
-                  img.sampler     = m_texture_array->get_sampler();
-
-                  WDS[0].pImageInfo = &img;
-
-
-
-                  WDS[1].dstSet = vk::DescriptorSet();
-                  WDS[1].dstBinding = 1;
-                  WDS[1].descriptorCount = 1;
-                  WDS[1].descriptorType = vk::DescriptorType::eUniformBuffer;//VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-
-                  vk::DescriptorBufferInfo buf;
-                  buf.buffer = m_ubuffer->get();
-                  buf.offset = m_ubuffer->offset();
-                  buf.range  = sizeof(per_frame_uniform_t);
-                  WDS[1].pBufferInfo = &buf;
-
-                  m_offscreen_cmd_buffer.pushDescriptorSetKHR(vk::PipelineBindPoint::eGraphics,
-                                                              obj->m_pipeline->get_layout(),
-                                                              0,
-                                                              WDS, vka::ExtDispatcher);
+                  m_offscreen_cmd_buffer.pushDescriptorSet( vk::PipelineBindPoint::eGraphics,
+                                                            obj->m_pipeline,
+                                                            0,
+                                                            vka::PushDescriptorInfo().attach(0, 1, m_texture_array)
+                                                                                     .attach(1, 1, m_ubuffer));
 
 
 
@@ -1029,8 +1002,6 @@ struct App : public VulkanApp
   vka::buffer          *m_sbuffer;
 
   vka::texture2darray  *m_texture_array;
-
-  //vka::semaphore       *m_render_complete_semaphore;
 
   vka::semaphore * m_image_available_semaphore;
   vka::semaphore * m_offscreen_complete_semaphore;

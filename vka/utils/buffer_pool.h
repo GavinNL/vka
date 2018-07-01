@@ -69,13 +69,11 @@ public:
     vk::DeviceSize size() const
     {
         return m_DescriptorBufferInfo.range;
-        //return m_size;
     }
 
     vk::DeviceSize offset() const
     {
         return m_DescriptorBufferInfo.offset;
-        //return m_offset;
     }
 
     vka::buffer_pool* get_parent_pool() {
@@ -94,12 +92,7 @@ protected:
 
     vk::DescriptorBufferInfo m_DescriptorBufferInfo;
 
-    // vk::Buffer     m_buffer;
-    // vk::DeviceSize m_size;
-    // vk::DeviceSize m_offset; // offset from teh start of the parent' memory block
-
-
-    buffer_pool    *m_parent;
+    buffer_pool               *m_parent;
     vka::buffer_memory_manager m_manager;
 
     friend class buffer_pool;

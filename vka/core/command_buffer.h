@@ -10,6 +10,20 @@ class buffer;
 class sub_buffer;
 class pipeline;
 class descriptor_set;
+class texture;
+
+class PushDescriptorInfo
+{
+public:
+    PushDescriptorInfo()
+    {
+    }
+
+    PushDescriptorInfo & attach(uint32_t binding, uint32_t count, vka::texture * texArray);
+    PushDescriptorInfo & attach(uint32_t binding, uint32_t count, vka::sub_buffer * sub_buffer);
+
+    std::vector<vk::WriteDescriptorSet>   m_writes;
+};
 
 class command_buffer : public vk::CommandBuffer
 {
@@ -40,6 +54,8 @@ class command_buffer : public vk::CommandBuffer
 
     void copySubBuffer( sub_buffer const * srcBuffer, sub_buffer const * dstBuffer, const vk::BufferCopy & region ) const;
 
+
+    void pushDescriptorSet( vk::PipelineBindPoint bind_point, vka::pipeline * pipeline, uint32_t set, vka::PushDescriptorInfo const & Info);
 
     void bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
                             vka::pipeline const * pipeline,
