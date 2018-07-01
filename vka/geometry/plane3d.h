@@ -25,7 +25,6 @@
 #ifndef GLA_PLANE3D_HPP
 #define GLA_PLANE3D_HPP
 
-#include <glm/glm.hpp>
 #include <limits>
 #include "line3d.h"
 

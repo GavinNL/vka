@@ -19,21 +19,13 @@
 
 
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-#include <vulkan/vulkan.hpp>
 #include <iostream>
 #include <chrono>
 #include <thread>
 #include <vka/core/image.h>
 #include <vka/vka.h>
 
-
-
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
+#include <vka/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
@@ -50,8 +42,6 @@
 #include <vka/eng/mesh_manager.h>
 
 #include <vka/core/offscreen_target.h>
-
-#include <vka/utils/glfw_window_handler.h>
 
 #include "vulkan_app.h"
 
@@ -523,7 +513,7 @@ struct App : public VulkanApp
 
       // create a callback function for the onKey event for the window.
       // we will use this to control the camera
-      keyslot = onKey << [&] (vka::Key k, bool down)
+      keyslot = onKey << [&] (vka::KeyEvent E)
       {
           float x=0;
           float y=0;
@@ -539,14 +529,14 @@ struct App : public VulkanApp
 
       // create a callback function for the onMouseMove event.
       // We will use this to control the camera.
-      mouseslot =  onMouseMove << [&] (double dx, double dy)
+      mouseslot =  onMouseMove << [&] (vka::MouseMoveEvent E)
       {
-        dx = mouse_x() - dx;
-        dy = mouse_y() - dy;
+        const auto dx = E.dx;
+        const auto dy = E.dy;
         if( is_pressed( vka::Button::RIGHT))
         {
             show_cursor(false);
-            if( fabs(dx) < 10) m_Camera.yaw(   -dx*0.001f);
+            if( fabs(dx) < 10) m_Camera.yaw(   dx*0.001f);
             if( fabs(dy) < 10) m_Camera.pitch( dy*0.001f);
         }
         else
@@ -818,8 +808,8 @@ struct App : public VulkanApp
 
   std::vector< RenderComponent_t* > m_Objs;
 
-  vka::signal<void(double       , double)>::slot mouseslot;
-  vka::signal<void(vka::Key,      int   )>::slot keyslot;
+  decltype(onMouseMove)::slot mouseslot;
+  decltype(onKey)::slot keyslot;
 
 };
 

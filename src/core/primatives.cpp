@@ -1,6 +1,6 @@
 #include <vka/core/mesh.h>
 #include <vka/core/primatives.h>
-#include <glm/glm.hpp>
+#include <vka/linalg.h>
 #include <iostream>
 
 vka::host_mesh vka::box_mesh(float dx , float dy , float dz )

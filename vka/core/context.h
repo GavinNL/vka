@@ -157,6 +157,7 @@ private:
               DescriptorSetLayoutBindingCmp> m_DescriptorSetLayouts;
 
 public:
+    vk::Instance get_instance() { return m_instance; }
     vk::Device get_device() { return m_device; }
     vk::PhysicalDevice get_physical_device() { return m_physical_device; }
     vk::SurfaceKHR  get_surface() { return m_surface; }
@@ -207,7 +208,7 @@ public:
      *
      * Initialize the library by.
      */
-    void init();
+    void init(const std::vector<const char *> &required_extensions);
 
     /**
      * @brief clean
@@ -225,7 +226,12 @@ public:
      */
     vk::SurfaceKHR create_window_surface( GLFWwindow * window );
 
-    void create_device();
+    void set_window_surface( vk::SurfaceKHR & surface)
+    {
+        m_surface = surface;
+    }
+
+    void create_device(vk::SurfaceKHR surface_to_use);
 
     void create_logical_device(vk::PhysicalDevice &p_physical_device, const vka::queue_family_index_t &p_Qfamily);
 

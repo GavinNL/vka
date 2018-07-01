@@ -1,15 +1,30 @@
 /*
- * Example 2: Hello Depth Testing!
+ * Example 1:
  *
- * This example demonstrates how to setup a rendering pipeline using depth
- * testing. Depth testing is an integral part of most rendering pipelines.
+ * This example outlines a very basic usage of vka which demonstrates
+ * the essentials of graphics rendering.   It is broken down into a number of
+ * steps
+ *
+ * 1. Initialize the Library and create a window
+ * 2. Create vertex/index buffers to store geometry
+ * 3. Load a texture into the GPU
+ * 4. Create a rendering pipeline
+ * 5. Start rendering
+ *
+ *
+ *
+ *
+ *
+ *
  *
  */
 
 
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_main.h>
+#include <SDL2/SDL_vulkan.h>
+
 #include <vulkan/vulkan.hpp>
 #include <iostream>
 #include <chrono>
@@ -17,31 +32,11 @@
 #include <vka/core/image.h>
 #include <vka/vka.h>
 
-
 #include <vka/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
-#define APP_TITLE "Example_02 - Depth Testing"
-
-// This is the vertex structure we are going to use
-// it contains a position and a UV coordates field
-struct Vertex
-{
-    glm::vec3 p; // position
-    glm::vec2 u; // uv coords
-    glm::vec3 n; // normal
-};
-
-// This is the structure of the uniform buffer we want.
-// it needs to match the structure in the shader.
-struct uniform_buffer_t
-{
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
-};
-
+#define APP_TITLE "Example_01 - Hello Textured Rotating Triangle!"
 
 /**
  * @brief get_elapsed_time
@@ -60,35 +55,47 @@ float get_elapsed_time()
 
 }
 
+SDL_Window* initWindow()
+{
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS );
 
-/**
- * @brief create_box_mesh
- * @param dx - dimension of the box
- * @param dy - dimension of the box
- * @param dz - dimension of the box
- * @param vertices
- * @param indices
- *
- * Create a box mesh and save the vertices and indices in the input vectors.
- * The vertices/indices will then be copied into the graphics's buffers
- */
-void create_box_mesh(float dx , float dy , float dz , std::vector<Vertex> & vertices, std::vector<uint16_t> & indices );
+    if(SDL_Vulkan_LoadLibrary(NULL) == -1)
+    {
+        std::cout << "Error loading vulkan" << std::endl;
+        exit(1);
+    }
+    atexit(SDL_Quit);
 
+    auto window = SDL_CreateWindow("APPLICATION_NAME",
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        WIDTH,
+        HEIGHT,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+
+    if(window == NULL)
+    {
+        std::cout << "Couldn\'t set video mode: " << SDL_GetError() << std::endl;
+        exit(1);
+    }
+    return window;
+}
 
 
 int main(int argc, char ** argv)
 {
     //==========================================================================
-    // 1. Initlize the library and create a GLFW window
+    // 1. Initlize the library and create a window
     //==========================================================================
-    glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
+    auto * window  = initWindow();
 
-    unsigned int glfwExtensionCount = 0;
-    const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-    std::vector<char const *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount );
+
+    unsigned int count = 0;
+    SDL_Vulkan_GetInstanceExtensions(window, &count, NULL);
+    const char **names = new const char *[count];
+    SDL_Vulkan_GetInstanceExtensions(window, &count, names);
+
+    std::vector<char const *> extensions(names, names + count );
     extensions.push_back( "VK_EXT_debug_report");
 
     // the context is the main class for the vka library. It is keeps track of
@@ -100,13 +107,13 @@ int main(int argc, char ** argv)
     C.init(extensions);
 
     vk::SurfaceKHR surface;
-    if (glfwCreateWindowSurface( C.get_instance(), window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surface) ) != VK_SUCCESS)
+    if( !SDL_Vulkan_CreateSurface( window, C.get_instance(), reinterpret_cast<VkSurfaceKHR*>(&surface)  ) )
     {
-        ERROR << "Failed to create window surface!" << ENDL;
-        throw std::runtime_error("failed to create window surface!");
+        ERROR << "Failed to create surface" << ENDL;
     }
 
-    C.create_device(surface); // find the appropriate device
+    C.create_device(surface); // find the appropriate device which can draw to that surface.
+
 
     // The Screen is essentially a wrapper around the Swapchain, a default Renderpass
     // and framebuffers.
@@ -118,10 +125,6 @@ int main(int argc, char ** argv)
     screen->create();
 
     //==========================================================================
-
-
-
-
 
 
 
@@ -151,19 +154,19 @@ int main(int argc, char ** argv)
 //    1. Copy the vertex/index data from the host to a memory mappable device buffer
 //    2. copy the memory-mapped buffer to the vertex/index buffers
 //==============================================================================
-
-        std::vector<Vertex>   vertices;
-        std::vector<uint16_t> indices;
-
-        create_box_mesh( 1,1,1, vertices, indices);
-
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
-        vka::buffer* vertex_buffer = C.new_vertex_buffer(  "vb", 5*1024 );
-        vka::buffer* index_buffer  = C.new_index_buffer(   "ib", 5*1024 );
-        vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 5*1024);
+        vka::buffer* vertex_buffer = C.new_vertex_buffer("vb", 1024 );
+        vka::buffer* index_buffer  = C.new_index_buffer( "ib", 1024 );
+        vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 1024);
 
-
+        // This is the vertex structure we are going to use
+        // it contains a position and a UV coordates field
+        struct Vertex
+        {
+            glm::vec3 p;
+            glm::vec2 u;
+        };
 
         // allocate a staging buffer of 10MB
         vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
@@ -174,17 +177,29 @@ int main(int argc, char ** argv)
         // so we do not accidenty access the array_view after the
         // staging_buffer has been unmapped.
         {
-            void * vertex_map =  staging_buffer->map_memory();
-            memcpy( vertex_map, vertices.data(), vertices.size()*sizeof(Vertex));
+            vka::array_view<Vertex> vertex =  staging_buffer->map<Vertex>();
 
-            LOG << "Size of Vertices: " << vertices.size()*sizeof(Vertex) << ENDL;
-
-            void * index_map = static_cast<char*>(vertex_map) + vertices.size()*sizeof(Vertex);
-
-            memcpy( index_map, indices.data(), indices.size()*sizeof(uint16_t));
-
-            LOG << "Size of Indices: " << indices.size()*sizeof(uint16_t) << ENDL;
+            LOG << "Vertex size: " << vertex.size() << ENDL;
+            // we can access each vertex as if it was an array. Copy the
+            // vertex data we want into the first three indices.
+            vertex[0] = {glm::vec3( 0.0,  0.0,  1.0 ) , glm::vec2(0.5 , 0) } ;
+            vertex[1] = {glm::vec3( 1.0,  0.0, -1.0 ) , glm::vec2(0   , 1) };
+            vertex[2] = {glm::vec3(-1.0,  0.0, -1.0 ) , glm::vec2(1   , 1) };
         }
+        // Do the same for the index buffer. but we want to specific an
+        // offset form the start of the buffer so we do not overwrite the
+        // vertex data.
+        {
+            // +--------------------------------------------------------+
+            // |  vertex data    |   index data                         |
+            // +--------------------------------------------------------+
+            vka::array_view<glm::uint16_t> index =  staging_buffer->map<glm::uint16>( 3*sizeof(Vertex) );
+            index[0] = 0;
+            index[1] = 1;
+            index[2] = 2;
+            LOG << "Index size: " << index.size() << ENDL;
+        }
+
 
         // 2. Copy the data from the host-visible buffer to the vertex/index buffers
 
@@ -194,10 +209,10 @@ int main(int argc, char ** argv)
 
         // write the commands to copy each of the buffer data
         const vk::DeviceSize vertex_offset = 0;
-        const vk::DeviceSize vertex_size   = vertices.size()*sizeof(Vertex);
+        const vk::DeviceSize vertex_size   = 3 * sizeof(Vertex);
 
-        const vk::DeviceSize index_offset    = vertices.size()*sizeof(Vertex);
-        const vk::DeviceSize index_size      = indices.size()*sizeof(uint16_t);
+        const vk::DeviceSize index_size    = 3 * sizeof(uint16_t);
+        const vk::DeviceSize index_offset  = vertex_size;
 
 
         copy_cmd.copyBuffer( *staging_buffer , *vertex_buffer, vk::BufferCopy{ vertex_offset    , 0 , vertex_size } );
@@ -285,11 +300,11 @@ int main(int argc, char ** argv)
 //==============================================================================
         // create the vertex shader from a pre compiled SPIR-V file
         vka::shader* vertex_shader = C.new_shader_module("vs");
-        vertex_shader->load_from_file("resources/shaders/depth_testing/depth_testing_v.spv");
+        vertex_shader->load_from_file("resources/shaders/uniform_buffer/uniform_buffer_v.spv");
 
         // create the fragment shader from a pre compiled SPIR-V file
         vka::shader* fragment_shader = C.new_shader_module("fs");
-        fragment_shader->load_from_file("resources/shaders/depth_testing/depth_testing_f.spv");
+        fragment_shader->load_from_file("resources/shaders/uniform_buffer/uniform_buffer_f.spv");
 
         vka::pipeline* pipeline = C.new_pipeline("triangle");
 
@@ -302,12 +317,10 @@ int main(int argc, char ** argv)
 
                   // tell the pipeline that attribute 0 contains 3 floats
                   // and the data starts at offset 0
-                  ->set_vertex_attribute(0, 0 ,  offsetof(Vertex,p),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
+                  ->set_vertex_attribute(0,0 ,  0,  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
                   // tell the pipeline that attribute 1 contains 3 floats
                   // and the data starts at offset 12
-                  ->set_vertex_attribute(0, 1 , offsetof(Vertex,u),  vk::Format::eR32G32Sfloat,  sizeof(Vertex) )
-
-                  ->set_vertex_attribute(0, 2 , offsetof(Vertex,n),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
+                  ->set_vertex_attribute(0,1 , 12,  vk::Format::eR32G32Sfloat,  sizeof(Vertex) )
 
                   // Triangle vertices are drawn in a counter clockwise manner
                   // using the right hand rule which indicates which face is the
@@ -315,7 +328,7 @@ int main(int argc, char ** argv)
                   ->set_front_face(vk::FrontFace::eCounterClockwise)
 
                   // Cull all back facing triangles.
-                  ->set_cull_mode(vk::CullModeFlagBits::eNone)
+                  ->set_cull_mode(vk::CullModeFlagBits::eBack)
 
                   // Tell the shader that we are going to use a texture
                   // in Set #0 binding #0
@@ -343,8 +356,17 @@ int main(int argc, char ** argv)
     texture_descriptor->update();
 
     vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
-    ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, sizeof(uniform_buffer_t), 0);
+    ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, 10, 0);
     ubuffer_descriptor->update();
+
+    // This is the structure of the uniform buffer we want.
+    // it needs to match the structure in the shader.
+    struct uniform_buffer_t
+    {
+        glm::mat4 model;
+        glm::mat4 view;
+        glm::mat4 proj;
+    };
 
     vka::array_view<uniform_buffer_t> staging_buffer_map = staging_buffer->map<uniform_buffer_t>();
 
@@ -361,32 +383,42 @@ int main(int argc, char ** argv)
     // The steps required are:
     //    a. update the uniform buffer with the MVP matrices
     //
-    while (!glfwWindowShouldClose(window) )
+    SDL_Event event;
+    bool quit=false;
+    while(!quit)
     {
 
-      glfwPollEvents();
+        while (SDL_PollEvent(&event))
+        {
+            if( event.type == SDL_QUIT )
+            {
+                quit = true;
+            }
+            printf("SDL Event type :: %d\n", event.type);
+            if (event.type == SDL_MOUSEBUTTONDOWN)
+                printf("SDL_MOUSEBUTTONDOWN Event!!\n");
+            if (event.type == SDL_MOUSEMOTION)
+                printf("SDL_MOUSEMOTION Event!!\n");
+        }
+
+    //  glfwPollEvents();
 
       //============ Update the uniform buffer=====================
       float t = get_elapsed_time();
 
       const float AR = WIDTH / ( float )HEIGHT;
 
-
-      staging_buffer_map[0].model       = glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-      staging_buffer_map[0].view        = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-      staging_buffer_map[0].proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
+      staging_buffer_map[0].model = glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+      staging_buffer_map[0].view  = glm::lookAt( glm::vec3(5.0f, 5.0f, 5.0f),
+                                                 glm::vec3(0.0f, 0.0f, 0.0f),
+                                                 glm::vec3(0.0f, 1.0f, 0.0f));
+      staging_buffer_map[0].proj  = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
       staging_buffer_map[0].proj[1][1] *= -1;
-
-      //staging_buffer_map[0].model = glm::rotate(glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.5f, 1.0f, -0.2f));
-      //staging_buffer_map[0].view  = glm::lookAt( glm::vec3(5.0f, 5.0f, 5.0f),
-      //                                           glm::vec3(0.0f, 0.0f, 0.0f),
-      //                                           glm::vec3(0.0f, 1.0f, 0.0f));
-      //staging_buffer_map[0].proj  = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
-      //staging_buffer_map[0].proj[1][1] *= -1;
 
       //============================================================
 
       // Get the next available image in the swapchain
+
 
       // reset the command buffer so that we can record from scratch again.
       cb.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
@@ -395,6 +427,7 @@ int main(int argc, char ** argv)
 
       // Copy the uniform buffer data from the stating buffer to the uniform buffer
       cb.copyBuffer( *staging_buffer , *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
+
 
       uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
       screen->beginRender(cb, frame_index);
@@ -419,10 +452,9 @@ int main(int argc, char ** argv)
             cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
 
     // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
-            cb.drawIndexed(36, 1, 0 , 0, 0);
+            cb.drawIndexed(3, 1, 0 , 0, 0);
 
       screen->endRender(cb);
-
       cb.end();
 
       // Submit the command buffers, but wait until the image_available_semaphore
@@ -431,7 +463,8 @@ int main(int argc, char ** argv)
 
       // present the image to the surface, but wait for the render_complete_semaphore
       // to be flagged by the submit_command_buffer
-      screen->present_frame( frame_index,render_complete_semaphore);
+      screen->present_frame( frame_index, render_complete_semaphore);
+
 
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );
     }
@@ -441,64 +474,3 @@ int main(int argc, char ** argv)
 
 #define STB_IMAGE_IMPLEMENTATION
 #include<stb/stb_image.h>
-
-
-
-void create_box_mesh(float dx , float dy , float dz , std::vector<Vertex> & vertices, std::vector<uint16_t> & indices )
-{
-
-    indices .clear();
-    vertices.clear();
-
-    using namespace glm;
-
-
-    std::vector<uint16_t> I;
-//       |       Position                           |   UV         |     Normal    |
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {0.0,0.0}  ,  { 0.0,  0.0,  1.0} } );   // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  { 0.0,  0.0,  1.0} } );   // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0,  0.0,  1.0} } );   // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {0.0,0.0}  ,  { 0.0,  0.0,  1.0} } );   // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0,  0.0,  1.0} } );   // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0,  0.0,  1.0} } );   // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 0.0,  0.0, -1.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {1.0,1.0}  ,  { 0.0,  0.0, -1.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0,  0.0, -1.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 0.0,  0.0, -1.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0,  0.0, -1.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0,  0.0, -1.0} } ); // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  {-1.0f, 0.0,  0.0} } );  // 0
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  {-1.0f, 0.0,  0.0} } );  // 1
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  {-1.0f, 0.0,  0.0} } );  // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  {-1.0f, 0.0,  0.0} } );  // 0
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  {-1.0f, 0.0,  0.0} } );  // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  {-1.0f, 0.0,  0.0} } );  // 3
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 1.0f, 0.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 1.0f, 0.0,  0.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  { 1.0f, 0.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 1.0f, 0.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  { 1.0f, 0.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 1.0f, 0.0,  0.0} } ); // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0f,-1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0f,-1.0,  0.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0f,-1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0f,-1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0f,-1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0f,-1.0,  0.0} } ); // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0f, 1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0f, 1.0,  0.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0f, 1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0f, 1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0f, 1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0f, 1.0,  0.0} } ); // 3
-
-    //=========================
-    // Edges of the triangle : postion delta
-
-
-    //=========================
-    for(uint16_t i=0;i<36;i++)
-        indices.push_back(i);
-
-
-}

@@ -33,12 +33,7 @@
 #include <vka/core/image.h>
 #include <vka/vka.h>
 
-
-
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
+#include <vka/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
@@ -147,15 +142,17 @@ uint32_t tick()
 int main(int argc, char ** argv)
 {
     //==========================================================================
-    // 1. Initlize the library and create a window
+    // 1. Initlize the library and create a GLFW window
     //==========================================================================
     glfwInit();
-
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
-
     GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
 
+    unsigned int glfwExtensionCount = 0;
+    const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    std::vector<char const *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount );
+    extensions.push_back( "VK_EXT_debug_report");
 
     // the context is the main class for the vka library. It is keeps track of
     // all the vulkan objects and releases them appropriately when it is destroyed
@@ -163,17 +160,28 @@ int main(int argc, char ** argv)
     // command pools, etc.
     vka::context C;
 
-    C.init();
-    auto surface = C.create_window_surface(window); // create the vulkan surface using the window provided
-    C.create_device(); // find the appropriate device
+    C.init(extensions);
 
-    vka::screen * screen = C.new_screen("screen");
-    screen = C.new_screen("m_win");
+    vk::SurfaceKHR surface;
+    if (glfwCreateWindowSurface( C.get_instance(), window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surface) ) != VK_SUCCESS)
+    {
+        ERROR << "Failed to create window surface!" << ENDL;
+        throw std::runtime_error("failed to create window surface!");
+    }
+
+    C.create_device(surface); // find the appropriate device
+
+    // The Screen is essentially a wrapper around the Swapchain, a default Renderpass
+    // and framebuffers.
+    // in VKA we present images to the screen object.
+    // This a simple initialization of creating a screen with depth testing
+    auto * screen = C.new_screen("screen");
     screen->set_extent( vk::Extent2D(WIDTH,HEIGHT) );
     screen->set_surface( surface );
     screen->create();
 
     //==========================================================================
+
 
 
     //==========================================================================
@@ -488,7 +496,7 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
     // must save the returned slot otherwise, the signal will be
     // unregistered
-    auto keyslot = m_Window.onKey << [&] (vka::Key k, bool down)
+    auto keyslot = m_Window.onKey << [&] (vka::KeyEvent E)
     {
         float x=0;
         float y=0;
@@ -502,21 +510,23 @@ m_Objects[2].m_transform.set_position( glm::vec3(0,0,2));
 
     };
 
-    auto mouseslot =  m_Window.onMouseMove << [&] (double dx, double dy)
+    // create a callback function for the onMouseMove event.
+    // We will use this to control the camera.
+    auto mouseslot = m_Window.onMouseMove << [&] (vka::MouseMoveEvent E)
     {
-      dx = m_Window.mouse_x() - dx;
-      dy = m_Window.mouse_y() - dy;
+      const auto dx = E.dx;
+      const auto dy = E.dy;
       if( m_Window.is_pressed( vka::Button::RIGHT))
       {
           m_Window.show_cursor(false);
-          if( fabs(dx) < 10) m_Camera.yaw(   -dx*0.001f);
+          if( fabs(dx) < 10) m_Camera.yaw(   dx*0.001f);
           if( fabs(dy) < 10) m_Camera.pitch( dy*0.001f);
       }
       else
       {
           m_Window.show_cursor(true);
       }
-      //std::cout << "Moving: " << dx << ", " << dy << std::endl;
+
     };
 
 

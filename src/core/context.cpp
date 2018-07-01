@@ -17,7 +17,6 @@
 #include <vka/core/screen_target.h>
 #include <vulkan/vulkan.hpp>
 #include <vka/core/context_child.h>
-#include <GLFW/glfw3.h>
 #include <set>
 
 
@@ -35,7 +34,8 @@ vka::context*            vka::context_child::get_parent_context()
     return m_parent;
 }
 
-void vka::context::init()
+
+void vka::context::init( std::vector<char const*> const & required_extensions)
 {
     LOG << "Initializing vka context" << ENDL;
 
@@ -45,7 +45,7 @@ void vka::context::init()
     }
 
 
-    auto required_extensions = get_required_extensions();
+    //auto required_extensions = get_required_extensions();
 
     INFO<< "Required Extensions: " <<  required_extensions.size() << ENDL;
     for(auto & e : required_extensions) INFO << e << ENDL;
@@ -83,24 +83,9 @@ void vka::context::init()
 }
 
 
-vk::SurfaceKHR vka::context::create_window_surface( GLFWwindow * window )
+void vka::context::create_device( vk::SurfaceKHR surface_to_use)
 {
-
-    if (glfwCreateWindowSurface( m_instance, window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_surface) ) != VK_SUCCESS)
-    {
-        ERROR << "Failed to create window surface!" << ENDL;
-        throw std::runtime_error("failed to create window surface!");
-    }
-    int w, h;
-    glfwGetWindowSize(window, &w, &h);
-    m_extent.width = w;
-    m_extent.height = h;
-    return m_surface;
-
-}
-
-void vka::context::create_device()
-{
+    m_surface = surface_to_use;
     if( !m_surface)
     {
         ERROR << "Surface not created. Must create a window surface using create_window_surface( ) first." << ENDL;
@@ -896,8 +881,6 @@ bool vka::context::check_validation_layer_support()
         INFO << "Validation Layer: " << layers.layerName << ENDL;
     }
 
-    std::vector<vk::LayerProperties> m_LayerProperties = vk::enumerateInstanceLayerProperties();
-
     for (const char* layerName : m_required_validation_layers)
     {
         bool layerFound = false;
@@ -919,26 +902,6 @@ bool vka::context::check_validation_layer_support()
     }
 
     return true;
-}
-
-std::vector<const char*> vka::context::get_required_extensions()
-{
-    std::vector<const char *> extensions;
-
-    unsigned int glfwExtensionCount = 0;
-    const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    for (unsigned int i = 0; i < glfwExtensionCount; i++)
-    {
-        extensions.push_back(glfwExtensions[i]);
-    }
-
-    if ( m_enable_validation_layers )
-    {
-        extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-    }
-
-    return extensions;
 }
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData)

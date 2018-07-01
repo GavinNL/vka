@@ -55,7 +55,7 @@
 
 #include <vka/core/offscreen_target.h>
 
-#include "vulkan_app.h"
+#include "vulkan_app_sdl.h"
 
 // This is the structure of the uniform buffer we want.
 // it needs to match the structure in the shader.
@@ -650,7 +650,7 @@ struct App : public VulkanApp
 
       // create a callback function for the onKey event for the window.
       // we will use this to control the camera
-      keyslot = onKey << [&] (vka::KeyEvent E)
+      keyslot = onKey << [&] (vka::Key k, bool down)
       {
           float x=0;
           float y=0;
@@ -666,10 +666,12 @@ struct App : public VulkanApp
 
       // create a callback function for the onMouseMove event.
       // We will use this to control the camera.
-      mouseslot =  onMouseMove << [&] (vka::MouseMoveEvent E)
+      mouseslot =  onMouseMove << [&] (double dx, double dy)
       {
-        const auto dx = E.dx;
-        const auto dy = E.dy;
+        // dx = mouse_x() - dx;
+        // dy = mouse_y() - dy;
+
+        std::cout << dx << ", " << dy << std::endl;
         if( is_pressed( vka::Button::RIGHT))
         {
             show_cursor(false);
@@ -1007,8 +1009,8 @@ struct App : public VulkanApp
 
   std::vector< RenderComponent_t* > m_Objs;
 
-  decltype(onMouseMove)::slot mouseslot;
-  decltype(onKey)::slot keyslot;
+  vka::signal<void(double       , double)>::slot mouseslot;
+  vka::signal<void(vka::Key,      int   )>::slot keyslot;
 
 };
 
