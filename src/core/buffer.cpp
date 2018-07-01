@@ -55,7 +55,7 @@ void   vka::buffer::unmap_memory()
     m_memory.unmap();
 }
 
-bool vka::buffer::copy(const void *data, size_t _size, size_t offset)
+bool vka::buffer::copy(const void *data, vk::DeviceSize _size, vk::DeviceSize offset)
 {
     if (m_memory.get_memory_properties()  & vk::MemoryPropertyFlagBits::eHostVisible )
     {
