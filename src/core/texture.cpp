@@ -362,7 +362,7 @@ void vka::texture::create_sampler()
     create_info.addressModeU     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
     create_info.addressModeV     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
     create_info.addressModeW     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    create_info.anisotropyEnable = VK_TRUE;
+    create_info.anisotropyEnable = VK_FALSE;
     create_info.maxAnisotropy    = 1;
     create_info.borderColor      = vk::BorderColor::eIntOpaqueBlack;// VK_BORDER_COLOR_INT_OPAQUE_BLACK ;
     create_info.unnormalizedCoordinates = VK_FALSE;
