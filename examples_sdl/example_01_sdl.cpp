@@ -95,8 +95,7 @@ int main(int argc, char ** argv)
     const char **names = new const char *[count];
     SDL_Vulkan_GetInstanceExtensions(window, &count, names);
 
-    std::vector<char const *> extensions(names, names + count );
-    extensions.push_back( "VK_EXT_debug_report");
+
 
     // the context is the main class for the vka library. It is keeps track of
     // all the vulkan objects and releases them appropriately when it is destroyed
@@ -104,7 +103,11 @@ int main(int argc, char ** argv)
     // command pools, etc.
     vka::context C;
 
-    C.init(extensions);
+    for(uint i=0;i<count;i++)  C.enable_extension( names[i] );
+    C.enable_extension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+
+    C.enable_device_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    C.init();
 
     vk::SurfaceKHR surface;
     if( !SDL_Vulkan_CreateSurface( window, C.get_instance(), reinterpret_cast<VkSurfaceKHR*>(&surface)  ) )

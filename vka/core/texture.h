@@ -162,8 +162,13 @@ public:
     void  unmap_memory();
 
 
-
-
+    vk::DescriptorImageInfo const & get_descriptor_info()
+    {
+        m_DescriptorImageInfo.imageLayout = get_layout();
+        m_DescriptorImageInfo.imageView   = get_image_view();
+        m_DescriptorImageInfo.sampler     = get_sampler();
+        return m_DescriptorImageInfo;
+    }
 protected:
     bool has_stencil_component(vk::Format format);
 
@@ -188,11 +193,9 @@ protected:
     vk::SamplerCreateInfo   m_SamplerInfo;
     vk::Sampler             m_Sampler;
 
-
-
     vk::ImageCreateInfo     m_CreateInfo;
 
-    //void  * m_Mapped = nullptr;
+    vk::DescriptorImageInfo m_DescriptorImageInfo;
 
     friend class context;
     friend class deleter<texture>;

@@ -4,6 +4,12 @@
 #include <vka/core/pipeline.h>
 #include <vka/core/descriptor_set.h>
 
+#include <vka/core/texture.h>
+#include <vka/core/texture2darray.h>
+#include <vka/core/buffer.h>
+
+#include <vka/core/extensions.h>
+
 void vka::command_buffer::bindVertexSubBuffer(uint32_t firstBinding,
                               vka::sub_buffer const * buffer , vk::DeviceSize offset) const
 {
@@ -56,4 +62,48 @@ void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindP
                            vk::ArrayProxy<const vk::DescriptorSet>( set->get()),
                            vk::ArrayProxy<const uint32_t>(dynamic_offset) );
 
+}
+
+
+
+
+//===================
+
+void vka::command_buffer::pushDescriptorSet( vk::PipelineBindPoint bind_point, vka::pipeline * pipeline, uint32_t set, vka::PushDescriptorInfo const & Info)
+{
+    pushDescriptorSetKHR(bind_point,
+                         pipeline->get_layout(),
+                         set,
+                         Info.m_writes, vka::ExtDispatcher);
+}
+
+
+vka::PushDescriptorInfo &vka::PushDescriptorInfo::attach(uint32_t binding, uint32_t count, vka::texture *texArray)
+{
+    vk::WriteDescriptorSet W;
+    // Descriptor set 0 binding 0  is the texture array
+    W.dstSet = vk::DescriptorSet();
+    W.dstBinding = binding;
+    W.descriptorCount = count;
+    W.descriptorType = vk::DescriptorType::eCombinedImageSampler;//VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+    W.pImageInfo = &texArray->get_descriptor_info();
+
+    m_writes.push_back(W);
+    return *this;
+}
+
+vka::PushDescriptorInfo &vka::PushDescriptorInfo::attach(uint32_t binding, uint32_t count, vka::sub_buffer *buffer)
+{
+    vk::WriteDescriptorSet W;
+
+    W.dstSet = vk::DescriptorSet();
+    W.dstBinding = binding;
+    W.descriptorCount = count;
+    W.descriptorType = vk::DescriptorType::eUniformBuffer;//VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+    W.pBufferInfo = &buffer->get_descriptor_info();
+
+    m_writes.push_back(W);
+    return *this;
 }

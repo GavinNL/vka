@@ -4,6 +4,7 @@
 #include <vka/core/shader.h>
 #include <vka/core/renderpass.h>
 #include <vka/core/descriptor_pool.h>
+#include <vka/core/descriptor_set_layout.h>
 #include <vka/core/descriptor_set.h>
 
 vka::pipeline::~pipeline()
@@ -72,7 +73,7 @@ vka::pipeline *vka::pipeline::add_texture_layout_binding(uint32_t set, uint32_t 
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags         = stages;// VK_SHADER_STAGE_VERTEX_BIT;
 
-    m_DescriptorSetLayoutBindings[set].push_back(samplerLayoutBinding);
+    m_DescriptorSetLayoutBindings[set].bindings.push_back(samplerLayoutBinding);
 
     return this;
 }
@@ -86,7 +87,7 @@ vka::pipeline *vka::pipeline::add_uniform_layout_binding(uint32_t set, uint32_t 
     uboLayoutBinding.pImmutableSamplers = nullptr;
     uboLayoutBinding.stageFlags         = stages;// VK_SHADER_STAGE_VERTEX_BIT;
 
-    m_DescriptorSetLayoutBindings[set].push_back(uboLayoutBinding);
+    m_DescriptorSetLayoutBindings[set].bindings.push_back(uboLayoutBinding);
 
     return this;
 }
@@ -101,7 +102,7 @@ vka::pipeline *vka::pipeline::add_dynamic_uniform_layout_binding(uint32_t set, u
     duboLayoutBinding.pImmutableSamplers = nullptr;
     duboLayoutBinding.stageFlags         = stages;// VK_SHADER_STAGE_VERTEX_BIT;
 
-    m_DescriptorSetLayoutBindings[set].push_back(duboLayoutBinding);
+    m_DescriptorSetLayoutBindings[set].bindings.push_back(duboLayoutBinding);
 
     return this;
 }
@@ -115,7 +116,7 @@ vka::pipeline * vka::pipeline::add_push_constant(uint32_t size, uint32_t offset,
 vka::descriptor_set* vka::pipeline::create_new_descriptor_set(uint32_t set, descriptor_pool * pool)
 {
     descriptor_set * S = pool->allocate_descriptor_set();
-    S->create( m_DescriptorSetLayoutBindings.at(set) );
+    S->create( m_DescriptorSetLayoutBindings.at(set).bindings );
     return S;
 }
 
@@ -148,15 +149,6 @@ void vka::pipeline::create()
 {
     auto device = get_device(); //Device::GetGlobal().m_Device;
 
-//    if( !I.m_RenderPass )
-//    {
-//        throw std::runtime_error("Renderpass not set. Make sure to use Pipeline::SetRenderPass( )");
-//    }
-//
-//    if( !I.m_RenderPass )
-//    {
-//        throw std::runtime_error("Renderpass not created. Make sure you run renderpass->create() first");
-//    }
     if( m_ColorBlendAttachments.size() == 0)
     {
         vk::PipelineColorBlendAttachmentState C;
@@ -184,35 +176,11 @@ void vka::pipeline::create()
     //=================================
     // Create the pipeline layout
 
-
-    // Attach the descriptor sets
-    //
-
-   // vk::DescriptorSetLayoutCreateInfo C;
-   // C.bindingCount = I.m_DescriptorSetLayoutBindings.size();
-   // C.pBindings    = I.m_DescriptorSetLayoutBindings.data();
-
-    //I.m_DescriptorSetLayouts.push_back(  device.createDescriptorSetLayout(C) );
-    //
-    //if (!I.m_DescriptorSetLayouts[0])
-    //{
-    //    throw std::runtime_error("Failed to create descriptor set layout!");
-    //}
-    //LOG << "Descriptor Set Layouts created" << END;
-
-
-
     std::vector<vk::DescriptorSetLayout> layouts;
     for(auto & bindings : m_DescriptorSetLayoutBindings)
     {
-        layouts.push_back(  get_parent_context()->new_descriptor_set_layout( bindings.second )->get() );
+        layouts.push_back(  get_parent_context()->new_descriptor_set_layout( bindings.second.bindings , bindings.second.flags)->get() );
     }
-
-   // for(auto  d : m_DescriptorSetLayouts)
-   // {
-   //     layouts.push_back( *d );
-   // }
-
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo;
         pipelineLayoutInfo.setLayoutCount     = static_cast<uint32_t>(layouts.size());

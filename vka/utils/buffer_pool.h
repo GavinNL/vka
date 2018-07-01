@@ -23,12 +23,14 @@ class sub_buffer
 public:
     operator vk::Buffer () const
     {
-        return m_buffer;
+        return get();
+        //return m_buffer;
     }
 
     vk::Buffer get() const
     {
-        return m_buffer;
+        return m_DescriptorBufferInfo.buffer;
+        //return m_buffer;
     }
 
 
@@ -66,28 +68,31 @@ public:
 
     vk::DeviceSize size() const
     {
-        return m_size;
+        return m_DescriptorBufferInfo.range;
     }
 
     vk::DeviceSize offset() const
     {
-        return m_offset;
+        return m_DescriptorBufferInfo.offset;
     }
 
     vka::buffer_pool* get_parent_pool() {
         return m_parent;
     }
+
+    vk::DescriptorBufferInfo & get_descriptor_info()
+    {
+        return m_DescriptorBufferInfo;
+    }
+
 protected:
 
     sub_buffer( buffer_pool * parent) : m_parent(parent){}
     ~sub_buffer() {}
 
-    vk::Buffer     m_buffer;
+    vk::DescriptorBufferInfo m_DescriptorBufferInfo;
 
-    vk::DeviceSize m_size;
-    vk::DeviceSize m_offset; // offset from teh start of the parent' memory block
-
-    buffer_pool    *m_parent;
+    buffer_pool               *m_parent;
     vka::buffer_memory_manager m_manager;
 
     friend class buffer_pool;

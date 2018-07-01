@@ -36,7 +36,9 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
       }
   }
 
-  void init(uint32_t w, uint32_t h, const char* title)
+  void init(uint32_t w, uint32_t h, const char* title,
+            std::vector<std::string> const & extra_instance_extensions = std::vector<std::string>(),
+            std::vector<std::string> const & extra_device_extensions = std::vector<std::string>())
   {
 
       glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -46,12 +48,19 @@ struct VulkanApp :   public vka::GLFW_Window_Handler
 
       unsigned int glfwExtensionCount = 0;
       const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-      std::vector<char const *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount );
-      extensions.push_back( "VK_EXT_debug_report");
+      for(uint i=0;i<glfwExtensionCount;i++)  m_Context.enable_extension( glfwExtensions[i] );
+      m_Context.enable_extension( VK_EXT_DEBUG_REPORT_EXTENSION_NAME );
+
+      for(auto & v : extra_instance_extensions)
+          m_Context.enable_extension( &v[0] );
+
+      m_Context.enable_device_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+      for(auto & v : extra_device_extensions)
+          m_Context.enable_device_extension( &v[0] );
 
       attach_window(m_win);
 
-      m_Context.init(extensions);
+      m_Context.init();
 
       // need a surface --> device --> swapchaim (screen)
       vk::SurfaceKHR surface;
