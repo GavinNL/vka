@@ -4,6 +4,7 @@
 #include <vka/core/shader.h>
 #include <vka/core/renderpass.h>
 #include <vka/core/descriptor_pool.h>
+#include <vka/core/descriptor_set_layout.h>
 #include <vka/core/descriptor_set.h>
 
 vka::pipeline::~pipeline()

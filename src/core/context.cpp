@@ -12,6 +12,7 @@
 #include <vka/core/texture2d.h>
 #include <vka/core/texture2darray.h>
 #include <vka/core/descriptor_pool.h>
+#include <vka/core/descriptor_set_layout.h>
 #include <vka/core/descriptor_set.h>
 #include <vka/core/offscreen_target.h>
 #include <vka/core/screen_target.h>
