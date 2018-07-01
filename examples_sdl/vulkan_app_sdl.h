@@ -72,10 +72,20 @@ struct VulkanApp :   public vka::SDL_Window_Handler
       const char **names = new const char *[count];
       SDL_Vulkan_GetInstanceExtensions(window, &count, names);
 
-      std::vector<char const *> extensions(names, names + count );
-      extensions.push_back( VK_EXT_DEBUG_REPORT_EXTENSION_NAME );
+      for(uint i=0;i<count;i++)  m_Context.enable_extension( names[i] );
 
-      m_Context.init(extensions);
+      m_Context.enable_extension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+      m_Context.enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+
+      //m_Context.enable_validation_layer("VK_LAYER_LUNARG_parameter_validation");
+      //m_Context.enable_validation_layer("VK_LAYER_LUNARG_object_tracker");
+      //m_Context.enable_validation_layer("VK_LAYER_LUNARG_core_validation");
+      //m_Context.enable_validation_layer("VK_LAYER_GOOGLE_unique_objects");
+
+      m_Context.enable_device_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+      m_Context.enable_device_extension(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+
+      m_Context.init( );
 
       vk::SurfaceKHR surface;
       if( !SDL_Vulkan_CreateSurface( window, m_Context.get_instance(), reinterpret_cast<VkSurfaceKHR*>(&surface)  ) )

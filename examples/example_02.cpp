@@ -88,8 +88,7 @@ int main(int argc, char ** argv)
 
     unsigned int glfwExtensionCount = 0;
     const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-    std::vector<char const *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount );
-    extensions.push_back( "VK_EXT_debug_report");
+
 
     // the context is the main class for the vka library. It is keeps track of
     // all the vulkan objects and releases them appropriately when it is destroyed
@@ -97,7 +96,16 @@ int main(int argc, char ** argv)
     // command pools, etc.
     vka::context C;
 
-    C.init(extensions);
+    // Enable the required extensions for being able to draw
+    for(uint i=0;i<glfwExtensionCount;i++)  C.enable_extension( glfwExtensions[i] );
+
+    // Enable some extra extensions that we want.
+    C.enable_extension( VK_EXT_DEBUG_REPORT_EXTENSION_NAME );
+
+    // Enable the required device extension
+    C.enable_device_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+    C.init();
 
     vk::SurfaceKHR surface;
     if (glfwCreateWindowSurface( C.get_instance(), window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surface) ) != VK_SUCCESS)

@@ -40,7 +40,7 @@ vka::context*            vka::context_child::get_parent_context()
 }
 
 
-void vka::context::init( std::vector<char const*> const & required_extensions)
+void vka::context::init( )
 {
     LOG << "Initializing vka context" << ENDL;
 
@@ -50,10 +50,16 @@ void vka::context::init( std::vector<char const*> const & required_extensions)
     }
 
 
-    //auto required_extensions = get_required_extensions();
+
+    std::vector<char const*>  required_extensions;
+    for(auto & v : m_instance_extensions)
+        required_extensions.push_back( &v[0] );
 
     INFO<< "Required Extensions: " <<  required_extensions.size() << ENDL;
     for(auto & e : required_extensions) INFO << e << ENDL;
+
+
+
 
     vk::ApplicationInfo appInfo;
     appInfo.setPApplicationName( "Hello Triangle" )
@@ -82,6 +88,19 @@ void vka::context::init( std::vector<char const*> const & required_extensions)
     }
     LOG << "Instance Created" << ENDL;
 
+    //==========================================================================
+    // Load Extensions
+    //==========================================================================
+
+#define XX(A) \
+    ExtDispatcher.A = (PFN_ ## A) m_instance.getProcAddr( #A );\
+    if( ExtDispatcher.A == nullptr)\
+        throw std::runtime_error("Could not load extension: " + std::string(#A) );\
+
+    EXT_LIST
+    #undef XX
+    //==========================================================================
+
     setup_debug_callback();
 
 
@@ -105,7 +124,7 @@ void vka::context::create_device( vk::SurfaceKHR surface_to_use)
     LOG << "Physical Devices found: " << devices.size() << ENDL;
 
     std::vector<const char *> DeviceExtensions;
-    for(auto & d : m_required_device_extensions)
+    for(auto & d : m_device_extensions)
         DeviceExtensions.push_back( d.data() );
 
     int i=0;
@@ -217,7 +236,7 @@ void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device,
     }
 
     std::vector<const char*> deviceExtensions;
-    for(auto & s : m_required_device_extensions)
+    for(auto & s : m_device_extensions)
         deviceExtensions.push_back( &s[0] );
 
     for(auto & c : deviceExtensions)
@@ -258,128 +277,6 @@ void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device,
     //vkGetDeviceQueue(device, indices.graphics, 0, &graphicsQueue);
 }
 
-
-#if 0
-void vka::context::create_swap_chain(vk::Extent2D extents)
-{
-
-    //
-
-    if( m_swapchain)
-    {
-        throw std::runtime_error("swap chain already created");
-    }
-    if( !m_device)
-    {
-        throw std::runtime_error("device not created");
-    }
-    if( !m_surface)
-    {
-        throw std::runtime_error("Surface not created\n");
-    }
-
-    LOG << "Creating swaphain" << ENDL;
-    m_swapchain_capabilities = m_physical_device.getSurfaceCapabilitiesKHR(m_surface);
-    m_swapchain_available_formats = m_physical_device.getSurfaceFormatsKHR(     m_surface);
-    m_swapchain_available_present_modes = m_physical_device.getSurfacePresentModesKHR(m_surface);
-
-    //============= Choose the appropriate present mode =============
-    m_swapchain_present_mode = vk::PresentModeKHR::eFifo;
-    for (const auto& availablePresentMode : m_swapchain_available_present_modes)
-    {
-        if (availablePresentMode ==vk::PresentModeKHR::eMailbox)
-        {
-            m_swapchain_present_mode=  availablePresentMode;
-            break;
-        }
-        else if (availablePresentMode ==vk::PresentModeKHR::eImmediate)
-        {
-            m_swapchain_present_mode = availablePresentMode;
-            break;
-        }
-    }
-    //================= Choose the appropriate format==================
-    if( m_swapchain_available_formats.size()==1 && m_swapchain_available_formats.front().format == vk::Format::eUndefined)
-    {
-        m_swapchain_format.format     = vk::Format::eR8G8B8A8Unorm;
-        m_swapchain_format.colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
-    } else {
-        m_swapchain_format = m_swapchain_available_formats.front();
-        for (const auto& availableFormat : m_swapchain_available_formats)
-        {
-            if (availableFormat.format == vk::Format::eR8G8B8A8Unorm && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
-            {
-                m_swapchain_format = availableFormat;
-            }
-        }
-    }
-    LOG << "Format     Selected: " << vk::to_string(m_swapchain_format.format) << ENDL;
-    LOG << "Color SpaceSelected: " << vk::to_string(m_swapchain_format.colorSpace) << ENDL;
-
-    //================== Choose the appropriate extent ====================
-    vk::Extent2D   extent  = extents;//chooseSwapExtent(swapChainSupport.capabilities);
-    if (m_swapchain_capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
-    {
-        extent = m_swapchain_capabilities.currentExtent;
-    }
-    else
-    {
-        extent.width  = std::max(m_swapchain_capabilities.minImageExtent.width , std::min(m_swapchain_capabilities.maxImageExtent.width,  extent.width));
-        extent.height = std::max(m_swapchain_capabilities.minImageExtent.height, std::min(m_swapchain_capabilities.maxImageExtent.height, extent.height));
-    }
-    //=========================================================
-    uint32_t imageCount = m_swapchain_capabilities.minImageCount+1;
-    if ( m_swapchain_capabilities.maxImageCount > 0 && imageCount > m_swapchain_capabilities.maxImageCount)
-    {
-        imageCount = m_swapchain_capabilities.maxImageCount;
-    }
-    LOG << "Image count: " << imageCount << ENDL;
-    vk::SwapchainCreateInfoKHR createInfo;
-
-    createInfo.setSurface( m_surface )
-              .setMinImageCount(imageCount)
-              .setImageFormat      (m_swapchain_format.format           )
-              .setImageColorSpace  (m_swapchain_format.colorSpace       )
-              .setImageExtent      (extent                              )
-              .setImageArrayLayers (1                                   )
-              .setImageUsage       (vk::ImageUsageFlagBits::eColorAttachment );
-
-    uint32_t QFamilyIndices[] = {(uint32_t)m_queue_family.graphics, (uint32_t)m_queue_family.present };
-
-    if (m_queue_family.graphics != m_queue_family.present)
-    {
-        createInfo.setImageSharingMode      (vk::SharingMode::eConcurrent)
-                .setQueueFamilyIndexCount (2)
-                .setPQueueFamilyIndices   (QFamilyIndices);
-    } else {
-        createInfo.setImageSharingMode      ( vk::SharingMode::eExclusive)
-                .setQueueFamilyIndexCount ( 0 ) // Optional
-                .setPQueueFamilyIndices   ( nullptr) ; // Optional
-    }
-    createInfo.setPreTransform( m_swapchain_capabilities.currentTransform)
-            .setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
-            .setPresentMode( m_swapchain_present_mode )
-            .setClipped(true);
-
-
-    //========== Create the actual swap chain =============================
-    m_swapchain = m_device.createSwapchainKHR(createInfo);
-    if( !m_swapchain)
-    {
-        ERROR << "Failed to create swapchain" << ENDL;
-        throw std::runtime_error("Failed to create swapchain");
-    }
-
-
-    m_images       = m_device.getSwapchainImagesKHR(m_swapchain);
-    m_image_format = createInfo.imageFormat;
-    m_extent       = createInfo.imageExtent;
-
-    m_image_views = create_image_views(m_images, m_image_format);
-    LOG << "Image Views created" << ENDL;
-}
-
-#endif
 
 vka::buffer_pool* vka::context::new_buffer_pool(const std::string & name)
 {
@@ -750,23 +647,6 @@ void vka::context::clean()
 X_LIST
 #undef X_MACRO
 
-    // for(auto & image_view : m_image_views)
-    // {
-    //     m_device.destroyImageView(image_view);
-    // }
-    // m_image_views.clear();
-
-
-    // if( m_swapchain)
-    //     m_device.destroySwapchainKHR(m_swapchain);
-    // m_images.clear();
-
-    //if( m_image_available_smaphore)
-    //    m_device.destroySemaphore( m_image_available_smaphore );
-    //
-    //if( m_render_finished_smaphore)
-    //    m_device.destroySemaphore( m_render_finished_smaphore );
-
     if( m_render_fence )
     {
         m_device.destroyFence(m_render_fence);
@@ -783,7 +663,7 @@ X_LIST
         LOG << "Destroying Instance" << ENDL;
         if( m_callback)
         {
-            DestroyDebugReportCallbackEXT(m_instance, m_callback, nullptr);
+            ExtDispatcher.vkDestroyDebugReportCallbackEXT(m_instance, m_callback, nullptr);
             LOG << "Debug Report callback destroyed" << ENDL;
         }
         m_instance.destroy();
@@ -916,33 +796,6 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags,
     return VK_FALSE;
 }
 
-VkResult vka::context::CreateDebugReportCallbackEXT( vk::Instance & instance,
-                                       const vk::DebugReportCallbackCreateInfoEXT & pCreateInfo,
-                                       const VkAllocationCallbacks* pAllocator,
-                                       vk::DebugReportCallbackEXT & pCallback)
-{
-    auto func = (PFN_vkCreateDebugReportCallbackEXT) instance.getProcAddr("vkCreateDebugReportCallbackEXT");
-    if (func != nullptr) {
-        return func(instance,
-                    reinterpret_cast<VkDebugReportCallbackCreateInfoEXT const*>(&pCreateInfo),
-                    pAllocator,
-                    reinterpret_cast<VkDebugReportCallbackEXT*>(&pCallback) );
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-void vka::context::DestroyDebugReportCallbackEXT(vk::Instance const & instance,
-                                   vk::DebugReportCallbackEXT & callback,
-                                   const VkAllocationCallbacks* pAllocator) {
-    auto func = (PFN_vkDestroyDebugReportCallbackEXT) instance.getProcAddr("vkDestroyDebugReportCallbackEXT");
-    if (func != nullptr)
-    {
-        func(instance,
-             callback,
-             pAllocator);
-    }
-}
 
 void vka::context::setup_debug_callback()
 {
@@ -955,7 +808,12 @@ void vka::context::setup_debug_callback()
               .setPfnCallback( debugCallback );
 
 
-    if (CreateDebugReportCallbackEXT(m_instance, createInfo, nullptr, m_callback) != VK_SUCCESS)
+    if(
+    ExtDispatcher.vkCreateDebugReportCallbackEXT(m_instance,
+                                                 reinterpret_cast<VkDebugReportCallbackCreateInfoEXT const*>(&createInfo),
+                                                 nullptr,
+                                                 reinterpret_cast<VkDebugReportCallbackEXT*>(&m_callback) )
+            != VK_SUCCESS)
     {
         ERROR <<"failed to set up debug callback!" << ENDL;
         throw std::runtime_error("failed to set up debug callback!");
@@ -967,6 +825,20 @@ void vka::context::setup_debug_callback()
         throw std::runtime_error("failed to set up debug callback!");
     }
     LOG << "Debug Callback created" << ENDL;
+}
+
+
+void vka::context::enable_extension( const std::string & extension)
+{
+    m_instance_extensions.push_back(extension);
+}
+void vka::context::enable_validation_layer( const std::string & layer_name)
+{
+    m_validation_layers.push_back(layer_name);
+}
+void vka::context::enable_device_extension(const std::string & extension)
+{
+    m_device_extensions.push_back(extension);
 }
 
 

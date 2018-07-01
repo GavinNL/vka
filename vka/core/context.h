@@ -3,11 +3,13 @@
 
 #include <vulkan/vulkan.hpp>
 #include <vka/core/log.h>
+#include "extensions.h"
 #include "deleter.h"
 #include "classes.h"
 #include <map>
 
 struct GLFWwindow;
+
 
 namespace vka
 {
@@ -208,7 +210,7 @@ public:
      *
      * Initialize the library by.
      */
-    void init(const std::vector<const char *> &required_extensions);
+    void init();
 
     /**
      * @brief clean
@@ -531,10 +533,6 @@ private:
     vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> &availableFormats);
 
 
-    std::vector< std::string > m_required_device_extensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
-
     std::vector<const char*> m_required_validation_layers = {
 //        "VK_LAYER_LUNARG_standard_validation",
         "VK_LAYER_LUNARG_parameter_validation",
@@ -546,19 +544,15 @@ private:
 
     void setup_debug_callback();
 
-    /**
-     * @brief CreateDebugReportCallbackEXT
-     * @param instance
-     * @param pCreateInfo
-     * @param pAllocator
-     * @param pCallback
-     * @return
-     *
-     * Creates a debug callback. This function is needed because it is an extension
-     * and requires that the function be called using the getProcAddr
-     */
-    VkResult CreateDebugReportCallbackEXT(vk::Instance &instance, const vk::DebugReportCallbackCreateInfoEXT &pCreateInfo, const VkAllocationCallbacks *pAllocator, vk::DebugReportCallbackEXT &pCallback);
-    void     DestroyDebugReportCallbackEXT(vk::Instance const & instance,vk::DebugReportCallbackEXT & callback,const VkAllocationCallbacks* pAllocator);
+public:
+    void enable_extension( const std::string & extension);
+    void enable_validation_layer( const std::string & layer_name);
+    void enable_device_extension(const std::string & extension);
+
+private:
+    std::vector< std::string > m_instance_extensions;
+    std::vector< std::string > m_device_extensions;
+    std::vector< std::string > m_validation_layers;
 
     vka::command_pool * m_command_pool = nullptr;
     vka::buffer * m_staging_buffer = nullptr;
