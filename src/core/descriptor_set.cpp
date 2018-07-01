@@ -71,27 +71,16 @@ void vka::descriptor_set_layout::create()
 
     C.bindingCount = static_cast<uint32_t>( m_DescriptorSetLayoutBindings.size() ) ;
     C.pBindings    = m_DescriptorSetLayoutBindings.data();
+    C.flags        = m_Flags;
 
 
-
-    //auto it = D.find( get().m_DescriptorSetLayoutBindings );
-    //
-    //if( it == D.end() )
-    //{
     m_descriptor_set_layout = get_device().createDescriptorSetLayout(C);
     LOG << "Descriptor layout not created yet. Creating a new one" << ENDL;
     if(!m_descriptor_set_layout)
     {
         throw std::runtime_error("Failed to create Descriptor Set layout");
     }
-    //D[ get().m_DescriptorSetLayoutBindings ] = data();
 
-    //}
-    //else
-    //{
-    //    reset( it->second );
-    //    LOG << "Descriptor layout already exists. Using that one" << ENDL;
-    //}
 }
 
 vka::descriptor_set::~descriptor_set()
@@ -104,15 +93,15 @@ void vka::descriptor_set::create(std::vector< vk::DescriptorSetLayoutBinding > c
     m_bindings = bindings;
     auto * dsl = get_parent_context()->new_descriptor_set_layout(m_bindings);
 
-    vk::DescriptorSetAllocateInfo         info;
 
-    //vk::DescriptorSetLayout S = *dsl;
+    vk::DescriptorSetAllocateInfo         info;
 
     info.setDescriptorPool( *m_parent_pool );
     info.pSetLayouts        = &dsl->get();
     info.descriptorSetCount = 1;
 
     auto ds = get_device().allocateDescriptorSets( info );
+
     if( ds.size() == 0)
     {
         throw std::runtime_error("Descriptor set not created");

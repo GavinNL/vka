@@ -94,14 +94,7 @@ void vka::context::init( )
 
     ExtDispatcher.load_extensions(m_instance, m_instance_extensions);
     ExtDispatcher.load_extensions(m_instance, m_device_extensions);
-//
-// #define XX(A)
-//     ExtDispatcher.A = (PFN_ ## A) m_instance.getProcAddr( #A );\
-//     if( ExtDispatcher.A == nullptr)\
-//         throw std::runtime_error("Could not load extension: " + std::string(#A) );\
-//
-//     EXT_LIST
-//     #undef XX
+
     //==========================================================================
 
     setup_debug_callback();
@@ -445,7 +438,7 @@ vka::texture2d *vka::context::new_texture2d_host_visible(const std::string &name
     //staging_texture->create_image_view(vk::ImageAspectFlagBits::eColor);
     return staging_texture;
 }
-vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings)
+vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, vk::DescriptorSetLayoutCreateFlags flags)
 {
     auto it = m_DescriptorSetLayouts.find( bindings );
 
@@ -456,8 +449,10 @@ vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::v
         std::string name = "descriptor_set_" + std::to_string(i++);
         auto * ds = new_descriptor_set_layout(name);
 
+        ds->set_flags(flags);
         ds->set_bindings( bindings );
         ds->create();
+
         m_DescriptorSetLayouts[bindings] = ds;
         LOG << "New descriptor set created" << ENDL;
         return ds;

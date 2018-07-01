@@ -440,7 +440,8 @@ public:
      * Creates a new descriptor set layout based on the binding information given.
      * or returns one that already exists which matches the binding
      */
-    vka::descriptor_set_layout* new_descriptor_set_layout( std::vector< vk::DescriptorSetLayoutBinding > const & bindings);
+    vka::descriptor_set_layout* new_descriptor_set_layout( std::vector< vk::DescriptorSetLayoutBinding > const & bindings,
+                                                           vk::DescriptorSetLayoutCreateFlags flags=vk::DescriptorSetLayoutCreateFlags());
 
 
     //============================================================

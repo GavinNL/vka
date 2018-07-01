@@ -31,7 +31,7 @@ private:
     vk::PipelineMultisampleStateCreateInfo   m_Multisampling;
 
     std::vector<vk::PipelineColorBlendAttachmentState> m_ColorBlendAttachments;
-    //vk::PipelineColorBlendAttachmentState    m_ColorBlendAttachment;
+
     vk::PipelineColorBlendStateCreateInfo    m_ColorBlending;
 
     vk::PipelineVertexInputStateCreateInfo   m_VertexInputInfo;
@@ -41,13 +41,18 @@ private:
     std::vector<vk::VertexInputAttributeDescription>  m_VertexAttributeDescription;
 
     std::vector<vk::VertexInputBindingDescription>    m_VertexBindDescriptions;
-    //vk::VertexInputBindingDescription                 m_VertexBindDescription;
 
     std::vector<vk::PushConstantRange>                m_PushConstantRange;
 
-    std::map<uint32_t , std::vector<vk::DescriptorSetLayoutBinding> >
+    struct  DescriptorSetLayoutBindingInfo
+    {
+        vk::DescriptorSetLayoutCreateFlags flags;
+        std::vector<vk::DescriptorSetLayoutBinding> bindings;
+    };
+    //std::map<uint32_t , std::vector<vk::DescriptorSetLayoutBinding> >
+    //                                                 m_DescriptorSetLayoutBindings;
+    std::map<uint32_t , DescriptorSetLayoutBindingInfo >
                                                      m_DescriptorSetLayoutBindings;
-    //std::vector<vka::descriptor_set_layout*>         m_DescriptorSetLayouts;
 
     vka::shader * m_VertexShader   = nullptr;
     std::string   m_VertexShaderEntry;
@@ -55,9 +60,6 @@ private:
     std::string   m_FragmentShaderEntry;
 
     vka::renderpass  * m_RenderPass = nullptr;
-    //std::vector<
-    //vka::DescriptorSetLayout>                         m_DSetLayouts;
-
 
     pipeline(context * parent) : context_child(parent)
     {
@@ -216,6 +218,11 @@ public:
     pipeline* add_dynamic_uniform_layout_binding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
     pipeline* add_push_constant(uint32_t size, uint32_t offset, vk::ShaderStageFlags stages);
 
+    pipeline* enable_push_descriptor(uint32_t set_number)
+    {
+        m_DescriptorSetLayoutBindings[set_number].flags |= vk::DescriptorSetLayoutCreateFlagBits::ePushDescriptorKHR;
+        return this;
+    }
 
 
     pipeline* add_color_blend_attachment_state( const vk::PipelineColorBlendAttachmentState & C)

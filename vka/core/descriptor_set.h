@@ -44,6 +44,12 @@ public:
 
     descriptor_set_layout*  add_dynamic_uniform_layout_binding(uint32_t binding, vk::ShaderStageFlags stages);
 
+    descriptor_set_layout*  set_flags(vk::DescriptorSetLayoutCreateFlags flags)
+    {
+        m_Flags = flags;
+        return this;
+    }
+
     void create();
 
 
@@ -52,6 +58,7 @@ public:
 private:
     vk::DescriptorSetLayout                     m_descriptor_set_layout;
     std::vector<vk::DescriptorSetLayoutBinding> m_DescriptorSetLayoutBindings;
+    vk::DescriptorSetLayoutCreateFlags          m_Flags;
 
     friend class context;
     friend class deleter<descriptor_set_layout>;
