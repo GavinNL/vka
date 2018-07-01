@@ -47,7 +47,6 @@ vka::sub_buffer *vka::buffer_pool::new_buffer(vk::DeviceSize n, vk::DeviceSize a
     S->m_DescriptorBufferInfo.buffer = m_buffer;
     S->m_DescriptorBufferInfo.range  = n;
     S->m_DescriptorBufferInfo.offset = offset;
-    S->clear_buffer_objects();
 
     m_sub_buffers.insert(S);
 
@@ -55,51 +54,8 @@ vka::sub_buffer *vka::buffer_pool::new_buffer(vk::DeviceSize n, vk::DeviceSize a
 }
 
 
-
-vka::sub_buffer_object vka::sub_buffer::reserve(vk::DeviceSize size, vk::DeviceSize alignment)
+void vka::sub_buffer::copy(void const * data, vk::DeviceSize size, vk::DeviceSize _offset )
 {
-    sub_buffer_object obj;
-    auto offset = m_manager.allocate(size, alignment);
-    if( offset != m_manager.error)
-    {
-        obj.m_offset = offset;
-        obj.m_size   = size;
-    } else {
-        obj.m_offset = m_manager.error;
-        obj.m_size   = 0;
-    }
-    return obj;
+    m_parent->copy( data, size, offset() + _offset);
 }
 
-vka::sub_buffer_object vka::sub_buffer::insert(void const * data, vk::DeviceSize size, vk::DeviceSize alignment)
-{
-    sub_buffer_object obj;
-
-    auto _offset = m_manager.allocate(size, alignment);
-
-    if( _offset != m_manager.error)
-    {
-        m_parent->copy(data, size, _offset + offset());
-
-        obj.m_offset = _offset;
-        obj.m_size   = size;
-    }
-    else
-    {
-        obj.m_offset = m_manager.error;
-        obj.m_size   = 0;
-        ERROR << "Could not copy " << size << " bytes into subbuffer " << this << ENDL;
-    }
-
-    return obj;
-}
-
-void vka::sub_buffer::free_buffer_object( const sub_buffer_object & obj)
-{
-    m_manager.free(obj.m_offset);
-}
-
-void vka::sub_buffer::clear_buffer_objects()
-{
-    m_manager.reset( size() );
-}

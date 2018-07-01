@@ -82,7 +82,7 @@ public:
      * to a staging buffer, then copy it to the buffer. It will allocate
      * construct and free the command buffer needed
      */
-    bool copy( void const * data, size_t size, size_t offset);
+    bool copy(void const * data, vk::DeviceSize size, vk::DeviceSize offset);
 protected:
 
     vk::Buffer              m_buffer;

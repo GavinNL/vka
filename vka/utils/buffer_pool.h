@@ -18,52 +18,28 @@ struct sub_buffer_object
     vk::DeviceSize m_size;
 };
 
+/**
+ * @brief The sub_buffer class
+ *
+ * A sub_buffer is an allocated region within a much larger buffer.
+ *
+ * The sub_buffer is a reference to the parent buffer, plus an offset
+ */
 class sub_buffer
 {
 public:
     operator vk::Buffer () const
     {
         return get();
-        //return m_buffer;
     }
 
     vk::Buffer get() const
     {
         return m_DescriptorBufferInfo.buffer;
-        //return m_buffer;
     }
 
 
-    sub_buffer_object reserve(vk::DeviceSize size, vk::DeviceSize alignment=1);
-
-    /**
-     * @brief copy
-     * @param data
-     * @param size
-     * @return
-     *
-     * Inserts data into this buffer where there is space. and returns
-     * a sub_bufffer_object. which indicates where in the buffer
-     * this object is. You must keep track of
-     */
-    sub_buffer_object insert(void const * data, vk::DeviceSize size, vk::DeviceSize alignment=1);
-
-    /**
-     * @brief free_buffer_boject
-     * @param obj
-     *
-     * Reclaim the space used by that buffer object.
-     */
-    void free_buffer_object( const sub_buffer_object & obj);
-
-
-    /**
-     * @brief clear_buffer_objects
-     * Clears all buffer objects that the sub buffer is keeping track of.
-     * The data is still there, but any allocation information about the
-     * blocks are gone.
-     */
-    void clear_buffer_objects();
+    void copy(void const * data, vk::DeviceSize size, vk::DeviceSize _offset=0);
 
 
     vk::DeviceSize size() const
@@ -93,7 +69,6 @@ protected:
     vk::DescriptorBufferInfo m_DescriptorBufferInfo;
 
     buffer_pool               *m_parent;
-    vka::buffer_memory_manager m_manager;
 
     friend class buffer_pool;
 };
@@ -109,6 +84,14 @@ public:
         return this;
     }
 
+    /**
+     * @brief new_buffer
+     * @param n
+     * @param alignment
+     * @return
+     *
+     * Allocates data withiin the pool and returns new sub_buffer of size n.
+     */
     sub_buffer* new_buffer(vk::DeviceSize n, vk::DeviceSize alignment=1);
     void        free_buffer(sub_buffer * b);
 
