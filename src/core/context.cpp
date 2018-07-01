@@ -92,13 +92,16 @@ void vka::context::init( )
     // Load Extensions
     //==========================================================================
 
-#define XX(A) \
-    ExtDispatcher.A = (PFN_ ## A) m_instance.getProcAddr( #A );\
-    if( ExtDispatcher.A == nullptr)\
-        throw std::runtime_error("Could not load extension: " + std::string(#A) );\
-
-    EXT_LIST
-    #undef XX
+    ExtDispatcher.load_extensions(m_instance, m_instance_extensions);
+    ExtDispatcher.load_extensions(m_instance, m_device_extensions);
+//
+// #define XX(A)
+//     ExtDispatcher.A = (PFN_ ## A) m_instance.getProcAddr( #A );\
+//     if( ExtDispatcher.A == nullptr)\
+//         throw std::runtime_error("Could not load extension: " + std::string(#A) );\
+//
+//     EXT_LIST
+//     #undef XX
     //==========================================================================
 
     setup_debug_callback();
