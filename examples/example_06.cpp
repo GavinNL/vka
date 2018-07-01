@@ -264,7 +264,8 @@ int main(int argc, char ** argv)
         // data to the sub_buffers
         vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*16 );
 
-
+        uint32_t v_offset = 0;
+        uint32_t i_offset = 0;
         for( auto & M : meshs)
         {
             // The Vertex attribute information within the host_mesh is stored
@@ -296,18 +297,14 @@ int main(int argc, char ** argv)
                 memcpy( &m_data.back() - sizeof(glm::vec3)+1, &N[i], sizeof(glm::vec3) );
             }
 
-            // sub_buffer::insert inserts data into the sub buffer at an available
-            // space and returns a sub_buffer object.
 
-            auto m1v = vertex_buffer->insert( m_data.data(), m_data.size() );
-            auto m1i = index_buffer->insert(  M.get_attribute(vka::VertexAttribute::eIndex).data(),
-                                              M.get_attribute(vka::VertexAttribute::eIndex).data_size()  );
+            // Copy the vertex and index data
+            vertex_buffer->copy( m_data.data(), m_data.size() ,v_offset);
 
-            // If you wish to free the memory you have allocated, you shoudl call
-            // vertex_buffer->free_buffer_object(m1v);
+            index_buffer->copy(  M.get_attribute(vka::VertexAttribute::eIndex).data(),
+                                 M.get_attribute(vka::VertexAttribute::eIndex).data_size(),
+                                 i_offset);
 
-            assert( m1v.m_size != 0);
-            assert( m1i.m_size != 0);
 
             mesh_info_t m_box_mesh;
             m_box_mesh.count         =  M.get_attribute(vka::VertexAttribute::eIndex).count();
@@ -315,16 +312,19 @@ int main(int argc, char ** argv)
 
             // the offset returned is the byte offset, so we need to divide it
             // by the index/vertex size to get the actual index/vertex offset
-            m_box_mesh.offset        =  m1i.m_offset  / M.get_attribute(vka::VertexAttribute::eIndex).attribute_size();
+            m_box_mesh.offset        =  i_offset  / M.get_attribute(vka::VertexAttribute::eIndex).attribute_size();
 
             auto vertex_size = M.get_attribute(vka::VertexAttribute::ePosition).attribute_size() +
                                M.get_attribute(vka::VertexAttribute::eUV).attribute_size() +
                                M.get_attribute(vka::VertexAttribute::eNormal).attribute_size();
 
             LOG << "Vertex size: " << vertex_size << ENDL;
-            m_box_mesh.vertex_offset =  m1v.m_offset  / vertex_size;
+            m_box_mesh.vertex_offset =  v_offset  / vertex_size;
 
             m_mesh_info.push_back(m_box_mesh);
+
+            v_offset += m_data.size();
+            i_offset += M.get_attribute(vka::VertexAttribute::eIndex).data_size();
         }
 
 

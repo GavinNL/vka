@@ -73,15 +73,15 @@ class mesh
      *
      * Copies data into the vertex attribute
      */
-    void copy_attribute_data(uint32_t attribute_index, void const * data, uint32_t byte_size)
+    void copy_attribute_data(uint32_t attribute_index, void const * data, uint32_t byte_size, uint32_t offset=0)
     {
-        m_attributes[attribute_index].buffer->insert(data,byte_size, m_attributes[attribute_index].vertex_size);
+        m_attributes[attribute_index].buffer->copy(data , byte_size,  offset);
     }
 
 
-    void copy_index_data(void const * data, uint32_t byte_size)
+    void copy_index_data(void const * data, uint32_t byte_size, uint32_t offset=0)
     {
-        m_index_buffer->insert(data, byte_size);
+        m_index_buffer->copy(data, byte_size, offset);
     }
 
 
@@ -245,7 +245,12 @@ inline bool mesh::allocate()
     {
         if( m_attributes[i].vertex_size != 0)
         {
-            m_attributes[i].buffer = m_manager->get_buffer_pool()->new_buffer(num_vertices*m_attributes[i].vertex_size , m_attributes[i].vertex_size );
+            // Allocate a sub_buffer from the buffer pool
+            const auto byte_size = num_vertices*m_attributes[i].vertex_size;
+            const auto alignment = m_attributes[i].vertex_size;
+
+            m_attributes[i].buffer = m_manager->get_buffer_pool()->new_buffer( byte_size , alignment);
+
             if( m_attributes[i].buffer == nullptr)
             {
                 // clear all buffers
