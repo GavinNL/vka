@@ -2,7 +2,3 @@
 	path = stb
 	url = https://github.com/nothings/stb
 	branch = master
-[submodule "glm"]
-	path = glm
-	url = https://github.com/g-truc/glm
-	branch = master
