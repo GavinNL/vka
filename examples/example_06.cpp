@@ -370,11 +370,11 @@ int main(int argc, char ** argv)
 //==============================================================================
         // create the vertex shader from a pre compiled SPIR-V file
         vka::shader* vertex_shader = C.new_shader_module("vs");
-        vertex_shader->load_from_file("resources/shaders/mipmaps/mipmaps_v.spv");
+        vertex_shader->load_from_file("resources/shaders/mipmaps/mipmaps.vert");
 
         // create the fragment shader from a pre compiled SPIR-V file
         vka::shader* fragment_shader = C.new_shader_module("fs");
-        fragment_shader->load_from_file("resources/shaders/mipmaps/mipmaps_f.spv");
+        fragment_shader->load_from_file("resources/shaders/mipmaps/mipmaps.frag");
 
         vka::pipeline* pipeline = C.new_pipeline("triangle");
 

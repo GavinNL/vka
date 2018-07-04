@@ -268,8 +268,8 @@ struct App : public VulkanApp
         m_pipelines.main->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                 ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                ->set_vertex_shader(   "resources/shaders/push_consts_default/push_consts_default_v.spv", "main" )   // the shaders we want to use
-                ->set_fragment_shader( "resources/shaders/push_consts_default/push_consts_default_f.spv", "main" ) // the shaders we want to use
+                ->set_vertex_shader(   "resources/shaders/push_consts_default/push_consts_default.vert", "main" )   // the shaders we want to use
+                ->set_fragment_shader( "resources/shaders/push_consts_default/push_consts_default.frag", "main" ) // the shaders we want to use
 
                 // tell the pipeline that attribute 0 contains 3 floats
                 // and the data starts at offset 0
@@ -315,8 +315,8 @@ struct App : public VulkanApp
         m_pipelines.axis->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                 ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                ->set_vertex_shader(   "resources/shaders/axis_shader/axis_shader_v.spv", "main" )   // the shaders we want to use
-                ->set_fragment_shader( "resources/shaders/axis_shader/axis_shader_f.spv", "main" ) // the shaders we want to use
+                ->set_vertex_shader(   "resources/shaders/axis_shader/axis_shader.vert", "main" )   // the shaders we want to use
+                ->set_fragment_shader( "resources/shaders/axis_shader/axis_shader.frag", "main" ) // the shaders we want to use
 
                 ->set_toplogy(vk::PrimitiveTopology::eLineList)
                 ->set_line_width(1.0f)
