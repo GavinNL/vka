@@ -505,8 +505,8 @@ struct App : public VulkanApp
       m_pipelines.compose->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
               ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-              ->set_vertex_shader(   "resources/shaders/compose_rendertargets/compose_rendertargets_v.spv", "main" )   // the shaders we want to use
-              ->set_fragment_shader( "resources/shaders/compose_rendertargets/compose_rendertargets_f.spv", "main" ) // the shaders we want to use
+              ->set_vertex_shader(   "resources/shaders/compose_rendertargets/compose_rendertargets.vert", "main" )   // the shaders we want to use
+              ->set_fragment_shader( "resources/shaders/compose_rendertargets/compose_rendertargets.frag", "main" ) // the shaders we want to use
 
               ->set_toplogy(vk::PrimitiveTopology::eTriangleList)
               ->set_line_width(1.0f)
@@ -562,8 +562,8 @@ struct App : public VulkanApp
       m_pipelines.gbuffer->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
               ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-              ->set_vertex_shader(   "resources/shaders/gbuffer/gbuffer_v.spv", "main" )   // the shaders we want to use
-              ->set_fragment_shader( "resources/shaders/gbuffer/gbuffer_f.spv", "main" ) // the shaders we want to use
+              ->set_vertex_shader(   "resources/shaders/gbuffer/gbuffer.vert", "main" )   // the shaders we want to use
+              ->set_fragment_shader( "resources/shaders/gbuffer/gbuffer.frag", "main" ) // the shaders we want to use
 
               // tell the pipeline that attribute 0 contains 3 floats
               // and the data starts at offset 0
