@@ -33,8 +33,34 @@ std::string readFile(const std::string &filename)
 
 void vka::shader::load_from_file(const std::string & path)
 {
-    std::string source_code = readFile(path);
-    load_from_memory(source_code);
+    const size_t pos = path.rfind('.');
+    auto ext = (pos == std::string::npos) ? "" : path.substr(path.rfind('.') + 1);
+
+    if( ext == "spv")
+    {
+        std::string source_code = readFile(path);
+        load_from_memory(source_code);
+
+    }
+    else
+    {
+        std::string opath = "/tmp/sprv.spv";
+
+        std::string cmd = std::string("glslangValidator -V ") + path + " -o " + opath;
+
+
+        if( std::system( cmd.c_str() ) == 0)
+        {
+            load_from_file(opath);
+        } else {
+            throw std::runtime_error("Failed to compile");
+        }
+
+
+
+    }
+
+
 }
 
 
