@@ -24,8 +24,28 @@ class shader : public context_child
 
     public:
 
-    void load_from_memory(const std::string & source);
-    void load_from_file(const std::string & source);
+    /**
+     * @brief load_from_memory
+     * @param source
+     *
+     * Load a SPIR-V shader from source
+     */
+    void load_from_memory(const std::string & spv_source);
+
+
+    /**
+     * @brief load_from_file
+     * @param path
+     *
+     * Load a shader from a path. This can be spirv or glsls.
+     *
+     * path names must end in one of the following
+     * extensions:
+     *
+     * spv, vert, frag, geom, tesc, tese
+     */
+    void load_from_file(const std::string & path);
+
 
     vk::ShaderModule get_shader_module()
     {
