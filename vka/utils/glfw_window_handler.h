@@ -306,7 +306,7 @@ public:
     signal<void(MouseMoveEvent)>    onMouseMove;
     signal<void(MouseButtonEvent)>  onMouseButton;
     signal<void(KeyEvent)>          onKey;
-    signal<void(double)>                              onPoll;
+    signal<void(double)>            onPoll;
 
 
 

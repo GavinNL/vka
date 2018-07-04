@@ -157,6 +157,26 @@ enum class Key
     MENU               =SDL_SCANCODE_MENU           ,
 };
 
+struct MouseMoveEvent
+{
+    double x;
+    double y;
+    double dx;
+    double dy;
+};
+
+struct MouseButtonEvent
+{
+    Button button;
+    bool   down;
+};
+
+struct KeyEvent
+{
+    Key  key;
+    bool down;
+};
+
 class SDL_Window_Handler
 {
 
@@ -214,18 +234,21 @@ public:
             case SDL_MOUSEBUTTONDOWN:
             case SDL_MOUSEBUTTONUP:
                 m_button[static_cast<Button>(event.button.button)] = event.type==SDL_MOUSEBUTTONDOWN?1:0;
-                onMouseButton( static_cast<Button>(event.button.button), event.type==SDL_MOUSEBUTTONDOWN?1:0);
+                onMouseButton( MouseButtonEvent{static_cast<Button>(event.button.button), event.type==SDL_MOUSEBUTTONDOWN?1:0} );
+                //onMouseButton( static_cast<Button>(event.button.button), event.type==SDL_MOUSEBUTTONDOWN?1:0);
                 break;
             case SDL_MOUSEMOTION:
 
-                onMouseMove( (double)event.motion.xrel, (double)event.motion.yrel);
+                onMouseMove( MouseMoveEvent{event.motion.x, event.motion.y, event.motion.xrel,event.motion.yrel});
+                //onMouseMove( (double)event.motion.xrel, (double)event.motion.yrel);
                 m_mouse_x += (double)event.motion.xrel;
                 m_mouse_y += (double)event.motion.yrel;
                 break;
             case SDL_KEYDOWN:
             case SDL_KEYUP:
                 m_key[static_cast<Key>(event.key.keysym.scancode)] = event.type==SDL_KEYDOWN?1:0;
-                onKey( static_cast<Key>(event.key.keysym.scancode), event.type==SDL_KEYDOWN?1:0);
+                onKey( KeyEvent{static_cast<Key>(event.key.keysym.scancode), event.type==SDL_KEYDOWN?1:0 });
+                //onKey( static_cast<Key>(event.key.keysym.scancode), event.type==SDL_KEYDOWN?1:0);
                 break;
 
             }
@@ -262,12 +285,15 @@ public:
         return f->second;
     }
 
-    signal<void(double  , double)>    onMouseMove;
-    signal<void(Button  , int   )>    onMouseButton;
-    signal<void(Key,      int   )>    onKey;
-    signal<void(double)>              onPoll;
+   // signal<void(double  , double)>    onMouseMove;
+   // signal<void(Button  , int   )>    onMouseButton;
+   // signal<void(Key,      int   )>    onKey;
+   // signal<void(double)>              onPoll;
 
-
+    signal<void(MouseMoveEvent)>    onMouseMove;
+    signal<void(MouseButtonEvent)>  onMouseButton;
+    signal<void(KeyEvent)>          onKey;
+    signal<void(double)>            onPoll;
 
     private:
         std::map< Key, bool>    m_key;

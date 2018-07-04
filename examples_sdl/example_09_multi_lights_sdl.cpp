@@ -650,7 +650,7 @@ struct App : public VulkanApp
 
       // create a callback function for the onKey event for the window.
       // we will use this to control the camera
-      keyslot = onKey << [&] (vka::Key k, bool down)
+      keyslot = onKey << [&] (vka::KeyEvent E)
       {
           float x=0;
           float y=0;
@@ -666,12 +666,11 @@ struct App : public VulkanApp
 
       // create a callback function for the onMouseMove event.
       // We will use this to control the camera.
-      mouseslot =  onMouseMove << [&] (double dx, double dy)
+      mouseslot =  onMouseMove << [&] (vka::MouseMoveEvent E)
       {
-        // dx = mouse_x() - dx;
-        // dy = mouse_y() - dy;
+        auto dx = E.dx;
+        auto dy = E.dy;
 
-        std::cout << dx << ", " << dy << std::endl;
         if( is_pressed( vka::Button::RIGHT))
         {
             show_cursor(false);
@@ -1009,8 +1008,8 @@ struct App : public VulkanApp
 
   std::vector< RenderComponent_t* > m_Objs;
 
-  vka::signal<void(double       , double)>::slot mouseslot;
-  vka::signal<void(vka::Key,      int   )>::slot keyslot;
+  decltype( onMouseMove)::slot mouseslot;
+  decltype( onKey)::slot keyslot;
 
 };
 
@@ -1019,7 +1018,6 @@ int main(int argc, char ** argv)
      App A;
 
      A.init( WIDTH, HEIGHT, APP_TITLE);
-     //A.init_default_renderpass(WIDTH,HEIGHT);
 
      A.start_mainloop();
 
