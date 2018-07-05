@@ -144,6 +144,32 @@ vka::pipeline * vka::pipeline::set_fragment_shader( const std::string & path  , 
     return this;
 }
 
+vka::pipeline * vka::pipeline::set_geometry_shader( const std::string & path  , std::string const & entry_point)
+{
+    static int i=0;
+    auto * p = get_parent_context()->new_shader_module( std::string("geometry_shader_module_" + std::to_string(i++) ) );
+    p->load_from_file(path);
+    set_geometry_shader(p, entry_point);
+    return this;
+}
+
+vka::pipeline * vka::pipeline::set_tesselation_control_shader( const std::string & path  , std::string const & entry_point)
+{
+    static int i=0;
+    auto * p = get_parent_context()->new_shader_module( std::string("tess_control_shader_module_" + std::to_string(i++) ) );
+    p->load_from_file(path);
+    set_tesselation_control_shader(p, entry_point);
+    return this;
+}
+
+vka::pipeline * vka::pipeline::set_tesselation_evaluation_shader( const std::string & path  , std::string const & entry_point)
+{
+    static int i=0;
+    auto * p = get_parent_context()->new_shader_module( std::string("tess_control_shader_module_" + std::to_string(i++) ) );
+    p->load_from_file(path);
+    set_tesselation_evaluation_shader(p, entry_point);
+    return this;
+}
 
 void vka::pipeline::create()
 {

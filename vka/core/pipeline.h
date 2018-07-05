@@ -56,8 +56,18 @@ private:
 
     vka::shader * m_VertexShader   = nullptr;
     std::string   m_VertexShaderEntry;
+
     vka::shader * m_FragmentShader = nullptr;
     std::string   m_FragmentShaderEntry;
+
+    vka::shader * m_GeometryShader = nullptr;
+    std::string   m_GeometryShaderEntry;
+
+    vka::shader * m_TesselationEvalShader = nullptr;
+    std::string   m_TesselationEvalShaderEntry;
+
+    vka::shader * m_TesselationControlShader = nullptr;
+    std::string   m_TesselationControlShaderEntry;
 
     vka::renderpass  * m_RenderPass = nullptr;
 
@@ -176,6 +186,9 @@ public:
 
     pipeline * set_vertex_shader  ( const std::string & path  , std::string const & entry_point);
     pipeline * set_fragment_shader( const std::string & path, std::string const & entry_point);
+    pipeline * set_geometry_shader( const std::string & path, std::string const & entry_point);
+    pipeline * set_tesselation_control_shader( const std::string & path, std::string const & entry_point);
+    pipeline * set_tesselation_evaluation_shader( const std::string & path, std::string const & entry_point);
 
     pipeline* set_vertex_shader( vka::shader * shader, std::string entry_point="main")
     {
@@ -188,6 +201,27 @@ public:
     {
         m_FragmentShader = shader;
         m_FragmentShaderEntry = entry_point;
+        return this;
+    }
+
+    pipeline* set_geometry_shader( vka::shader * shader, std::string entry_point="main")
+    {
+        m_GeometryShader = shader;
+        m_GeometryShaderEntry = entry_point;
+        return this;
+    }
+
+    pipeline* set_tesselation_control_shader( vka::shader * shader, std::string entry_point="main")
+    {
+        m_TesselationControlShader = shader;
+        m_TesselationControlShaderEntry = entry_point;
+        return this;
+    }
+
+    pipeline* set_tesselation_evaluation_shader( vka::shader * shader, std::string entry_point="main")
+    {
+        m_TesselationEvalShader = shader;
+        m_TesselationEvalShaderEntry = entry_point;
         return this;
     }
 
