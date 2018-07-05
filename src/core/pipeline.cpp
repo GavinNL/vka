@@ -267,6 +267,10 @@ void vka::pipeline::create()
 
     pipelineInfo.layout              = m_PipelineLayout;
 
+    if( m_TesselationState.patchControlPoints!=0)
+    {
+        pipelineInfo.pTessellationState  = &m_TesselationState;
+    }
 
     pipelineInfo.renderPass          = m_RenderPass->m_RenderPass;
     pipelineInfo.subpass = 0;

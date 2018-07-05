@@ -37,6 +37,7 @@ private:
     vk::PipelineVertexInputStateCreateInfo   m_VertexInputInfo;
     vk::PipelineInputAssemblyStateCreateInfo m_InputAssembly;
 
+    vk::PipelineTessellationStateCreateInfo  m_TesselationState;
 
     std::vector<vk::VertexInputAttributeDescription>  m_VertexAttributeDescription;
 
@@ -228,6 +229,12 @@ public:
     pipeline* set_toplogy( vk::PrimitiveTopology r )
     {
         m_InputAssembly.topology = r;
+        return this;
+    }
+
+    pipeline* set_tesselation_patch_control_points(uint32_t num_points)
+    {
+        m_TesselationState.patchControlPoints = num_points;
         return this;
     }
 
