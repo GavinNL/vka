@@ -206,7 +206,7 @@ void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device,
 
     vk::PhysicalDeviceFeatures deviceFeatures;
     deviceFeatures.fillModeNonSolid = 1;
-
+    deviceFeatures.tessellationShader = 1;
     vk::DeviceCreateInfo createInfo;
 
     createInfo.setPQueueCreateInfos(    queueCreateInfos.data() )

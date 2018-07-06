@@ -285,8 +285,8 @@ struct App : public VulkanApp
       auto plane  = vka::plane_mesh(20,20);
 
       host_to_gpu_mesh("box",    box);
-      host_to_gpu_mesh("sphere", sphere);
-      host_to_gpu_mesh("plane",  plane);
+      host_to_gpu_mesh("sphere", box);
+      host_to_gpu_mesh("plane",  box);
   }
 
   /**
@@ -531,7 +531,7 @@ struct App : public VulkanApp
               ->set_front_face(vk::FrontFace::eCounterClockwise)
 
               // Cull all back facing triangles.
-              ->set_cull_mode(vk::CullModeFlagBits::eBack)
+              ->set_cull_mode(vk::CullModeFlagBits::eFront)
 
               //====================================================================================================
               // When using Push Descriptors, we can only have one DescriptorSet enabled as a push descriptor
@@ -743,7 +743,7 @@ struct App : public VulkanApp
 
               std::array<vk::WriteDescriptorSet, 2> WDS{};
               // Main component renderer
-              // ComponentRenderer_t R;
+
               for(auto * obj : m_Objs)
               {
                   m_offscreen_cmd_buffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *obj->m_pipeline );
@@ -756,16 +756,21 @@ struct App : public VulkanApp
                                                                                      .attach(1, 1, m_ubuffer));
 
 
+                  push_constants_t X;
+                  X.index = 0;
+                  X.model = glm::scale( glm::mat4(1), glm::vec3(1.0,1.0,1));
+
 
                   m_offscreen_cmd_buffer.pushConstants( obj->m_pipeline->get_layout(),
                                                         vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation,
                                                         0,
                                                         sizeof(push_constants_t),
-                                                        &obj->m_push);
+                                                        &X);
 
                   obj->m_mesh_m->bind(m_offscreen_cmd_buffer);
                   obj->m_mesh_m->draw(m_offscreen_cmd_buffer);
-
+                  //m_offscreen_cmd_buffer.drawIndexed(3, 1 , 0, 0, 0);
+                  //m_offscreen_cmd_buffer.drawIndexed(6,1,0,0);
 
                   //    R(m_offscreen_cmd_buffer, comp);
               }
@@ -805,18 +810,18 @@ struct App : public VulkanApp
 
               compose_pipeline_push_consts pc;
 
-              pc.size = glm::vec2(0.5, 0.5);
-              pc.layer = 0; pc.position = glm::vec2( -1,-1);
-              Q( pc);
-
-              pc.layer = 1; pc.position = glm::vec2( -0.5,-1);
-              Q( pc);
-
-              pc.layer = 2; pc.position = glm::vec2( 0.0,-1);
-              Q( pc);
-
-              pc.layer = 3; pc.position = glm::vec2( 0.5,-1);
-              Q( pc);
+            //  pc.size = glm::vec2(0.5, 0.5);
+            //  pc.layer = 0; pc.position = glm::vec2( -1,-1);
+            //  Q( pc);
+            //
+            //  pc.layer = 1; pc.position = glm::vec2( -0.5,-1);
+            //  Q( pc);
+            //
+            //  pc.layer = 2; pc.position = glm::vec2( 0.0,-1);
+            //  Q( pc);
+            //
+            //  pc.layer = 3; pc.position = glm::vec2( 0.5,-1);
+            //  Q( pc);
 
 
               pc.size = glm::vec2(2,2);

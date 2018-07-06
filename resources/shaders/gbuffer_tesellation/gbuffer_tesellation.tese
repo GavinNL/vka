@@ -27,15 +27,21 @@ layout (location = 2) out vec3 f_Normal;
 
 void main(void)
 {
+    // model space position
     gl_Position = (gl_TessCoord.x * gl_in[0].gl_Position) +
                   (gl_TessCoord.y * gl_in[1].gl_Position) +
                   (gl_TessCoord.z * gl_in[2].gl_Position);
 
 
-
-        f_Position = gl_TessCoord.x*te_Position[0] + gl_TessCoord.y*te_Position[1] + gl_TessCoord.z*te_Position[2];
-        f_Normal   = gl_TessCoord.x*te_Normal[0]   + gl_TessCoord.y*te_Normal[1]   + gl_TessCoord.z*te_Normal[2];
+        // model space position
         f_UV       = gl_TessCoord.x*te_UV[0]       + gl_TessCoord.y*te_UV[1]       + gl_TessCoord.z*te_UV[2];
+        f_Normal   = gl_TessCoord.x*te_Normal[0]   + gl_TessCoord.y*te_Normal[1]   + gl_TessCoord.z*te_Normal[2];
 
-        gl_Position = cameraData.proj * cameraData.view * pushConsts.model * vec4(f_Position,1.0);
+        // World space Position
+        f_Position  = (pushConsts.model * gl_Position ).xyz;
+        f_Normal    = normalize(pushConsts.model * vec4(f_Normal, 1.0)).xyz;
+
+        gl_Position = cameraData.proj * cameraData.view * pushConsts.model * gl_Position;
+
+
 }

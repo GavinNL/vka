@@ -5,13 +5,13 @@
 
 layout (vertices = 3) out;
 
-layout (location = 0) in vec3 tc_Normal[];
+layout (location = 0) in vec3 tc_Position[];
 layout (location = 1) in vec3 tc_UV[];
-layout (location = 2) in vec3 tc_Position[];
+layout (location = 2) in vec3 tc_Normal[];
 
-layout (location = 0) out vec3 te_Position[];
-layout (location = 1) out vec3 te_UV[];
-layout (location = 2) out vec3 te_Normal[];
+layout (location = 0) out vec3 te_Position[3];
+layout (location = 1) out vec3 te_UV[3];
+layout (location = 2) out vec3 te_Normal[3];
 
 void main(void)
 {
@@ -26,6 +26,6 @@ void main(void)
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
 
     te_Position[gl_InvocationID]        = tc_Position[gl_InvocationID];
-    te_Normal[gl_InvocationID]          = tc_Normal[gl_InvocationID];
     te_UV[gl_InvocationID]              = tc_UV[gl_InvocationID];
+    te_Normal[gl_InvocationID]          = tc_Normal[gl_InvocationID];
 }
