@@ -847,21 +847,27 @@ struct App : public VulkanApp
                                          m_dsets.light_uniform_buffer);
 
               compose_pipeline_push_consts pc;
-              pc.layer = 0;
 
-              pc.size     = glm::vec2(2,2);
 
-              pc.layer = 2; pc.position = glm::vec2(-1,-1);
+              pc.size = glm::vec2(0.5, 0.5);
+              pc.layer = 0; pc.position = glm::vec2( -1,-1);
               Q( pc);
 
-         //     pc.layer = 1; pc.position = glm::vec2( 0,0);
-         //     Q( m_dsets.renderTargets, pc);
-         //
-         //     pc.layer = 2; pc.position = glm::vec2( 0,-1);
-         //     Q( m_dsets.renderTargets, pc);
-         //
-         //     pc.layer = 3; pc.position = glm::vec2( -1,0);
-         //     Q( m_dsets.renderTargets, pc);
+              pc.layer = 1; pc.position = glm::vec2( -0.5,-1);
+              Q( pc);
+
+              pc.layer = 2; pc.position = glm::vec2( 0.0,-1);
+              Q( pc);
+
+              pc.layer = 3; pc.position = glm::vec2( 0.5,-1);
+              Q( pc);
+
+
+              pc.size = glm::vec2(2,2);
+              pc.layer = 5; pc.position = glm::vec2(-1,-1);
+              Q( pc);
+
+
           }
           m_screen->endRender(m_compose_cmd_buffer);
       }

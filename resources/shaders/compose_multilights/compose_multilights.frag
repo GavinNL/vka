@@ -24,7 +24,9 @@ layout(set=0, binding = 3) uniform sampler2D texSampler3; // depth?
 // Push constants. This should be in all stages.
 //========================================================================
 layout(push_constant) uniform PushConsts {
-        int layer;
+    vec2 position;
+    vec2 size;
+    int layer;
 } pushConsts;
 
 
