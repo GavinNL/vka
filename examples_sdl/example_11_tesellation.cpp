@@ -285,8 +285,8 @@ struct App : public VulkanApp
       auto plane  = vka::plane_mesh(20,20);
 
       host_to_gpu_mesh("box",    box);
-      host_to_gpu_mesh("sphere", box);
-      host_to_gpu_mesh("plane",  box);
+      host_to_gpu_mesh("sphere", sphere);
+      host_to_gpu_mesh("plane",  plane);
   }
 
   /**
@@ -458,7 +458,8 @@ struct App : public VulkanApp
               ->add_texture_layout_binding(0, 3, vk::ShaderStageFlagBits::eFragment)
 
               // Cull all back facing triangles.
-              ->set_cull_mode(vk::CullModeFlagBits::eNone)
+              ->set_cull_mode(vk::CullModeFlagBits::eBack)
+
               // Add a push constant to the layout. It is accessable in the vertex shader
               // stage only.
               ->add_push_constant( sizeof(compose_pipeline_push_consts), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
