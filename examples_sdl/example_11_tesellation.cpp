@@ -160,54 +160,6 @@ public:
     double m_orbital_phase;
 };
 
-/**
- * @brief The ComponentRenderer_t class
- *
- * The component renderer is used to render a RenderComponent
- * by writing the commands to a command buffer
- */
-class ComponentRenderer_t
-{
-    vka::pipeline  *m_pipeline = nullptr;
-    vka::sub_buffer *m_ibuffer = nullptr;
-    vka::sub_buffer *m_vbuffer = nullptr;
-
-public:
-    // given a render component, draw
-    // it into the command buffer.
-    void operator ()( vka::command_buffer & cb,
-                      RenderComponent_t * obj)
-    {
-        // ===== bind the pipeline that we want to use next =======
-        if( obj->m_pipeline != m_pipeline)
-        {
-            m_pipeline = obj->m_pipeline;
-
-
-            cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
-
-            for(auto & d : obj->m_descriptor_sets)
-            {
-                cb.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
-                                     m_pipeline,
-                                     d.first, // binding index
-                                     d.second);
-            }
-        }
-
-
-        cb.pushConstants( m_pipeline->get_layout(),
-                          vk::ShaderStageFlagBits::eVertex,
-                          0,
-                          sizeof(push_constants_t),
-                          &obj->m_push);
-
-        obj->m_mesh_m->bind(cb);
-        obj->m_mesh_m->draw(cb);
-
-    }
-};
-
 class FullScreenQuadRenderer_t
 {
 public:
