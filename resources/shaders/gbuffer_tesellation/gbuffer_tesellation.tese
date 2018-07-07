@@ -37,6 +37,12 @@ void main(void)
         f_UV       = gl_TessCoord.x*te_UV[0]       + gl_TessCoord.y*te_UV[1]       + gl_TessCoord.z*te_UV[2];
         f_Normal   = gl_TessCoord.x*te_Normal[0]   + gl_TessCoord.y*te_Normal[1]   + gl_TessCoord.z*te_Normal[2];
 
+
+        float r = distance( vec2(0,0), gl_Position.xz );
+        float y  = 0*cos(  2*3.14159*r );
+
+        gl_Position.y = y;
+
         // World space Position
         f_Position  = (pushConsts.model * gl_Position ).xyz;
         f_Normal    = normalize(pushConsts.model * vec4(f_Normal, 1.0)).xyz;

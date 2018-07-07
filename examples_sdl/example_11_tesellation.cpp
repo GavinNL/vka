@@ -282,7 +282,7 @@ struct App : public VulkanApp
       // with the name provided: "box", "sphere"
       auto box    = vka::box_mesh(1,1,1);
       auto sphere = vka::sphere_mesh(0.5,20,20);
-      auto plane  = vka::plane_mesh(20,20);
+      auto plane  = vka::plane_mesh(200,200,1,1);
 
       host_to_gpu_mesh("box",    box);
       host_to_gpu_mesh("sphere", sphere);
@@ -499,6 +499,7 @@ struct App : public VulkanApp
       auto M = vka::box_mesh_OLD(1,1,1);
 
       m_pipelines.gbuffer = m_Context.new_pipeline("gbuffer_pipeline");
+
       m_pipelines.gbuffer->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
               ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
@@ -509,6 +510,8 @@ struct App : public VulkanApp
 
               ->set_tesselation_patch_control_points(3)
               ->set_toplogy( vk::PrimitiveTopology::ePatchList)
+
+              ->set_polygon_mode(vk::PolygonMode::eLine)
 
               // tell the pipeline that attribute 0 contains 3 floats
               // and the data starts at offset 0
@@ -543,7 +546,7 @@ struct App : public VulkanApp
 
               // Tell teh shader that we are going to use a uniform buffer
               // in Set #0 binding #0
-              ->add_uniform_layout_binding(0, 1, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation)
+              ->add_uniform_layout_binding(0, 1, vk::ShaderStageFlagBits::eTessellationControl| vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation)
 
               // Enable Set #0 as the push descriptor.
               ->enable_push_descriptor(0)
@@ -551,7 +554,7 @@ struct App : public VulkanApp
 
               // Add a push constant to the layout. It is accessable in the vertex shader
               // stage only.
-              ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation)
+              ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eTessellationControl | vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation)
               //
               //===============================================================
               // Since we are no longer drawing to the main screen. we need
@@ -763,7 +766,7 @@ struct App : public VulkanApp
 
 
                   m_offscreen_cmd_buffer.pushConstants( obj->m_pipeline->get_layout(),
-                                                        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation,
+                                                        vk::ShaderStageFlagBits::eTessellationControl |vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation,
                                                         0,
                                                         sizeof(push_constants_t),
                                                         &X);
@@ -826,7 +829,7 @@ struct App : public VulkanApp
 
 
               pc.size = glm::vec2(2,2);
-              pc.layer = 5; pc.position = glm::vec2(-1,-1);
+              pc.layer = 2; pc.position = glm::vec2(-1,-1);
               Q( pc);
           }
           m_screen->endRender(m_compose_cmd_buffer);
@@ -1014,8 +1017,19 @@ struct App : public VulkanApp
 
 int main(int argc, char ** argv)
 {
+    vka::camera C;
+    C.set_position( glm::vec3(10,10,10) );
+    auto V = C.get_view_matrix();
 
-
+    for(int i=0;i<4;i++)
+    {
+        for(int j=0;j<4;j++)
+        {
+            std::cout << V[i][j] << ", ";
+        }
+        std::cout << std::endl;
+    }
+   // return 0;
      App A;
 
      A.init( WIDTH, HEIGHT, APP_TITLE,
