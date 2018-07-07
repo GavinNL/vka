@@ -26,7 +26,9 @@ layout(location = 2) out vec4 f_Color;
 
 //========================================================================
 layout(push_constant) uniform PushConsts {
-        int layer;
+    vec2 position;
+    vec2 size;
+    int layer;
 } pushConsts;
 
 
@@ -39,9 +41,16 @@ out gl_PerVertex
 
 void main() 
 {
+    vec2 p = pushConsts.position;
+    vec2 s = pushConsts.size;
+
+    //vec2 x[6] = {
+    // vec2(-1   ,-1.0 )  , vec2(-1.0, 1.0 )   , vec2( 1.0,  1.0 )  ,
+    // vec2(-1   ,-1.0 )  , vec2( 1.0,  1.0 )  , vec2( 1.0, -1.0 )
+    //};
     vec2 x[6] = {
-     vec2(-1   ,-1.0 )  , vec2(-1.0, 1.0 )   , vec2( 1.0,  1.0 )  ,
-     vec2(-1   ,-1.0 )  , vec2( 1.0,  1.0 )  , vec2( 1.0, -1.0 )
+        p, p+vec2(0,s.y), p+s,
+        p, p+s, p+vec2(s.x,0)
     };
 
     vec2 U[6] = {

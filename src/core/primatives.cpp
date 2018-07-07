@@ -281,7 +281,7 @@ vka::mesh_t vka::sphere_mesh_OLD(float radius , uint32_t rings, uint32_t sectors
     return M;
 }
 
-vka::host_mesh vka::plane_mesh(uint32_t Nx, uint32_t Nz)
+vka::host_mesh vka::plane_mesh(uint32_t Nx, uint32_t Nz, float sx, float sz)
 {
     host_mesh M;
 
@@ -305,7 +305,7 @@ vka::host_mesh vka::plane_mesh(uint32_t Nx, uint32_t Nz)
     {
         for(uint32_t x=0 ; x <= Nx ; x++)
         {
-            P.push_back( glm::vec3(x-Xm,0,z-Zm));
+            P.push_back( glm::vec3(x-Xm,0,z-Zm) * glm::vec3(sx,0,sz));
             N.push_back( glm::vec3(0,1,0));
             U.push_back( glm::vec2(x,z) );
         }

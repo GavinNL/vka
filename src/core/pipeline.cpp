@@ -144,6 +144,32 @@ vka::pipeline * vka::pipeline::set_fragment_shader( const std::string & path  , 
     return this;
 }
 
+vka::pipeline * vka::pipeline::set_geometry_shader( const std::string & path  , std::string const & entry_point)
+{
+    static int i=0;
+    auto * p = get_parent_context()->new_shader_module( std::string("geometry_shader_module_" + std::to_string(i++) ) );
+    p->load_from_file(path);
+    set_geometry_shader(p, entry_point);
+    return this;
+}
+
+vka::pipeline * vka::pipeline::set_tesselation_control_shader( const std::string & path  , std::string const & entry_point)
+{
+    static int i=0;
+    auto * p = get_parent_context()->new_shader_module( std::string("tess_control_shader_module_" + std::to_string(i++) ) );
+    p->load_from_file(path);
+    set_tesselation_control_shader(p, entry_point);
+    return this;
+}
+
+vka::pipeline * vka::pipeline::set_tesselation_evaluation_shader( const std::string & path  , std::string const & entry_point)
+{
+    static int i=0;
+    auto * p = get_parent_context()->new_shader_module( std::string("tess_eval_shader_module_" + std::to_string(i++) ) );
+    p->load_from_file(path);
+    set_tesselation_evaluation_shader(p, entry_point);
+    return this;
+}
 
 void vka::pipeline::create()
 {
@@ -220,8 +246,24 @@ void vka::pipeline::create()
         shaderstages.push_back( st );
         LOG << "  Adding Fragment Shader. Entry point:  " << m_FragmentShaderEntry<< ENDL;
     }
-
-
+    if( m_TesselationControlShader )
+    {
+        vk::PipelineShaderStageCreateInfo st;
+        st.stage  = vk::ShaderStageFlagBits::eTessellationControl;
+        st.module = m_TesselationControlShader->m_shader;
+        st.pName  = m_TesselationControlShaderEntry.data();//"main";
+        shaderstages.push_back( st );
+        LOG << "  Adding Tesellation Control Shader. Entry point:  " << m_TesselationControlShaderEntry << ENDL;
+    }
+    if( m_TesselationEvalShader)
+    {
+        vk::PipelineShaderStageCreateInfo st;
+        st.stage  = vk::ShaderStageFlagBits::eTessellationEvaluation;
+        st.module = m_TesselationEvalShader->m_shader;
+        st.pName  = m_TesselationEvalShaderEntry.data();//"main";
+        shaderstages.push_back( st );
+        LOG << "  Adding Tesellation Evaluation Shader. Entry point:  " << m_TesselationEvalShaderEntry << ENDL;
+    }
     //===========================================
     //===========================================
 
@@ -241,6 +283,10 @@ void vka::pipeline::create()
 
     pipelineInfo.layout              = m_PipelineLayout;
 
+    if( m_TesselationState.patchControlPoints!=0)
+    {
+        pipelineInfo.pTessellationState  = &m_TesselationState;
+    }
 
     pipelineInfo.renderPass          = m_RenderPass->m_RenderPass;
     pipelineInfo.subpass = 0;

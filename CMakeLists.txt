@@ -23,6 +23,10 @@ FILE(GLOB  TextFiles           "README.md"
                                 )
 FILE(GLOB_RECURSE ResourceFiles "./resources/*")
 
+
+add_custom_target(resources SOURCES ${ResourceFiles})
+#add_custom_target(other     SOURCES ${OtherFiles})
+
 INCLUDE_DIRECTORIES( ".")
 INCLUDE_DIRECTORIES( "glm")
 INCLUDE_DIRECTORIES( ${Vulkan_INCLUDE_DIRS} )
