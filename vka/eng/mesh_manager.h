@@ -1,3 +1,7 @@
+#pragma once
+#ifndef VKA_MESH_MANAGER
+#define VKA_MESH_MANAGER
+
 #include "manager_base.h"
 #include <vka/core/context.h>
 #include <vka/utils/buffer_pool.h>
@@ -270,3 +274,5 @@ inline bool mesh::allocate()
 
 
 }
+
+#endif

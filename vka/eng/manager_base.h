@@ -1,3 +1,6 @@
+#pragma once
+#ifndef VKA_MANAGER_BASE
+#define VKA_MANAGER_BASE
 #include <vka/core/classes.h>
 
 
@@ -27,3 +30,5 @@ class manager_base
 };
 
 }
+
+#endif
