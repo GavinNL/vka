@@ -56,7 +56,7 @@ protected:
 
         return false;
     }
-
+public:
     T* get_object( std::string const & name)
     {
         auto i = m_registry.find( name );
@@ -233,6 +233,11 @@ public:
         m_surface = surface;
     }
 
+    template<typename T>
+    T * get(std::string const & name)
+    {
+        return registry_t<T>::get_object(name);
+    }
     void create_device(vk::SurfaceKHR surface_to_use);
 
     void create_logical_device(vk::PhysicalDevice &p_physical_device, const vka::queue_family_index_t &p_Qfamily);

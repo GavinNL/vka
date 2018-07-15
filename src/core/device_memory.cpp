@@ -41,9 +41,14 @@ bool vka::device_memory::allocate(vk::MemoryRequirements requirements)
 uint32_t vka::device_memory::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
 {
     auto memProperites        = get_physical_device().getMemoryProperties();
+
     for (uint32_t i = 0; i < memProperites.memoryTypeCount ; i++)
     {
-        if ((typeFilter & (1 << i)) && ( static_cast<vk::MemoryPropertyFlags>(memProperites.memoryTypes[i].propertyFlags) & properties) == properties) {
+        const vk::MemoryPropertyFlags MemPropFlags = static_cast<vk::MemoryPropertyFlags>(memProperites.memoryTypes[i].propertyFlags);
+        #define GET_BIT(a, j) (a & (1 << j))
+
+        if ( GET_BIT(typeFilter,i) && ( MemPropFlags & properties) == properties)
+        {
             return i;
         }
     }

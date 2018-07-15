@@ -52,13 +52,20 @@ class screen : public context_child
             m_clear_values[1] = C;
         }
 
+        vka::framebuffer* get_framebuffer(uint32_t index)
+        {
+            return m_framebuffers.at(index);
+        }
         void create();
         void set_surface(vk::SurfaceKHR surface);
         void set_extent(vk::Extent2D e);
 
         vka::renderpass* get_renderpass() { return m_renderpass; }
 
-
+        vk::Extent2D get_extent() const
+        {
+            return m_extent;
+        }
         /**
          * @brief prepare_next_frame
          * @param signal_semaphore
