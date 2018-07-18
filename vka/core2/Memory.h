@@ -23,6 +23,7 @@ class Memory : public context_child
     {
         vk::MemoryAllocateInfo  m_info;
         vk::MemoryPropertyFlags m_memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
+        vk::MemoryRequirements  m_memory_req;
         void*                   m_mapped = nullptr;
     };
 
@@ -78,8 +79,13 @@ class Memory : public context_child
         {
             throw std::runtime_error("Failed to allocate memory for buffer");
         }
-
+        m_data->m_memory_req = requirements;
         return true;
+    }
+
+    vk::DeviceSize GetAlignment() const
+    {
+        return m_data->m_memory_req.alignment;
     }
 
     void Free()
@@ -135,12 +141,6 @@ class Memory : public context_child
 
     vk::DeviceMemory          m_memory;
     std::unique_ptr<Data_t>   m_data;
-
-
-    friend class deleter<context>;
-    friend class buffer;
-
-
 
     uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
     {

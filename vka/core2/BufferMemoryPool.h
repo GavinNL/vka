@@ -8,12 +8,61 @@
 
 #include <vka/core/log.h>
 
+#include <vka/utils/buffer_memory_manager.h>
+
 namespace vka
 {
 
+class BufferMemoryPool;
+
+/**
+ * @brief The SubBuffer class
+ *
+ * A subbuffer represents a portion of the BufferMemoryPool
+ *
+ */
+class SubBuffer
+{
+private:
+    SubBuffer()
+    {
+    }
+    public:
+
+    ~SubBuffer()
+    {
+        Destroy();
+    }
+
+    SubBuffer(SubBuffer & other) = delete;
+    SubBuffer & operator=(SubBuffer & other) = delete;
+
+    vk::DeviceSize GetOffset() const
+    {
+        return m_offset;
+    }
+
+    vk::DeviceSize GetSize() const
+    {
+        return m_size;
+    }
+
+    void Destroy();
+
+    protected:
+        BufferMemoryPool *    m_parent = nullptr;
+        vk::DeviceSize        m_offset=0;
+        vk::DeviceSize        m_size=0;
+
+        friend class BufferMemoryPool;
+};
+
+
+
+
 class BufferMemoryPool : public context_child
 {
-    public:
+public:
 
     BufferMemoryPool(context * parent) : context_child(parent) ,
                                          m_memory(parent)
@@ -78,18 +127,52 @@ class BufferMemoryPool : public context_child
         m_memory.Allocate( device.getBufferMemoryRequirements(m_buffer) );
 
         m_create_info.size = m_memory.GetSize();
+
         m_memory.Bind(m_buffer, 0);
+        m_manager.reset( m_create_info.size  );
 
     }
 
-protected:
-    vk::Buffer  m_buffer;
-    vka::Memory m_memory;
+    /**
+     * @brief NewSubBuffer
+     * @param size
+     * @return
+     *
+     * Allocate a new SubBuffer from the buffer pool
+     */
+    std::shared_ptr<SubBuffer> NewSubBuffer(vk::DeviceSize size)
+    {
+        assert( size < m_memory.GetSize() );
+        auto offset = m_manager.allocate( size, m_memory.GetAlignment() );
 
+        auto S = std::shared_ptr<SubBuffer>( new SubBuffer() );
+        S->m_parent = this;
+        S->m_offset = offset;
+        S->m_size   = size;
+        return S;
+    }
+
+    void FreeSubBuffer( SubBuffer & S )
+    {
+        m_manager.free( S.m_offset);
+        S.m_offset = 0;
+        S.m_size = 0;
+        S.m_parent = nullptr;
+    }
+
+protected:
+    vk::Buffer                 m_buffer;
+    vka::Memory                m_memory;
+    vka::buffer_memory_manager m_manager;
     vk::BufferCreateInfo    m_create_info;
 
 };
 
+inline void SubBuffer::Destroy()
+{
+    if(m_parent)
+        m_parent->FreeSubBuffer(*this);
+}
 
 }
 

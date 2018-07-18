@@ -130,6 +130,10 @@ int main(int argc, char ** argv)
         BP.SetSize(10*1024*1024);
         BP.SetUsage( vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc| vk::BufferUsageFlagBits::eIndexBuffer| vk::BufferUsageFlagBits::eVertexBuffer| vk::BufferUsageFlagBits::eUniformBuffer);
         BP.Create();
+
+        auto V_buffer = BP.NewSubBuffer(1024 );
+        auto I_buffer = BP.NewSubBuffer( 1024 );
+        auto U_buffer = BP.NewSubBuffer(1024);
     }
 
     //=====================
