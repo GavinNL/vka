@@ -31,6 +31,8 @@
 #include <vka/vka.h>
 
 
+#include <vka/core2/BufferMemoryPool.h>
+
 #include <vka/linalg.h>
 
 #define WIDTH 1024
@@ -120,6 +122,17 @@ int main(int argc, char ** argv)
 
 
 
+    //=====================
+    if(1)
+    {
+        vka::BufferMemoryPool BP(&C);
+        BP.SetMemoryProperties( vk::MemoryPropertyFlagBits::eHostCoherent| vk::MemoryPropertyFlagBits::eHostVisible);
+        BP.SetSize(10*1024*1024);
+        BP.SetUsage( vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc| vk::BufferUsageFlagBits::eIndexBuffer| vk::BufferUsageFlagBits::eVertexBuffer| vk::BufferUsageFlagBits::eUniformBuffer);
+        BP.Create();
+    }
+
+    //=====================
 
 
 
