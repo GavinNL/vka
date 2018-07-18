@@ -107,3 +107,26 @@ vka::PushDescriptorInfo &vka::PushDescriptorInfo::attach(uint32_t binding, uint3
     m_writes.push_back(W);
     return *this;
 }
+
+
+
+//-----------------------------
+#include <vka/core2/BufferMemoryPool.h>
+
+namespace vka
+{
+void command_buffer::copySubBuffer( std::shared_ptr<vka::SubBuffer> & src,
+                    std::shared_ptr<vka::SubBuffer> & dst,
+                    vk::BufferCopy const & region)
+{
+    vk::BufferCopy R;
+    R.srcOffset = src->GetOffset();
+    R.dstOffset = dst->GetOffset();
+    R.size      = region.size;
+
+    copyBuffer( src->GetParentBufferHandle(),
+                dst->GetParentBufferHandle(),
+                R);
+}
+
+}

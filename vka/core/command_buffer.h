@@ -12,6 +12,8 @@ class pipeline;
 class descriptor_set;
 class texture;
 
+class SubBuffer;
+
 class PushDescriptorInfo
 {
 public:
@@ -67,6 +69,12 @@ class command_buffer : public vk::CommandBuffer
                             uint32_t firstSet,
                             vka::descriptor_set const * set,
                             uint32_t dynamic_offset) const;
+
+
+    //-------------------- NEW STUFF
+    void copySubBuffer( std::shared_ptr<vka::SubBuffer> & src,
+                        std::shared_ptr<vka::SubBuffer> & dst,
+                        vk::BufferCopy const & region);
 };
 
 }

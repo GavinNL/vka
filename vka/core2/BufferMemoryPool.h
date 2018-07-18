@@ -49,6 +49,7 @@ private:
 
     void Destroy();
 
+    vk::Buffer GetParentBufferHandle() const;
     protected:
         BufferMemoryPool *    m_parent = nullptr;
         vk::DeviceSize        m_offset=0;
@@ -160,6 +161,10 @@ public:
         S.m_parent = nullptr;
     }
 
+    vk::Buffer GetBufferHandle() const
+    {
+        return m_buffer;
+    }
 protected:
     vk::Buffer                 m_buffer;
     vka::Memory                m_memory;
@@ -172,6 +177,11 @@ inline void SubBuffer::Destroy()
 {
     if(m_parent)
         m_parent->FreeSubBuffer(*this);
+}
+
+inline vk::Buffer SubBuffer::GetParentBufferHandle() const
+{
+    return m_parent->GetBufferHandle();
 }
 
 }
