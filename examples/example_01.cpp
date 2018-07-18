@@ -173,14 +173,16 @@ int main(int argc, char ** argv)
         // so we do not accidenty access the array_view after the
         // staging_buffer has been unmapped.
         {
-            vka::array_view<Vertex> vertex =  staging_buffer->map<Vertex>();
-
+            std::array<Vertex,3>    vertex;
             LOG << "Vertex size: " << vertex.size() << ENDL;
             // we can access each vertex as if it was an array. Copy the
             // vertex data we want into the first three indices.
             vertex[0] = {glm::vec3( 0.0,  0.0,  1.0 ) , glm::vec2(0.5 , 0) } ;
             vertex[1] = {glm::vec3( 1.0,  0.0, -1.0 ) , glm::vec2(0   , 1) };
             vertex[2] = {glm::vec3(-1.0,  0.0, -1.0 ) , glm::vec2(1   , 1) };
+
+            void * m = staging_buffer->map_memory();
+            memcpy(m , &vertex[0], sizeof(vertex));
         }
         // Do the same for the index buffer. but we want to specific an
         // offset form the start of the buffer so we do not overwrite the
@@ -189,10 +191,12 @@ int main(int argc, char ** argv)
             // +--------------------------------------------------------+
             // |  vertex data    |   index data                         |
             // +--------------------------------------------------------+
-            vka::array_view<glm::uint16_t> index =  staging_buffer->map<glm::uint16>( 3*sizeof(Vertex) );
+            std::array<glm::uint16_t,3> index;
             index[0] = 0;
             index[1] = 1;
             index[2] = 2;
+            void * m = (uint8_t*)staging_buffer->map_memory() + 3*sizeof(Vertex);
+            memcpy(m , &index[0], sizeof(index));
             LOG << "Index size: " << index.size() << ENDL;
         }
 
