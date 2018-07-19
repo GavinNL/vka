@@ -39,6 +39,16 @@
 #define HEIGHT 768
 #define APP_TITLE "Example_01 - Hello Textured Rotating Triangle!"
 
+
+
+
+
+
+
+
+
+#define USE_REFACTORED
+
 /**
  * @brief get_elapsed_time
  * @return
@@ -122,23 +132,6 @@ int main(int argc, char ** argv)
 
 
 
-    //=====================
-    if(1)
-    {
-        vka::BufferMemoryPool BP(&C);
-        BP.SetMemoryProperties( vk::MemoryPropertyFlagBits::eHostCoherent| vk::MemoryPropertyFlagBits::eHostVisible);
-        BP.SetSize(10*1024*1024);
-        BP.SetUsage( vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc| vk::BufferUsageFlagBits::eIndexBuffer| vk::BufferUsageFlagBits::eVertexBuffer| vk::BufferUsageFlagBits::eUniformBuffer);
-        BP.Create();
-
-        auto V_buffer = BP.NewSubBuffer(1024 );
-        auto I_buffer = BP.NewSubBuffer( 1024 );
-        auto U_buffer = BP.NewSubBuffer(1024);
-    }
-
-    //=====================
-
-
 
 //==============================================================================
 // Create the Vertex and Index buffers
@@ -152,9 +145,28 @@ int main(int argc, char ** argv)
 //==============================================================================
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
-        vka::buffer* vertex_buffer = C.new_vertex_buffer("vb", 1024 );
-        vka::buffer* index_buffer  = C.new_index_buffer( "ib", 1024 );
-        vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 1024);
+
+        vka::BufferMemoryPool StagingBufferPool(&C);
+        StagingBufferPool.SetMemoryProperties( vk::MemoryPropertyFlagBits::eHostCoherent| vk::MemoryPropertyFlagBits::eHostVisible);
+        StagingBufferPool.SetSize(10*1024*1024);
+        StagingBufferPool.SetUsage( vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc| vk::BufferUsageFlagBits::eIndexBuffer| vk::BufferUsageFlagBits::eVertexBuffer| vk::BufferUsageFlagBits::eUniformBuffer);
+        StagingBufferPool.Create();
+
+        vka::BufferMemoryPool BufferPool(&C);
+        BufferPool.SetMemoryProperties( vk::MemoryPropertyFlagBits::eDeviceLocal);
+        BufferPool.SetSize(10*1024*1024);
+        BufferPool.SetUsage( vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc| vk::BufferUsageFlagBits::eIndexBuffer| vk::BufferUsageFlagBits::eVertexBuffer| vk::BufferUsageFlagBits::eUniformBuffer);
+        BufferPool.Create();
+
+        auto V_buffer = BufferPool.NewSubBuffer(1024);
+        auto I_buffer = BufferPool.NewSubBuffer(1024);
+        auto U_buffer = BufferPool.NewSubBuffer(1024);
+
+    vka::buffer* vertex_buffer = C.new_vertex_buffer("vb", 1024 );
+    vka::buffer* index_buffer  = C.new_index_buffer( "ib", 1024 );
+    vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 1024);
+
+
 
         // This is the vertex structure we are going to use
         // it contains a position and a UV coordates field
@@ -166,6 +178,7 @@ int main(int argc, char ** argv)
 
         // allocate a staging buffer of 10MB
         vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
+        auto StagingBuffer  = StagingBufferPool.NewSubBuffer( sizeof(1024*1024*10) );
 
         // using the map< > method, we can return an array_view into the
         // memory. We are going to place them in their own scope so that
@@ -181,8 +194,15 @@ int main(int argc, char ** argv)
             vertex[1] = {glm::vec3( 1.0,  0.0, -1.0 ) , glm::vec2(0   , 1) };
             vertex[2] = {glm::vec3(-1.0,  0.0, -1.0 ) , glm::vec2(1   , 1) };
 
-            void * m = staging_buffer->map_memory();
-            memcpy(m , &vertex[0], sizeof(vertex));
+            {
+                void * m = StagingBuffer->MapBuffer();
+                memcpy(m , &vertex[0], sizeof(vertex));
+            }
+            {
+                void * m = staging_buffer->map_memory();
+                memcpy(m , &vertex[0], sizeof(vertex));
+            }
+
         }
         // Do the same for the index buffer. but we want to specific an
         // offset form the start of the buffer so we do not overwrite the
@@ -195,8 +215,16 @@ int main(int argc, char ** argv)
             index[0] = 0;
             index[1] = 1;
             index[2] = 2;
-            void * m = (uint8_t*)staging_buffer->map_memory() + 3*sizeof(Vertex);
-            memcpy(m , &index[0], sizeof(index));
+
+            {
+                void * m = (uint8_t*)staging_buffer->map_memory() + 3*sizeof(Vertex);
+                memcpy(m , &index[0], sizeof(index));
+            }
+            {
+                void * m = (uint8_t*)StagingBuffer->MapBuffer() + 3*sizeof(Vertex);
+                memcpy(m , &index[0], sizeof(index));
+            }
+
             LOG << "Index size: " << index.size() << ENDL;
         }
 
@@ -204,7 +232,7 @@ int main(int argc, char ** argv)
         // 2. Copy the data from the host-visible buffer to the vertex/index buffers
 
         // allocate a comand buffer
-        vk::CommandBuffer copy_cmd = cp->AllocateCommandBuffer();
+        vka::command_buffer copy_cmd = cp->AllocateCommandBuffer();
         copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
         // write the commands to copy each of the buffer data
@@ -215,8 +243,13 @@ int main(int argc, char ** argv)
         const vk::DeviceSize index_offset  = vertex_size;
 
 
+
+        copy_cmd.copySubBuffer( StagingBuffer, V_buffer, vk::BufferCopy{vertex_offset, 0 ,vertex_size});
+        copy_cmd.copySubBuffer( StagingBuffer, I_buffer, vk::BufferCopy{index_offset,  0 , index_size});
+
         copy_cmd.copyBuffer( *staging_buffer , *vertex_buffer, vk::BufferCopy{ vertex_offset    , 0 , vertex_size } );
         copy_cmd.copyBuffer( *staging_buffer , *index_buffer , vk::BufferCopy{ index_offset     , 0 , index_size  } );
+
 
         copy_cmd.end();
         C.submit_cmd_buffer(copy_cmd);
@@ -356,7 +389,11 @@ int main(int argc, char ** argv)
     texture_descriptor->update();
 
     vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
+#if defined USE_REFACTORED
+    ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
+#else
     ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, 10, 0);
+#endif
     ubuffer_descriptor->update();
 
     // This is the structure of the uniform buffer we want.
@@ -369,6 +406,7 @@ int main(int argc, char ** argv)
     };
 
     vka::array_view<uniform_buffer_t> staging_buffer_map = staging_buffer->map<uniform_buffer_t>();
+    vka::array_view<uniform_buffer_t> StagingBufferMap   = vka::array_view<uniform_buffer_t>(1, StagingBuffer->MapBuffer());
 
     vka::command_buffer cb = cp->AllocateCommandBuffer();
 
@@ -400,6 +438,7 @@ int main(int argc, char ** argv)
       staging_buffer_map[0].proj  = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
       staging_buffer_map[0].proj[1][1] *= -1;
 
+      StagingBufferMap[0] = staging_buffer_map[0];
       //============================================================
 
       // Get the next available image in the swapchain
@@ -411,7 +450,11 @@ int main(int argc, char ** argv)
 
 
       // Copy the uniform buffer data from the stating buffer to the uniform buffer
+#if defined USE_REFACTORED
+      cb.copySubBuffer( StagingBuffer,     U_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
+#else
       cb.copyBuffer( *staging_buffer , *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
+#endif
 
 
       uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
@@ -433,8 +476,14 @@ int main(int argc, char ** argv)
                                                     nullptr );
 
      // bind the vertex/index buffers
-            cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );// ( m_VertexBuffer, 0);
-            cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
+#if defined USE_REFACTORED
+      cb.bindVertexSubBuffer(0, V_buffer );// ( m_VertexBuffer, 0);
+      cb.bindIndexSubBuffer( I_buffer, vk::IndexType::eUint16);
+#else
+      cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );// ( m_VertexBuffer, 0);
+      cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
+#endif
+
 
     // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
             cb.drawIndexed(3, 1, 0 , 0, 0);
