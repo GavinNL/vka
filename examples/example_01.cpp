@@ -177,8 +177,11 @@ int main(int argc, char ** argv)
         };
 
         // allocate a staging buffer of 10MB
-        vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
+#if defined USE_REFACTORED
         auto StagingBuffer  = StagingBufferPool.NewSubBuffer( sizeof(1024*1024*10) );
+#else
+        vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
+#endif
 
         // using the map< > method, we can return an array_view into the
         // memory. We are going to place them in their own scope so that
@@ -245,6 +248,7 @@ int main(int argc, char ** argv)
 #else
         copy_cmd.copyBuffer( *staging_buffer , *vertex_buffer, vk::BufferCopy{ vertex_offset    , 0 , vertex_size } );
         copy_cmd.copyBuffer( *staging_buffer , *index_buffer , vk::BufferCopy{ index_offset     , 0 , index_size  } );
+
 #endif
 
         copy_cmd.end();
@@ -256,8 +260,10 @@ int main(int argc, char ** argv)
         // Unmap the memory.
         //   WARNING: DO NOT ACCESS the vertex and index array_views as these
         //            now point to unknown memory spaces
+#if defined USE_REFACTORED
+#else
         staging_buffer->unmap_memory();
-
+#endif
 
 //==============================================================================
 // Create a texture
@@ -280,9 +286,17 @@ int main(int argc, char ** argv)
 
 
     // 3. Map the buffer to memory and copy the image to it.
+#if defined USE_REFACTORED
+        void * image_buffer_data = StagingBuffer->MapBuffer();
+#else
         void * image_buffer_data = staging_buffer->map_memory();
+#endif
         memcpy( image_buffer_data, D.data(), D.size() );
+
+#if defined USE_REFACTORED
+#else
         staging_buffer->unmap_memory();
+#endif
 
 
     // 4. Now that the data is on the device. We need to get it from the buffer
@@ -293,7 +307,7 @@ int main(int argc, char ** argv)
     //         c. convert the texture2d into a layout which is good for shader use
 
         // allocate the command buffer
-        vk::CommandBuffer cb1 = cp->AllocateCommandBuffer();
+        vka::command_buffer cb1 = cp->AllocateCommandBuffer();
         cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
             // a. convert the texture to eTransferDstOptimal
@@ -310,7 +324,11 @@ int main(int argc, char ** argv)
                                 .setLayerCount(1) // only copy one layer
                                 .setMipLevel(0);  // only the first mip-map level
 
+#if defined USE_REFACTORED
+            cb1.copySubBufferToImage( StagingBuffer, tex, vk::ImageLayout::eTransferDstOptimal, BIC);
+#else
             tex->copy_buffer( cb1, staging_buffer, BIC);
+#endif
 
             // c. convert the texture into eShaderReadOnlyOptimal
             tex->convert(cb1, vk::ImageLayout::eShaderReadOnlyOptimal);

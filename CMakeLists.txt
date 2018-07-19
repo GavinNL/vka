@@ -53,7 +53,7 @@ add_definitions(
                 )
 
 
-file(GLOB_RECURSE core_files "src/core/*.cpp")
+file(GLOB_RECURSE core_files "src/core/*.cpp" "src/core2/*.cpp")
 
 add_library(vkacore SHARED ${core_files} )
 
