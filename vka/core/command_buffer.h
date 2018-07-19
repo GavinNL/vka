@@ -84,6 +84,10 @@ class command_buffer : public vk::CommandBuffer
                                              vk::IndexType indexType,
                                              vk::DeviceSize offset=0) const;
 
+    void copySubBufferToImage( const std::shared_ptr<SubBuffer> & buffer,
+                               vka::texture * tex,
+                               vk::ImageLayout imageLayout,
+                               vk::BufferImageCopy const & C) const;
 };
 
 }

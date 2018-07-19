@@ -144,4 +144,19 @@ void command_buffer::bindIndexSubBuffer( const std::shared_ptr<SubBuffer> & buff
     vk::CommandBuffer::bindIndexBuffer( buffer->GetParentBufferHandle(), buffer->GetOffset()+offset, indexType);
 }
 
+void command_buffer::copySubBufferToImage( const std::shared_ptr<SubBuffer> & buffer,
+                                           vka::texture * tex,
+                                           vk::ImageLayout imageLayout,
+                                           vk::BufferImageCopy const & C) const
+{
+    vk::BufferImageCopy lC = C;
+    lC.setBufferOffset( buffer->GetOffset() + C.bufferOffset );
+    vk::CommandBuffer::copyBufferToImage(
+                buffer->GetParentBufferHandle(),
+                tex->get_image(),
+                imageLayout,
+                lC
+                );
+}
+
 }
