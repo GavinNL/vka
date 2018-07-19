@@ -145,7 +145,7 @@ int main(int argc, char ** argv)
 //==============================================================================
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
-
+#if defined USE_REFACTORED
         vka::BufferMemoryPool StagingBufferPool(&C);
         StagingBufferPool.SetMemoryProperties( vk::MemoryPropertyFlagBits::eHostCoherent| vk::MemoryPropertyFlagBits::eHostVisible);
         StagingBufferPool.SetSize(10*1024*1024);
@@ -161,11 +161,11 @@ int main(int argc, char ** argv)
         auto V_buffer = BufferPool.NewSubBuffer(1024);
         auto I_buffer = BufferPool.NewSubBuffer(1024);
         auto U_buffer = BufferPool.NewSubBuffer(1024);
-
-    vka::buffer* vertex_buffer = C.new_vertex_buffer("vb", 1024 );
-    vka::buffer* index_buffer  = C.new_index_buffer( "ib", 1024 );
-    vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 1024);
-
+#else
+        vka::buffer* vertex_buffer = C.new_vertex_buffer("vb", 1024 );
+        vka::buffer* index_buffer  = C.new_index_buffer( "ib", 1024 );
+        vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 1024);
+#endif
 
 
         // This is the vertex structure we are going to use
@@ -194,14 +194,12 @@ int main(int argc, char ** argv)
             vertex[1] = {glm::vec3( 1.0,  0.0, -1.0 ) , glm::vec2(0   , 1) };
             vertex[2] = {glm::vec3(-1.0,  0.0, -1.0 ) , glm::vec2(1   , 1) };
 
-            {
-                void * m = StagingBuffer->MapBuffer();
-                memcpy(m , &vertex[0], sizeof(vertex));
-            }
-            {
-                void * m = staging_buffer->map_memory();
-                memcpy(m , &vertex[0], sizeof(vertex));
-            }
+#if defined USE_REFACTORED
+            void * m = StagingBuffer->MapBuffer();
+#else
+            void * m = staging_buffer->map_memory();
+#endif
+            memcpy(m , &vertex[0], sizeof(vertex));
 
         }
         // Do the same for the index buffer. but we want to specific an
@@ -216,14 +214,12 @@ int main(int argc, char ** argv)
             index[1] = 1;
             index[2] = 2;
 
-            {
-                void * m = (uint8_t*)staging_buffer->map_memory() + 3*sizeof(Vertex);
-                memcpy(m , &index[0], sizeof(index));
-            }
-            {
-                void * m = (uint8_t*)StagingBuffer->MapBuffer() + 3*sizeof(Vertex);
-                memcpy(m , &index[0], sizeof(index));
-            }
+#if defined USE_REFACTORED
+            void * m = (uint8_t*)StagingBuffer->MapBuffer() + 3*sizeof(Vertex);
+#else
+            void * m = (uint8_t*)staging_buffer->map_memory() + 3*sizeof(Vertex);
+#endif
+            memcpy(m , &index[0], sizeof(index));
 
             LOG << "Index size: " << index.size() << ENDL;
         }
@@ -243,13 +239,13 @@ int main(int argc, char ** argv)
         const vk::DeviceSize index_offset  = vertex_size;
 
 
-
+#if defined USE_REFACTORED
         copy_cmd.copySubBuffer( StagingBuffer, V_buffer, vk::BufferCopy{vertex_offset, 0 ,vertex_size});
         copy_cmd.copySubBuffer( StagingBuffer, I_buffer, vk::BufferCopy{index_offset,  0 , index_size});
-
+#else
         copy_cmd.copyBuffer( *staging_buffer , *vertex_buffer, vk::BufferCopy{ vertex_offset    , 0 , vertex_size } );
         copy_cmd.copyBuffer( *staging_buffer , *index_buffer , vk::BufferCopy{ index_offset     , 0 , index_size  } );
-
+#endif
 
         copy_cmd.end();
         C.submit_cmd_buffer(copy_cmd);
