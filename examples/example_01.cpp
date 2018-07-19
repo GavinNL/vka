@@ -405,8 +405,12 @@ int main(int argc, char ** argv)
         glm::mat4 proj;
     };
 
-    vka::array_view<uniform_buffer_t> staging_buffer_map = staging_buffer->map<uniform_buffer_t>();
+
+#if defined USE_REFACTORED
     vka::array_view<uniform_buffer_t> StagingBufferMap   = vka::array_view<uniform_buffer_t>(1, StagingBuffer->MapBuffer());
+#else
+    vka::array_view<uniform_buffer_t> StagingBufferMap = staging_buffer->map<uniform_buffer_t>();
+#endif
 
     vka::command_buffer cb = cp->AllocateCommandBuffer();
 
@@ -431,14 +435,13 @@ int main(int argc, char ** argv)
 
       const float AR = WIDTH / ( float )HEIGHT;
 
-      staging_buffer_map[0].model = glm::rotate( glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-      staging_buffer_map[0].view  = glm::lookAt( glm::vec3(5.0f, 5.0f, 5.0f),
+      StagingBufferMap[0].model = glm::rotate( glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+      StagingBufferMap[0].view  = glm::lookAt( glm::vec3(5.0f, 5.0f, 5.0f),
                                                  glm::vec3(0.0f, 0.0f, 0.0f),
                                                  glm::vec3(0.0f, 1.0f, 0.0f));
-      staging_buffer_map[0].proj  = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
-      staging_buffer_map[0].proj[1][1] *= -1;
+      StagingBufferMap[0].proj  = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
+      StagingBufferMap[0].proj[1][1] *= -1;
 
-      StagingBufferMap[0] = staging_buffer_map[0];
       //============================================================
 
       // Get the next available image in the swapchain
