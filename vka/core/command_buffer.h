@@ -75,6 +75,15 @@ class command_buffer : public vk::CommandBuffer
     void copySubBuffer( std::shared_ptr<vka::SubBuffer> & src,
                         std::shared_ptr<vka::SubBuffer> & dst,
                         vk::BufferCopy const & region);
+
+    void bindVertexSubBuffer(uint32_t firstBinding,
+                                             const std::shared_ptr<SubBuffer> & buffer,
+                                             vk::DeviceSize offset=0) const;
+
+    void bindIndexSubBuffer( const std::shared_ptr<SubBuffer> & buffer,
+                                             vk::IndexType indexType,
+                                             vk::DeviceSize offset=0) const;
+
 };
 
 }

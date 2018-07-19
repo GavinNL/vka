@@ -120,13 +120,28 @@ void command_buffer::copySubBuffer( std::shared_ptr<vka::SubBuffer> & src,
                     vk::BufferCopy const & region)
 {
     vk::BufferCopy R;
-    R.srcOffset = src->GetOffset();
-    R.dstOffset = dst->GetOffset();
+    R.srcOffset = src->GetOffset() + region.srcOffset;
+    R.dstOffset = dst->GetOffset() + region.dstOffset;
     R.size      = region.size;
 
     copyBuffer( src->GetParentBufferHandle(),
                 dst->GetParentBufferHandle(),
                 R);
+}
+
+
+void command_buffer::bindVertexSubBuffer(uint32_t firstBinding,
+                                         const std::shared_ptr<SubBuffer> & buffer,
+                                         vk::DeviceSize offset) const
+{
+    vk::CommandBuffer::bindVertexBuffers(firstBinding, buffer->GetParentBufferHandle(),offset+buffer->GetOffset());
+}
+
+void command_buffer::bindIndexSubBuffer( const std::shared_ptr<SubBuffer> & buffer,
+                                         vk::IndexType indexType,
+                                         vk::DeviceSize offset) const
+{
+    vk::CommandBuffer::bindIndexBuffer( buffer->GetParentBufferHandle(), buffer->GetOffset()+offset, indexType);
 }
 
 }
