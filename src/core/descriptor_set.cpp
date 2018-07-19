@@ -8,6 +8,9 @@
 
 #include <vka/utils/buffer_pool.h>
 
+
+#include <vka/core2/BufferMemoryPool.h>
+
 #include <vka/core/log.h>
 
 vka::descriptor_set::~descriptor_set()
@@ -158,3 +161,24 @@ vka::descriptor_set * vka::descriptor_set::attach_dynamic_uniform_buffer(uint32_
 }
 
 
+
+
+
+//------------------
+
+vka::descriptor_set * vka::descriptor_set::AttachUniformBuffer(uint32_t index,
+                     std::shared_ptr<SubBuffer> & sub_buffer ,
+                     vk::DeviceSize size,
+                     vk::DeviceSize offset)
+{
+
+    DescriptorInfo bufferInfo;
+    bufferInfo.type = DescriptorInfo::Buffer;
+    bufferInfo.buffer.buffer = sub_buffer->GetParentBufferHandle();
+    bufferInfo.buffer.offset = sub_buffer->GetOffset() + offset;
+    bufferInfo.buffer.range  = size;
+
+    m_DescriptorInfos[index] = bufferInfo;
+
+    return this;
+}

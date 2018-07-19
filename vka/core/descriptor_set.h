@@ -11,6 +11,7 @@ namespace vka
 {
 
 class sub_buffer;
+class SubBuffer;
 
 struct DescriptorInfo
 {
@@ -56,6 +57,12 @@ public:
     vka::descriptor_set * attach_dynamic_uniform_buffer(uint32_t index, const sub_buffer *buff, vk::DeviceSize size, vk::DeviceSize offset);
 
 
+
+
+    vka::descriptor_set* AttachUniformBuffer(uint32_t index,
+                                             std::shared_ptr<SubBuffer> & sub_buffer ,
+                                             vk::DeviceSize size,
+                                             vk::DeviceSize offset=0);
 private:
     vk::DescriptorSet     m_descriptor_set;
     vka::descriptor_pool *m_parent_pool = nullptr;
