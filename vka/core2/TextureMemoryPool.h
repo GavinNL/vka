@@ -300,6 +300,35 @@ public:
     }
 
 
+    //=============================
+    std::shared_ptr<Texture> AllocateTexture2D( vk::Format format,
+                                                vk::Extent2D extent,
+                                                uint32_t     arrayLayers=1,
+                                                uint32_t     mipLevels=std::numeric_limits<uint32_t>::max(),
+                                                vk::SharingMode sharingMode=vk::SharingMode::eExclusive)
+    {
+        if( mipLevels ==std::numeric_limits<uint32_t>::max() )
+        {
+            mipLevels = std::min( std::log2( extent.height), std::log2( extent.width) );
+        }
+
+        auto T = AllocateTexture( vk::Extent3D{extent.width,extent.height,1},
+                                  arrayLayers,
+                                  format,
+                                  mipLevels,
+                                  vk::ImageTiling::eOptimal,
+                                  sharingMode);
+
+        T->CreateImageView( "default",
+                            arrayLayers==1?vk::ImageViewType::e2D : vk::ImageViewType::e2DArray,
+                            vk::ImageAspectFlagBits::eColor,
+                            0, arrayLayers,
+                            0, mipLevels);
+        return T;
+    }
+
+
+
 protected:
     vka::Memory                m_memory;
     vka::buffer_memory_manager m_manager;
