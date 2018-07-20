@@ -63,7 +63,7 @@ private:
         return m_create_info.extent;
     }
 
-    vk::DeviceSize GetLayers() const
+    vk::DeviceSize GetArrayLayers() const
     {
         return m_create_info.arrayLayers;
     }
@@ -78,7 +78,45 @@ private:
         return m_LayoutsA.at(ArrayLayer).at(MipLevel);
     }
 
+
     void Destroy();
+
+
+    vk::ImageView GetView(const std::string & name = "default")
+    {
+        return m_Views.at("default");
+    }
+
+    // vk::Sampler GetSampler()
+    // {
+    // }
+
+    vk::Format GetFormat() const
+    {
+        return m_create_info.format;
+    }
+
+    void CreateImageView( std::string const & name,
+                          vk::ImageViewType view_type,
+                          vk::ImageAspectFlags flags,
+                          uint32_t base_array_layer, uint32_t num_array_layers,
+                          uint32_t base_mip_level, uint32_t num_mip_levels)
+    {
+        vk::ImageViewCreateInfo C;
+        C.image                           = m_Image;
+        C.viewType                        = view_type;
+        C.format                          = GetFormat();
+        C.subresourceRange.aspectMask     = flags;
+        C.subresourceRange.baseMipLevel   = base_mip_level;
+        C.subresourceRange.levelCount     = num_mip_levels;
+        C.subresourceRange.baseArrayLayer = base_array_layer;
+        C.subresourceRange.layerCount     = num_array_layers;
+
+        CreateImageView(name, C);
+
+    }
+
+    void CreateImageView(const std::string & name, vk::ImageViewCreateInfo CreateInfo);
 
     protected:
         TextureMemoryPool *   m_parent = nullptr;
@@ -89,14 +127,12 @@ private:
         vk::DeviceSize        m_offset=0; // memory offset . are these needed?
         vk::DeviceSize        m_size=0;   // memory size   . are these needed?
 
-
         std::vector< std::vector<vk::ImageLayout > > m_LayoutsA;
 
-        // a map of all the layer's layouts
-        // std::map< uint32_t, // layer
-        //                    std::map< uint32_t, // mipmap
-        //                              vk::ImageLayout> >  m_Layout;
+        std::map<std::string, vk::ImageView> m_Views;
+
         friend class TextureMemoryPool;
+        friend class command_buffer;
 };
 
 
@@ -274,6 +310,21 @@ protected:
 
 };
 
+inline void Texture::CreateImageView(const std::string & name, vk::ImageViewCreateInfo CreateInfo)
+{
+    if( m_Views.count(name) )
+    {
+        throw std::runtime_error("A view with that name already exists");
+    }
+
+    auto v = m_parent->get_device().createImageView(CreateInfo);
+    if( v )
+    {
+        m_Views[name] = v;
+        return;
+    }
+    throw std::runtime_error("Error Creating Image View");
+}
 
 inline void Texture::Destroy()
 {
