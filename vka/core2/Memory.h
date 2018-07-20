@@ -18,7 +18,6 @@ class Memory : public context_child
 {
     public:
 
-
     struct Data_t
     {
         vk::MemoryAllocateInfo  m_info;
@@ -63,13 +62,23 @@ class Memory : public context_child
         return m_data->m_info.allocationSize;
     }
 
+    vk::MemoryRequirements GetMemoryRequirements() const
+    {
+        return m_data->m_memory_req;
+    }
+
     void Bind( vk::Buffer b, vk::DeviceSize memoryOffset )
     {
         get_device().bindBufferMemory( b , m_memory, memoryOffset);
     }
+    void Bind( vk::Image img, vk::DeviceSize memoryOffset )
+    {
+        get_device().bindImageMemory( img , m_memory, memoryOffset);
+    }
 
     bool Allocate(vk::MemoryRequirements requirements)
     {
+        LOG << "Memory: Allocating: " << requirements.size << " bytes " <<ENDL;
         m_data->m_info.allocationSize  = requirements.size;
         m_data->m_info.memoryTypeIndex = findMemoryType(requirements.memoryTypeBits, m_data->m_memory_properties);
 

@@ -16,7 +16,6 @@ vka::texture::texture(vka::context *parent) : context_child(parent), m_Memory(pa
     m_CreateInfo.format        = vk::Format::eR8G8B8A8Unorm;
     m_CreateInfo.tiling        = vk::ImageTiling::eLinear;;
 
-
     m_CreateInfo.initialLayout = vk::ImageLayout::ePreinitialized;// VK_IMAGE_LAYOUT_PREINITIALIZED;
     //m_CreateInfo.initialLayout = vk::ImageLayout::eUndefined;// VK_IMAGE_LAYOUT_PREINITIALIZED;
     //m_CreateInfo.initialLayout = vk::ImageLayout::eGeneral;// VK_IMAGE_LAYOUT_PREINITIALIZED;
@@ -306,20 +305,6 @@ void vka::texture::create()
     auto req = device.getImageMemoryRequirements(m_Image);
     m_Memory.allocate(req);
     m_Memory.bind(this);
-
-    //vk::MemoryAllocateInfo allocInfo;
-    //allocInfo.allocationSize  = m_MemoryRequirements.size;
-    //
-    //LOG << "Memory allocation size: " << m_MemoryRequirements.size << ENDL;
-    //
-    //allocInfo.memoryTypeIndex = findMemoryType( m_MemoryRequirements.memoryTypeBits, m_MemoryProperties);
-    //
-    //m_Memory = device.allocateMemory(allocInfo);
-    //
-    //if( !m_Memory )
-    //    throw std::runtime_error("Error allocating memory for image");
-    //
-    //device.bindImageMemory( m_Image , m_Memory,0);
 
     LOG << "Memory allocated: " << m_Memory << ENDL;
 

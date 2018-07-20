@@ -32,6 +32,7 @@
 
 
 #include <vka/core2/BufferMemoryPool.h>
+#include <vka/core2/TextureMemoryPool.h>
 
 #include <vka/linalg.h>
 
@@ -270,6 +271,36 @@ int main(int argc, char ** argv)
 //
 //==============================================================================
 
+    #if defined USE_REFACTORED
+        vka::TextureMemoryPool TP(&C);
+        TP.SetSize( 50*1024*1024 );
+        TP.SetUsage( vk::ImageUsageFlagBits::eColorAttachment
+                     | vk::ImageUsageFlagBits::eSampled
+                     | vk::ImageUsageFlagBits::eTransferDst
+                     | vk::ImageUsageFlagBits::eTransferSrc);
+
+        auto t1 = TP.AllocateTexture( vk::Extent3D(1024,1024,1),
+                                      1,
+                                      vk::Format::eR8G8B8A8Unorm,
+                                      9,
+                                      vk::ImageTiling::eOptimal,
+                                      vk::SharingMode::eExclusive);
+
+        auto t2 = TP.AllocateTexture( vk::Extent3D(1024,1024,1),
+                                      1,
+                                      vk::Format::eR8G8B8A8Unorm,
+                                      1,
+                                      vk::ImageTiling::eOptimal,
+                                      vk::SharingMode::eExclusive);
+
+        auto t3 = TP.AllocateTexture( vk::Extent3D(512,512,1),
+                                      1,
+                                      vk::Format::eR32G32B32A32Sfloat,
+                                      1,
+                                      vk::ImageTiling::eOptimal,
+                                      vk::SharingMode::eExclusive);
+    #endif
+
     // 1. First load host_image into memory, and specifcy we want 4 channels.
         vka::host_image D("resources/textures/Brick-2852a.jpg",4);
 
@@ -280,7 +311,7 @@ int main(int argc, char ** argv)
         vka::texture2d * tex = C.new_texture2d("test_texture");
         tex->set_size( D.width() , D.height() );
         tex->set_format(vk::Format::eR8G8B8A8Unorm);
-        tex->set_mipmap_levels(1);
+        tex->set_mipmap_levels(3);
         tex->create();
         tex->create_image_view(vk::ImageAspectFlagBits::eColor);
 
