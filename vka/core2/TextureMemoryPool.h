@@ -2,7 +2,13 @@
 #ifndef VKA_TEXTURE_MEMORYPOOL_H
 #define VKA_TEXTURE_MEMORYPOOL_H
 
+
+// ========= Standard Library ==========
+#include <map>
+
+// =========  Standard Vulkan =============
 #include <vulkan/vulkan.hpp>
+
 
 #include "Memory.h"
 
@@ -47,6 +53,31 @@ private:
         return m_size;
     }
 
+    vk::Image GetImage() const
+    {
+        return m_Image;
+    }
+
+    vk::Extent3D const & GetExtents() const
+    {
+        return m_create_info.extent;
+    }
+
+    vk::DeviceSize GetLayers() const
+    {
+        return m_create_info.arrayLayers;
+    }
+
+    vk::DeviceSize GetMipLevels() const
+    {
+        return m_create_info.mipLevels;
+    }
+
+    vk::ImageLayout GetLayout(uint32_t MipLevel = 0, uint32_t ArrayLayer = 0)
+    {
+        return m_LayoutsA.at(ArrayLayer).at(MipLevel);
+    }
+
     void Destroy();
 
     protected:
@@ -55,9 +86,16 @@ private:
         vk::Image             m_Image;
 
         vk::ImageCreateInfo   m_create_info;
-        vk::DeviceSize        m_offset=0;
-        vk::DeviceSize        m_size=0;
+        vk::DeviceSize        m_offset=0; // memory offset . are these needed?
+        vk::DeviceSize        m_size=0;   // memory size   . are these needed?
 
+
+        std::vector< std::vector<vk::ImageLayout > > m_LayoutsA;
+
+        // a map of all the layer's layouts
+        // std::map< uint32_t, // layer
+        //                    std::map< uint32_t, // mipmap
+        //                              vk::ImageLayout> >  m_Layout;
         friend class TextureMemoryPool;
 };
 
@@ -135,33 +173,7 @@ public:
       //  }
     }
 
-    void Create()
-    {
-       // auto device = get_device();
-       //
-       // if( m_create_info.size == 0)
-       // {
-       //     throw std::runtime_error("Size not set! Please use the set_size( ) method.");
-       // }
-       // if( m_buffer )
-       // {
-       //     throw std::runtime_error("Buffer already created");
-       // }
-       //
-       //
-       // m_buffer = device.createBuffer( m_create_info );
-       //
-       // if(!m_buffer)
-       //     throw std::runtime_error("Failed to create buffer");
-       //
-       // m_memory.Allocate( device.getBufferMemoryRequirements(m_buffer) );
-       //
-       // m_create_info.size = m_memory.GetSize();
-       //
-       // m_memory.Bind(m_buffer, 0);
-       // m_manager.reset( m_create_info.size  );
 
-    }
 
     std::shared_ptr<Texture> AllocateTexture( vk::Extent3D extent,
                                               uint32_t     arrayLayers,
@@ -226,11 +238,31 @@ public:
             T->m_parent      = this;
             T->m_Image       = image;
             T->m_offset      = offset;
+            T->m_size        = req.size;
+
+
+            std::vector<vk::ImageLayout> mips;
+            mips.assign(mipLevels, vk::ImageLayout::ePreinitialized);
+
+            T->m_LayoutsA.assign(arrayLayers, mips);
+
             return T;
         }
 
         return nullptr;
     }
+
+    void FreeTexture( Texture & S )
+    {
+        m_manager.free( S.m_offset);
+        S.m_offset = 0;
+        S.m_size = 0;
+        S.m_parent = nullptr;
+
+        get_device().destroyImage(S.m_Image);
+        S.m_Image = vk::Image();
+    }
+
 
 protected:
     vka::Memory                m_memory;
@@ -246,7 +278,9 @@ protected:
 inline void Texture::Destroy()
 {
     if(m_Image)
-        m_parent->get_device().destroyImage(m_Image);
+    {
+        m_parent->FreeTexture(*this);
+    }
 }
 
 }
