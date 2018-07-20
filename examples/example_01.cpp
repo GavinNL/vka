@@ -286,17 +286,12 @@ int main(int argc, char ** argv)
         vka::host_image D("resources/textures/Brick-2852a.jpg",4);
 
 
-    // 2. Use the context's helper function to create a device local texture
-    //    We will be using a texture2d which is a case specific version of the
-    //    generic texture
-        vka::texture2d * tex = C.new_texture2d("test_texture");
-        tex->set_size( D.width() , D.height() );
-        tex->set_format(vk::Format::eR8G8B8A8Unorm);
-        tex->set_mipmap_levels(1);
-        tex->create();
-        tex->create_image_view(vk::ImageAspectFlagBits::eColor);
 
 
+
+        // 2. Use the context's helper function to create a device local texture
+        //    We will be using a texture2d which is a case specific version of the
+        //    generic texture
 #if defined USE_REFACTORED
 //        auto Tex = TP.AllocateTexture( vk::Extent3D(D.width(), D.height(),1),
 //                                      1,
@@ -308,6 +303,13 @@ int main(int argc, char ** argv)
                                          vk::Extent2D(D.width(), D.height() ),
                                          1,1
                                          );
+#else
+            vka::texture2d * tex = C.new_texture2d("test_texture");
+            tex->set_size( D.width() , D.height() );
+            tex->set_format(vk::Format::eR8G8B8A8Unorm);
+            tex->set_mipmap_levels(1);
+            tex->create();
+            tex->create_image_view(vk::ImageAspectFlagBits::eColor);
 #endif
 
 
@@ -317,6 +319,7 @@ int main(int argc, char ** argv)
 #else
         void * image_buffer_data = staging_buffer->map_memory();
 #endif
+
         memcpy( image_buffer_data, D.data(), D.size() );
 
 #if defined USE_REFACTORED
@@ -337,11 +340,14 @@ int main(int argc, char ** argv)
         cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
             // a. convert the texture to eTransferDstOptimal
-            tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
+#if defined USE_REFACTORED
+        cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eTransferDstOptimal,
+                                 vk::PipelineStageFlagBits::eBottomOfPipe,
+                                 vk::PipelineStageFlagBits::eTopOfPipe);
+#else
+        tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
+#endif
 
-            cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eTransferDstOptimal,
-                                     vk::PipelineStageFlagBits::eBottomOfPipe,
-                                     vk::PipelineStageFlagBits::eTopOfPipe);
 
 
             // b. copy the data from the buffer to the texture
@@ -356,7 +362,6 @@ int main(int argc, char ** argv)
                                 .setMipLevel(0);  // only the first mip-map level
 
 #if defined USE_REFACTORED
-            cb1.copySubBufferToImage( StagingBuffer, tex, vk::ImageLayout::eTransferDstOptimal, BIC);
             cb1.copySubBufferToTexture( StagingBuffer, Tex, vk::ImageLayout::eTransferDstOptimal, BIC);
 
 #else
@@ -364,17 +369,15 @@ int main(int argc, char ** argv)
 #endif
 
 
+            // c. convert the texture into eShaderReadOnlyOptimal
 #if defined USE_REFACTORED
-            cb1.copySubBufferToImage( StagingBuffer, tex, vk::ImageLayout::eTransferDstOptimal, BIC);
-            cb1.copySubBufferToTexture( StagingBuffer, Tex, vk::ImageLayout::eTransferDstOptimal, BIC);
             cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eShaderReadOnlyOptimal,
                                      vk::PipelineStageFlagBits::eBottomOfPipe,
                                      vk::PipelineStageFlagBits::eTopOfPipe);
 #else
-            tex->copy_buffer( cb1, staging_buffer, BIC);
-#endif
-            // c. convert the texture into eShaderReadOnlyOptimal
             tex->convert(cb1, vk::ImageLayout::eShaderReadOnlyOptimal);
+#endif
+
 
         // end and submit the command buffer
         cb1.end();
@@ -442,8 +445,11 @@ int main(int argc, char ** argv)
     // we want a descriptor set for set #0 in the pipeline.
     vka::descriptor_set * texture_descriptor = pipeline->create_new_descriptor_set(0, descriptor_pool);
     //  attach our texture to binding 0 in the set.
-    //texture_descriptor->attach_sampler(0, tex);
+#if defined USE_REFACTORED
     texture_descriptor->AttachSampler(0, Tex);
+#else
+    texture_descriptor->attach_sampler(0, tex);
+#endif
     texture_descriptor->update();
 
     vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
