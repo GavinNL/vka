@@ -5,6 +5,7 @@
 
 // ========= Standard Library ==========
 #include <map>
+#include <cmath>
 
 // =========  Standard Vulkan =============
 #include <vulkan/vulkan.hpp>
@@ -20,6 +21,7 @@ namespace vka
 {
 
 class TextureMemoryPool;
+class command_buffer;
 
 /**
  * @brief The SubBuffer class
@@ -84,12 +86,13 @@ private:
 
     vk::ImageView GetView(const std::string & name = "default")
     {
-        return m_Views.at("default");
+        return m_Views.at(name);
     }
 
-    // vk::Sampler GetSampler()
-    // {
-    // }
+    vk::Sampler GetSampler( const std::string & name = "default")
+    {
+        return m_Samplers.at(name);
+    }
 
     vk::Format GetFormat() const
     {
@@ -113,10 +116,66 @@ private:
         C.subresourceRange.layerCount     = num_array_layers;
 
         CreateImageView(name, C);
-
     }
 
+
+    vk::SamplerCreateInfo GetDefaultSamplerCreateInfo() const
+    {
+        vk::SamplerCreateInfo SamplerInfo;
+        SamplerInfo.magFilter        = vk::Filter::eLinear;// VK_FILTER_LINEAR;
+        SamplerInfo.minFilter        = vk::Filter::eLinear;// VK_FILTER_LINEAR;
+        SamplerInfo.addressModeU     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SamplerInfo.addressModeV     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SamplerInfo.addressModeW     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SamplerInfo.anisotropyEnable = VK_TRUE;
+        SamplerInfo.maxAnisotropy    = 1;
+        SamplerInfo.borderColor      = vk::BorderColor::eIntOpaqueBlack;// VK_BORDER_COLOR_INT_OPAQUE_BLACK ;
+        SamplerInfo.unnormalizedCoordinates = VK_FALSE;
+        SamplerInfo.compareEnable    = VK_FALSE;
+        SamplerInfo.compareOp        = vk::CompareOp::eAlways;// VK_COMPARE_OP_ALWAYS;
+        SamplerInfo.mipmapMode       = vk::SamplerMipmapMode::eLinear;// VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        SamplerInfo.mipLodBias       = 0.0f;
+        SamplerInfo.minLod           = 0.0f;
+        SamplerInfo.maxLod           = GetMipLevels();
+        return SamplerInfo;
+    }
+    /**
+     * @brief CreateImageView
+     * @param name - name to give the view
+     * @param CreateInfo
+     *
+     * Create an ImageView using the CreateInfo struct. The View can be
+     * retrieved by using the GetImageView(name)
+     */
     void CreateImageView(const std::string & name, vk::ImageViewCreateInfo CreateInfo);
+
+    /**
+     * @brief GetImageView
+     * @param name
+     * @return
+     *
+     * Returns the image view with the given name.
+     */
+    vk::ImageView GetImageView(const std::string & name = "default") const
+    {
+        return m_Views.at(name);
+    }
+
+
+    /**
+     * @brief CreateSampler
+     * @param name
+     * @param CreateInfo
+     *
+     * Create a sampler with a given name
+     */
+    void CreateSampler(const std::string & name, vk::SamplerCreateInfo const & CreateInfo);
+
+
+    void DestroyImageView(vk::ImageView V);
+    void DestroySampler(vk::Sampler S);
+    void DestroyImageView(const std::string & name = "default");
+    void DestroySampler(const std::string & name = "default");
 
     protected:
         TextureMemoryPool *   m_parent = nullptr;
@@ -130,6 +189,7 @@ private:
         std::vector< std::vector<vk::ImageLayout > > m_LayoutsA;
 
         std::map<std::string, vk::ImageView> m_Views;
+        std::map<std::string, vk::Sampler>   m_Samplers;
 
         friend class TextureMemoryPool;
         friend class command_buffer;
@@ -137,7 +197,14 @@ private:
 
 
 
-
+/**
+ * @brief The TextureMemoryPool class
+ *
+ * The TextureMemoryPool class is used to allocate textures.
+ * There should only be one or two TextureMemory pools and they should be allocated
+ * to have a large amount of space 50+MB.
+ *
+ */
 class TextureMemoryPool : public context_child
 {
 public:
@@ -210,10 +277,27 @@ public:
     }
 
 
-
-    std::shared_ptr<Texture> AllocateTexture( vk::Extent3D extent,
+    /**
+     * @brief AllocateTexture
+     * @param format - format
+     * @param extent - size of the texture
+     * @param arrayLayers - number of array layers
+     * @param mipLevels - number of mipmap levels
+     * @param tiling - image tiling
+     * @param sharingMode
+     * @return
+     *
+     * Allocate a texture from the memory pool. This is a generic
+     * allocation method and can be used to allocate any type of
+     * texture.
+     *
+     * An ImageView is NOT created for this texture when calling this
+     * function.
+     *
+     */
+    std::shared_ptr<Texture> AllocateTexture( vk::Format   format,
+                                              vk::Extent3D extent,
                                               uint32_t     arrayLayers,
-                                              vk::Format   format,
                                               uint32_t     mipLevels,
                                               vk::ImageTiling tiling,
                                               vk::SharingMode sharingMode)
@@ -300,7 +384,18 @@ public:
     }
 
 
-    //=============================
+    /**
+     * @brief AllocateTexture2D
+     * @param format
+     * @param extent
+     * @param arrayLayers
+     * @param mipLevels
+     * @param sharingMode
+     * @return
+     *
+     * Allocate a 2D texture or a 2D Array. A "default" ImageView is created
+     * with is a view into the entire texture.
+     */
     std::shared_ptr<Texture> AllocateTexture2D( vk::Format format,
                                                 vk::Extent2D extent,
                                                 uint32_t     arrayLayers=1,
@@ -312,9 +407,9 @@ public:
             mipLevels = std::min( std::log2( extent.height), std::log2( extent.width) );
         }
 
-        auto T = AllocateTexture( vk::Extent3D{extent.width,extent.height,1},
+        auto T = AllocateTexture( format,
+                                  vk::Extent3D{extent.width,extent.height,1},
                                   arrayLayers,
-                                  format,
                                   mipLevels,
                                   vk::ImageTiling::eOptimal,
                                   sharingMode);
@@ -324,6 +419,9 @@ public:
                             vk::ImageAspectFlagBits::eColor,
                             0, arrayLayers,
                             0, mipLevels);
+
+        T->CreateSampler("default", T->GetDefaultSamplerCreateInfo() );
+
         return T;
     }
 
@@ -355,10 +453,66 @@ inline void Texture::CreateImageView(const std::string & name, vk::ImageViewCrea
     throw std::runtime_error("Error Creating Image View");
 }
 
+inline void Texture::CreateSampler(const std::string &name, const vk::SamplerCreateInfo &CreateInfo)
+{
+    if( m_Samplers.count(name) )
+    {
+        throw std::runtime_error("A view with that name already exists");
+    }
+
+    auto sampler =  m_parent->get_device().createSampler( CreateInfo );
+    if( !sampler )
+    {
+        throw std::runtime_error("Error creating sampler");
+    }
+    m_Samplers[name] = sampler;
+}
+
+
+inline void Texture::DestroyImageView(vk::ImageView V)
+{
+    for(auto & s : m_Views)
+        if(s.second == V)
+            DestroyImageView(s.first);
+}
+
+inline void Texture::DestroySampler(vk::Sampler S)
+{
+    for(auto & s : m_Samplers)
+        if(s.second == S)
+            DestroySampler(s.first);
+}
+
+inline void Texture::DestroyImageView(const std::string & name)
+{
+    auto v = m_Views.at(name);
+    m_parent->get_device().destroyImageView(v);
+    m_Views.erase(name);
+}
+
+inline void Texture::DestroySampler(const std::string & name )
+{
+    auto v = m_Samplers.at(name);
+    m_parent->get_device().destroySampler(v);
+    m_Samplers.erase(name);
+}
+
+
+
 inline void Texture::Destroy()
 {
     if(m_Image)
     {
+        for(auto & v : m_Views)
+        {
+            m_parent->get_device().destroyImageView( v.second );
+        }
+        for(auto & v : m_Samplers)
+        {
+            m_parent->get_device().destroySampler( v.second );
+        }
+        m_Samplers.clear();
+        m_Views.clear();
         m_parent->FreeTexture(*this);
     }
 }
