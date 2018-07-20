@@ -180,4 +180,153 @@ void command_buffer::copySubBufferToTexture( const std::shared_ptr<SubBuffer> & 
                 );
 }
 
+
+void command_buffer::convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
+                                         uint32_t layer,
+                                         vk::ImageLayout new_layout,
+                                         vk::PipelineStageFlags srcStageMask,
+                                         vk::PipelineStageFlags dstStageMask)
+{
+    vk::ImageSubresourceRange R;
+    R.baseMipLevel = 0;
+    R.levelCount = tex->GetMipLevels();
+    R.baseArrayLayer = layer;
+    R.layerCount = 1;
+    convertTexture( tex,
+                    tex->GetLayout(0,layer), // old layout, all mips must be the same
+                    new_layout,
+                    R,
+                    srcStageMask,
+                    dstStageMask
+                    );
+}
+
+void command_buffer::convertTexture( std::shared_ptr<vka::Texture> & tex,
+                                     vk::ImageLayout old_layout ,
+                                     vk::ImageLayout new_layout ,
+                                     vk::ImageSubresourceRange const & range,
+                                     vk::PipelineStageFlags srcStageMask,
+                                     vk::PipelineStageFlags dstStageMask
+                                     )
+{
+
+    vk::ImageMemoryBarrier barrier;
+
+    barrier.oldLayout = old_layout;
+    barrier.newLayout = new_layout;
+
+    barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image                           = tex->GetImage();
+
+    barrier.subresourceRange = range;
+
+    auto & imageMemoryBarrier = barrier;
+    switch (old_layout)
+    {
+    case vk::ImageLayout::eUndefined: // VK_IMAGE_LAYOUT_UNDEFINED:
+        // Image layout is undefined (or does not matter)
+        // Only valid as initial layout
+        // No flags required, listed only for completeness
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlags();
+        break;
+
+    case vk::ImageLayout::ePreinitialized: //:
+        // Image is preinitialized
+        // Only valid as initial layout for linear images, preserves memory contents
+        // Make sure host writes have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eHostWrite;// VK_ACCESS_HOST_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eColorAttachmentOptimal: //:
+        // Image is a color attachment
+        // Make sure any writes to the color buffer have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;//VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eDepthStencilAttachmentOptimal: //:
+        // Image is a depth/stencil attachment
+        // Make sure any writes to the depth/stencil buffer have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;//VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eTransferSrcOptimal: //:
+        // Image is a transfer source
+        // Make sure any reads from the image have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;//VK_ACCESS_TRANSFER_READ_BIT;
+        break;
+
+    case vk::ImageLayout::eTransferDstOptimal: //:
+        // Image is a transfer destination
+        // Make sure any writes to the image have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;//VK_ACCESS_TRANSFER_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eShaderReadOnlyOptimal: //:
+        // Image is read by a shader
+        // Make sure any shader reads from the image have been finished
+        imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eShaderRead;//VK_ACCESS_SHADER_READ_BIT;
+        break;
+    default:
+        // Other source layouts aren't handled (yet)
+        break;
+    }
+
+    // Target layouts (new)
+    // Destination access mask controls the dependency for the new image layout
+    switch (new_layout)
+    {
+    case vk::ImageLayout::eTransferDstOptimal: //:
+        // Image will be used as a transfer destination
+        // Make sure any writes to the image have been finished
+        imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;//VK_ACCESS_TRANSFER_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eTransferSrcOptimal: //:
+        // Image will be used as a transfer source
+        // Make sure any reads from the image have been finished
+        imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;//VK_ACCESS_TRANSFER_READ_BIT;
+        break;
+
+    case vk::ImageLayout::eColorAttachmentOptimal: //:
+        // Image will be used as a color attachment
+        // Make sure any writes to the color buffer have been finished
+        imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;//VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eDepthStencilAttachmentOptimal: //:
+        // Image layout will be used as a depth/stencil attachment
+        // Make sure any writes to depth/stencil buffer have been finished
+        imageMemoryBarrier.dstAccessMask = imageMemoryBarrier.dstAccessMask | vk::AccessFlagBits::eDepthStencilAttachmentWrite;//VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        break;
+
+    case vk::ImageLayout::eShaderReadOnlyOptimal: //:
+        // Image will be read in a shader (sampler, input attachment)
+        // Make sure any writes to the image have been finished
+        if (imageMemoryBarrier.srcAccessMask == vk::AccessFlags())
+        {
+            imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eHostWrite | vk::AccessFlagBits::eTransferWrite;// ;//VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+        }
+        imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;//VK_ACCESS_SHADER_READ_BIT;
+        break;
+    default:
+        // Other source layouts aren't handled (yet)
+        break;
+    }
+
+    pipelineBarrier( srcStageMask,
+                     dstStageMask,
+                     vk::DependencyFlags(),0,0,barrier);
+
+
+    for(uint32_t i=range.baseArrayLayer; i<range.layerCount;i++)
+    {
+        for(uint32_t j=range.baseMipLevel; j<range.levelCount;j++)
+        {
+            tex->m_LayoutsA.at(i).at(j) = new_layout;
+        }
+    }
+
+}
+
 }

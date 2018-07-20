@@ -97,6 +97,23 @@ class command_buffer : public vk::CommandBuffer
                                  std::shared_ptr<vka::Texture> & tex,
                                  vk::ImageLayout imageLayout,
                                  vk::BufferImageCopy const & C) const;
+
+
+    // Generic convertTexture
+    void convertTexture(std::shared_ptr<vka::Texture> & tex,
+                        vk::ImageLayout old_layout,
+                        vk::ImageLayout new_layout,
+                        const vk::ImageSubresourceRange &range,
+                        vk::PipelineStageFlags srcStageMask,
+                        vk::PipelineStageFlags dstStageMask);
+
+    // Converts a specific texture layer and all it's mipmaps to the
+    // new layout. All mip levels must be of the same layout
+    void convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
+                             uint32_t layer,
+                             vk::ImageLayout new_layout,
+                             vk::PipelineStageFlags srcStageMask,
+                             vk::PipelineStageFlags dstStageMask);
 };
 
 }
