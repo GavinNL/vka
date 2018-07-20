@@ -84,19 +84,23 @@ private:
     void Destroy();
 
 
-    vk::ImageView GetView(const std::string & name = "default")
-    {
-        return m_Views.at(name);
-    }
 
-    vk::Sampler GetSampler( const std::string & name = "default")
-    {
-        return m_Samplers.at(name);
-    }
 
     vk::Format GetFormat() const
     {
         return m_create_info.format;
+    }
+
+    /**
+     * @brief GetImageView
+     * @param name
+     * @return
+     *
+     * Returns the image view with the given name.
+     */
+    vk::ImageView GetImageView(const std::string & name = "default") const
+    {
+        return m_Views.at(name);
     }
 
     void CreateImageView( std::string const & name,
@@ -149,18 +153,13 @@ private:
      */
     void CreateImageView(const std::string & name, vk::ImageViewCreateInfo CreateInfo);
 
-    /**
-     * @brief GetImageView
-     * @param name
-     * @return
-     *
-     * Returns the image view with the given name.
-     */
-    vk::ImageView GetImageView(const std::string & name = "default") const
-    {
-        return m_Views.at(name);
-    }
 
+
+
+    vk::Sampler GetSampler( const std::string & name = "default") const
+    {
+        return m_Samplers.at(name);
+    }
 
     /**
      * @brief CreateSampler
@@ -291,8 +290,7 @@ public:
      * allocation method and can be used to allocate any type of
      * texture.
      *
-     * An ImageView is NOT created for this texture when calling this
-     * function.
+     * An ImageView and a Sampler are NOT created using these functions.
      *
      */
     std::shared_ptr<Texture> AllocateTexture( vk::Format   format,
@@ -394,7 +392,7 @@ public:
      * @return
      *
      * Allocate a 2D texture or a 2D Array. A "default" ImageView is created
-     * with is a view into the entire texture.
+     * with is a view into the entire texture as well as a "default" sampler.
      */
     std::shared_ptr<Texture> AllocateTexture2D( vk::Format format,
                                                 vk::Extent2D extent,

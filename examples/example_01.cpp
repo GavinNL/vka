@@ -298,12 +298,16 @@ int main(int argc, char ** argv)
 
 
 #if defined USE_REFACTORED
-        auto Tex = TP.AllocateTexture( vk::Extent3D(D.width(), D.height(),1),
-                                      1,
-                                      vk::Format::eR8G8B8A8Unorm,
-                                      1,
-                                      vk::ImageTiling::eOptimal,
-                                      vk::SharingMode::eExclusive);
+//        auto Tex = TP.AllocateTexture( vk::Extent3D(D.width(), D.height(),1),
+//                                      1,
+//                                      vk::Format::eR8G8B8A8Unorm,
+//                                      1,
+//                                      vk::ImageTiling::eOptimal,
+//                                      vk::SharingMode::eExclusive);
+        auto Tex = TP.AllocateTexture2D( vk::Format::eR8G8B8A8Unorm,
+                                         vk::Extent2D(D.width(), D.height() ),
+                                         1,1
+                                         );
 #endif
 
 
@@ -335,6 +339,11 @@ int main(int argc, char ** argv)
             // a. convert the texture to eTransferDstOptimal
             tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
 
+            cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eTransferDstOptimal,
+                                     vk::PipelineStageFlagBits::eBottomOfPipe,
+                                     vk::PipelineStageFlagBits::eTopOfPipe);
+
+
             // b. copy the data from the buffer to the texture
             vk::BufferImageCopy BIC;
             BIC.setBufferImageHeight(  D.height() )
@@ -354,6 +363,16 @@ int main(int argc, char ** argv)
             tex->copy_buffer( cb1, staging_buffer, BIC);
 #endif
 
+
+#if defined USE_REFACTORED
+            cb1.copySubBufferToImage( StagingBuffer, tex, vk::ImageLayout::eTransferDstOptimal, BIC);
+            cb1.copySubBufferToTexture( StagingBuffer, Tex, vk::ImageLayout::eTransferDstOptimal, BIC);
+            cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eShaderReadOnlyOptimal,
+                                     vk::PipelineStageFlagBits::eBottomOfPipe,
+                                     vk::PipelineStageFlagBits::eTopOfPipe);
+#else
+            tex->copy_buffer( cb1, staging_buffer, BIC);
+#endif
             // c. convert the texture into eShaderReadOnlyOptimal
             tex->convert(cb1, vk::ImageLayout::eShaderReadOnlyOptimal);
 
@@ -423,7 +442,8 @@ int main(int argc, char ** argv)
     // we want a descriptor set for set #0 in the pipeline.
     vka::descriptor_set * texture_descriptor = pipeline->create_new_descriptor_set(0, descriptor_pool);
     //  attach our texture to binding 0 in the set.
-    texture_descriptor->attach_sampler(0, tex);
+    //texture_descriptor->attach_sampler(0, tex);
+    texture_descriptor->AttachSampler(0, Tex);
     texture_descriptor->update();
 
     vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);

@@ -8,7 +8,7 @@
 
 #include <vka/utils/buffer_pool.h>
 
-
+#include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/BufferMemoryPool.h>
 
 #include <vka/core/log.h>
@@ -181,4 +181,31 @@ vka::descriptor_set * vka::descriptor_set::AttachUniformBuffer(uint32_t index,
     m_DescriptorInfos[index] = bufferInfo;
 
     return this;
+}
+
+
+vka::descriptor_set * vka::descriptor_set::AttachSampler( uint32_t index,
+                                                          std::shared_ptr<vka::Texture> & texture,
+                                                          vk::ImageView view,
+                                                          vk::Sampler sampler
+                                                          )
+{
+    vka::DescriptorInfo imageInfo;
+
+    imageInfo.type              = DescriptorInfo::Image;
+    imageInfo.image.imageLayout = texture->GetLayout();//->get_layout();// texture.get().m_CreateInfo.initialLayout;
+    imageInfo.image.imageView   = view;// texture.get().m_View;
+    imageInfo.image.sampler     = sampler;// texture.get().m_Sampler;
+
+    m_DescriptorInfos[index] = imageInfo;
+
+    return this;
+}
+
+vka::descriptor_set * vka::descriptor_set::AttachSampler(uint32_t index,
+                                                         std::shared_ptr<vka::Texture> &texture,
+                                                         std::string const & view_name,
+                                                         std::string const & sampler_name)
+{
+    return AttachSampler(index, texture, texture->GetImageView(view_name), texture->GetSampler(sampler_name));
 }
