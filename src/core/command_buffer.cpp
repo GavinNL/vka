@@ -10,6 +10,9 @@
 
 #include <vka/core/extensions.h>
 
+
+#include <vka/core2/TextureMemoryPool.h>
+
 void vka::command_buffer::bindVertexSubBuffer(uint32_t firstBinding,
                               vka::sub_buffer const * buffer , vk::DeviceSize offset) const
 {
@@ -154,6 +157,24 @@ void command_buffer::copySubBufferToImage( const std::shared_ptr<SubBuffer> & bu
     vk::CommandBuffer::copyBufferToImage(
                 buffer->GetParentBufferHandle(),
                 tex->get_image(),
+                imageLayout,
+                lC
+                );
+}
+
+void command_buffer::copySubBufferToTexture( const std::shared_ptr<SubBuffer> & buffer,
+                                           std::shared_ptr<vka::Texture> & tex,
+                                           vk::ImageLayout imageLayout,
+                                           vk::BufferImageCopy const & C) const
+{
+    vk::BufferImageCopy lC = C;
+
+    lC.setBufferOffset( buffer->GetOffset() + C.bufferOffset );
+    //lC.setImageOffset(  tex->GetOffset()    + C.imageOffset);
+
+    vk::CommandBuffer::copyBufferToImage(
+                buffer->GetParentBufferHandle(),
+                tex->GetImage(),
                 imageLayout,
                 lC
                 );

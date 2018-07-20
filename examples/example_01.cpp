@@ -279,26 +279,7 @@ int main(int argc, char ** argv)
                      | vk::ImageUsageFlagBits::eTransferDst
                      | vk::ImageUsageFlagBits::eTransferSrc);
 
-        auto t1 = TP.AllocateTexture( vk::Extent3D(1024,1024,1),
-                                      1,
-                                      vk::Format::eR8G8B8A8Unorm,
-                                      9,
-                                      vk::ImageTiling::eOptimal,
-                                      vk::SharingMode::eExclusive);
 
-        auto t2 = TP.AllocateTexture( vk::Extent3D(1024,1024,1),
-                                      1,
-                                      vk::Format::eR8G8B8A8Unorm,
-                                      1,
-                                      vk::ImageTiling::eOptimal,
-                                      vk::SharingMode::eExclusive);
-
-        auto t3 = TP.AllocateTexture( vk::Extent3D(512,512,1),
-                                      1,
-                                      vk::Format::eR32G32B32A32Sfloat,
-                                      1,
-                                      vk::ImageTiling::eOptimal,
-                                      vk::SharingMode::eExclusive);
     #endif
 
     // 1. First load host_image into memory, and specifcy we want 4 channels.
@@ -311,9 +292,19 @@ int main(int argc, char ** argv)
         vka::texture2d * tex = C.new_texture2d("test_texture");
         tex->set_size( D.width() , D.height() );
         tex->set_format(vk::Format::eR8G8B8A8Unorm);
-        tex->set_mipmap_levels(3);
+        tex->set_mipmap_levels(1);
         tex->create();
         tex->create_image_view(vk::ImageAspectFlagBits::eColor);
+
+
+#if defined USE_REFACTORED
+        auto Tex = TP.AllocateTexture( vk::Extent3D(D.width(), D.height(),1),
+                                      1,
+                                      vk::Format::eR8G8B8A8Unorm,
+                                      1,
+                                      vk::ImageTiling::eOptimal,
+                                      vk::SharingMode::eExclusive);
+#endif
 
 
     // 3. Map the buffer to memory and copy the image to it.
@@ -357,6 +348,8 @@ int main(int argc, char ** argv)
 
 #if defined USE_REFACTORED
             cb1.copySubBufferToImage( StagingBuffer, tex, vk::ImageLayout::eTransferDstOptimal, BIC);
+            cb1.copySubBufferToTexture( StagingBuffer, Tex, vk::ImageLayout::eTransferDstOptimal, BIC);
+
 #else
             tex->copy_buffer( cb1, staging_buffer, BIC);
 #endif

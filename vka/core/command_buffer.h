@@ -12,7 +12,10 @@ class pipeline;
 class descriptor_set;
 class texture;
 
+
 class SubBuffer;
+class Texture;
+
 
 class PushDescriptorInfo
 {
@@ -84,10 +87,16 @@ class command_buffer : public vk::CommandBuffer
                                              vk::IndexType indexType,
                                              vk::DeviceSize offset=0) const;
 
+    // this function will be deprecated
     void copySubBufferToImage( const std::shared_ptr<SubBuffer> & buffer,
                                vka::texture * tex,
                                vk::ImageLayout imageLayout,
                                vk::BufferImageCopy const & C) const;
+
+    void copySubBufferToTexture( const std::shared_ptr<SubBuffer> & buffer,
+                                 std::shared_ptr<vka::Texture> & tex,
+                                 vk::ImageLayout imageLayout,
+                                 vk::BufferImageCopy const & C) const;
 };
 
 }
