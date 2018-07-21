@@ -51,7 +51,7 @@ private:
 
     vk::Buffer GetParentBufferHandle() const;
 
-    void* MapBuffer();
+    void* MapBuffer(vk::DeviceSize offset=0);
     void  UnmapBuffer();
 
     void CopyData( void const * src, vk::DeviceSize d)
@@ -209,9 +209,9 @@ inline vk::Buffer SubBuffer::GetParentBufferHandle() const
     return m_parent->GetBufferHandle();
 }
 
-inline void *SubBuffer::MapBuffer()
+inline void *SubBuffer::MapBuffer(vk::DeviceSize offset)
 {
-    return m_parent->MapBuffer(m_offset);
+    return m_parent->MapBuffer(m_offset+offset);
 }
 
 inline void SubBuffer::UnmapBuffer()
