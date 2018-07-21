@@ -450,8 +450,8 @@ int main(int argc, char ** argv)
     // we want a descriptor set for set #0 in the pipeline.
     vka::descriptor_set * texture_descriptor = pipeline->create_new_descriptor_set(0, descriptor_pool);
     //  attach our texture to binding 0 in the set.
-    texture_descriptor->attach_sampler(0, tex);
     //texture_descriptor->attach_sampler(0, tex);
+    texture_descriptor->AttachSampler(0, Tex);
     texture_descriptor->update();
 
     vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
@@ -460,8 +460,8 @@ int main(int argc, char ** argv)
     ubuffer_descriptor->update();
 
     vka::descriptor_set * dubuffer_descriptor = pipeline->create_new_descriptor_set(2, descriptor_pool);
-    dubuffer_descriptor->attach_dynamic_uniform_buffer(0, du_buffer, sizeof(dynamic_uniform_buffer_t), 0);
-    //dubuffer_descriptor->AttachDynamicUniformBuffer(0,DU_buffer, DU_buffer->GetSize() );
+    //dubuffer_descriptor->attach_dynamic_uniform_buffer(0, du_buffer, sizeof(dynamic_uniform_buffer_t), 0);
+    dubuffer_descriptor->AttachDynamicUniformBuffer(0,DU_buffer, DU_buffer->GetSize() );
     dubuffer_descriptor->update();
 
 
