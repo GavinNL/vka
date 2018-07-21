@@ -52,6 +52,7 @@ private:
     vk::Buffer GetParentBufferHandle() const;
 
     void* MapBuffer();
+    void  UnmapBuffer();
 
     protected:
         BufferMemoryPool *    m_parent = nullptr;
@@ -176,6 +177,11 @@ public:
         return d;
     }
 
+    void UnmapBuffer()
+    {
+        m_memory.UnMap();;
+    }
+
 protected:
     vk::Buffer                 m_buffer;
     vka::Memory                m_memory;
@@ -198,6 +204,11 @@ inline vk::Buffer SubBuffer::GetParentBufferHandle() const
 inline void *SubBuffer::MapBuffer()
 {
     return m_parent->MapBuffer(m_offset);
+}
+
+inline void SubBuffer::UnmapBuffer()
+{
+    m_parent->UnmapBuffer();
 }
 
 }
