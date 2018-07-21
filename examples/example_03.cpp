@@ -216,20 +216,11 @@ int main(int argc, char ** argv)
 
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
-        vka::buffer* vertex_buffer = C.new_vertex_buffer(  "vb", 5*1024 );
-        vka::buffer* index_buffer  = C.new_index_buffer(   "ib", 5*1024 );
-        vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 5*1024);
-        vka::buffer* du_buffer     = C.new_uniform_buffer( "dub", 5*1024);
-
-
         auto V_buffer  = BufferPool.NewSubBuffer(5*1024);
         auto I_buffer  = BufferPool.NewSubBuffer(5*1024);
         auto U_buffer  = BufferPool.NewSubBuffer(5*1024);
         auto DU_buffer = BufferPool.NewSubBuffer(5*1024);
 
-
-        // allocate a staging buffer of 10MB
-        vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
         auto StagingBuffer = StagingBufferPool.NewSubBuffer(10*1024*1024);
 
         // using the map< > method, we can return an array_view into the
@@ -238,33 +229,17 @@ int main(int argc, char ** argv)
         // so we do not accidenty access the array_view after the
         // staging_buffer has been unmapped.
         {
-            {
-                void * vertex_map =  staging_buffer->map_memory();
-                memcpy( vertex_map, vertices.data(), vertices.size()*sizeof(Vertex));
 
-                LOG << "Size of Vertices: " << vertices.size()*sizeof(Vertex) << ENDL;
+            void * vertex_map =  StagingBuffer->MapBuffer();
 
-                void * index_map = static_cast<char*>(vertex_map) + vertices.size()*sizeof(Vertex);
+            memcpy( vertex_map, vertices.data(), vertices.size()*sizeof(Vertex));
 
-                memcpy( index_map, indices.data(), indices.size()*sizeof(uint16_t));
+            LOG << "Size of Vertices: " << vertices.size()*sizeof(Vertex) << ENDL;
 
-                LOG << "Size of Indices: " << indices.size()*sizeof(uint16_t) << ENDL;
+            void * index_map = static_cast<char*>(vertex_map) + vertices.size()*sizeof(Vertex);
 
-            }
-            //----------------------------------------------------
-            {
-                void * vertex_map =  StagingBuffer->MapBuffer();
+            memcpy( index_map, indices.data(), indices.size()*sizeof(uint16_t));
 
-                memcpy( vertex_map, vertices.data(), vertices.size()*sizeof(Vertex));
-
-                LOG << "Size of Vertices: " << vertices.size()*sizeof(Vertex) << ENDL;
-
-                void * index_map = static_cast<char*>(vertex_map) + vertices.size()*sizeof(Vertex);
-
-                memcpy( index_map, indices.data(), indices.size()*sizeof(uint16_t));
-
-
-            }
         }
 
         // 2. Copy the data from the host-visible buffer to the vertex/index buffers
@@ -280,10 +255,6 @@ int main(int argc, char ** argv)
         const vk::DeviceSize index_offset    = vertices.size()*sizeof(Vertex);
         const vk::DeviceSize index_size      = indices.size()*sizeof(uint16_t);
 
-
-        copy_cmd.copyBuffer( *staging_buffer , *vertex_buffer, vk::BufferCopy{ vertex_offset    , 0 , vertex_size } );
-        copy_cmd.copyBuffer( *staging_buffer , *index_buffer , vk::BufferCopy{ index_offset     , 0 , index_size  } );
-        //----------------------------------
         copy_cmd.copySubBuffer( StagingBuffer , V_buffer, vk::BufferCopy{ vertex_offset    , 0 , vertex_size } );
         copy_cmd.copySubBuffer( StagingBuffer , I_buffer, vk::BufferCopy{ index_offset     , 0 , index_size  } );
 
@@ -296,7 +267,6 @@ int main(int argc, char ** argv)
         // Unmap the memory.
         //   WARNING: DO NOT ACCESS the vertex and index array_views as these
         //            now point to unknown memory spaces
-        staging_buffer->unmap_memory();
 
 
 //==============================================================================
@@ -326,11 +296,6 @@ int main(int argc, char ** argv)
 
 
     // 3. Map the buffer to memory and copy the image to it.
-        {
-            void * image_buffer_data = staging_buffer->map_memory();
-            memcpy( image_buffer_data, D.data(), D.size() );
-            staging_buffer->unmap_memory();
-        }
         {
             void * image_buffer_data = StagingBuffer->MapBuffer();
             memcpy( image_buffer_data, D.data(), D.size() );
@@ -368,7 +333,6 @@ int main(int argc, char ** argv)
                                 .setLayerCount(1) // only copy one layer
                                 .setMipLevel(0);  // only the first mip-map level
 
-            tex->copy_buffer( cb1, staging_buffer, BIC);
             //---------------------------------------------
             cb1.copySubBufferToTexture( StagingBuffer, Tex, vk::ImageLayout::eTransferDstOptimal, BIC);
 
@@ -455,26 +419,17 @@ int main(int argc, char ** argv)
     texture_descriptor->update();
 
     vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
-    //ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, sizeof(uniform_buffer_t), 0);
     ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
     ubuffer_descriptor->update();
 
     vka::descriptor_set * dubuffer_descriptor = pipeline->create_new_descriptor_set(2, descriptor_pool);
-    //dubuffer_descriptor->attach_dynamic_uniform_buffer(0, du_buffer, sizeof(dynamic_uniform_buffer_t), 0);
     dubuffer_descriptor->AttachDynamicUniformBuffer(0,DU_buffer, DU_buffer->GetSize() );
     dubuffer_descriptor->update();
 
 
-#if defined USE_REFACTORED
-#else
-    vka::array_view<uniform_buffer_t> staging_buffer_map          = staging_buffer->map<uniform_buffer_t>();
-    vka::array_view<dynamic_uniform_buffer_t> staging_dbuffer_map = staging_buffer->map<dynamic_uniform_buffer_t>(sizeof(uniform_buffer_t));
-    //-----------
+
     vka::array_view<uniform_buffer_t>         StagingBufferMap        = vka::array_view<uniform_buffer_t>(1, StagingBuffer->MapBuffer());
     vka::array_view<dynamic_uniform_buffer_t> DynamicStagingBufferMap = vka::array_view<dynamic_uniform_buffer_t>(2, StagingBuffer->MapBuffer(sizeof(uniform_buffer_t)) );
-#endif
-
-
 
     vka::command_buffer cb = cp->AllocateCommandBuffer();
 
@@ -528,10 +483,6 @@ int main(int argc, char ** argv)
       #define MAX_OBJECTS 2
       // Copy the uniform buffer data into the staging buffer
       const float AR = WIDTH / ( float )HEIGHT;
-      staging_buffer_map[0].view        = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-      staging_buffer_map[0].proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
-      staging_buffer_map[0].proj[1][1] *= -1;
-      //--------------------------
       StagingBufferMap[0].view        = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
       StagingBufferMap[0].proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
       StagingBufferMap[0].proj[1][1] *= -1;
@@ -539,9 +490,6 @@ int main(int argc, char ** argv)
 
 
       // Copy the dynamic uniform buffer data into the staging buffer
-      staging_dbuffer_map[0].model       =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
-      staging_dbuffer_map[1].model       =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
-      //---------------------------------
       DynamicStagingBufferMap[0].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
       DynamicStagingBufferMap[1].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
 
@@ -573,8 +521,6 @@ int main(int argc, char ** argv)
           // number of bytes to copy
           auto size      = sizeof(dynamic_uniform_buffer_t);
 
-          cb.copyBuffer( *staging_buffer , *du_buffer , vk::BufferCopy{ srcOffset,dstOffset, size } );
-          //-------------------------------------------------
           cb.copySubBuffer( StagingBuffer , DU_buffer , vk::BufferCopy{ srcOffset, dstOffset, size } );
       }
 
@@ -599,9 +545,6 @@ int main(int argc, char ** argv)
                                                 nullptr );
 
     // bind the vertex/index buffers
-        // cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );
-        // cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
-        //---------------------------------
         cb.bindVertexSubBuffer(0, V_buffer, 0 );
         cb.bindIndexSubBuffer(  I_buffer, vk::IndexType::eUint16, 0);
 
