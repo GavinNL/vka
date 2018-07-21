@@ -455,8 +455,8 @@ int main(int argc, char ** argv)
     texture_descriptor->update();
 
     vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
-    ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, sizeof(uniform_buffer_t), 0);
-    //ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
+    //ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, sizeof(uniform_buffer_t), 0);
+    ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
     ubuffer_descriptor->update();
 
     vka::descriptor_set * dubuffer_descriptor = pipeline->create_new_descriptor_set(2, descriptor_pool);
@@ -552,7 +552,7 @@ int main(int argc, char ** argv)
 
       // Copy the uniform buffer data from the staging buffer to the uniform buffer. THis normally only needs to be done
       // once per rendering frame because it contains frame constant data.
-      cb.copyBuffer( *staging_buffer ,  *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
+      //cb.copyBuffer( *staging_buffer ,  *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
       //-------------------------------
       cb.copySubBuffer( StagingBuffer ,  U_buffer , vk::BufferCopy{ 0,0, sizeof(uniform_buffer_t) } );
 
