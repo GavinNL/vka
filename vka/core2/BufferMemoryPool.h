@@ -154,7 +154,7 @@ public:
      */
     std::shared_ptr<SubBuffer> NewSubBuffer(vk::DeviceSize size)
     {
-        assert( size < m_memory.GetSize() );
+        assert( size <= m_memory.GetSize() );
         auto offset = m_manager.allocate( size, m_memory.GetAlignment() );
 
         assert( offset < m_manager.error );
