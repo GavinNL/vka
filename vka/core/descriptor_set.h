@@ -65,6 +65,11 @@ public:
                                              vk::DeviceSize size,
                                              vk::DeviceSize offset=0);
 
+    vka::descriptor_set *AttachDynamicUniformBuffer(uint32_t index,
+                                                    std::shared_ptr<SubBuffer> &sub_buffer,
+                                                    vk::DeviceSize size,
+                                                    vk::DeviceSize offset=0);
+
     vka::descriptor_set *AttachSampler(uint32_t index,
                                        std::shared_ptr<vka::Texture> &texture,
                                        vk::ImageView view,
@@ -74,6 +79,8 @@ public:
                                        std::shared_ptr<vka::Texture> &texture,
                                        std::string const & view_name = "default",
                                        std::string const & sampler_name = "default");
+
+
 private:
     vk::DescriptorSet     m_descriptor_set;
     vka::descriptor_pool *m_parent_pool = nullptr;
