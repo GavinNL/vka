@@ -221,48 +221,38 @@ int main(int argc, char ** argv)
         auto U_buffer  = BufferPool.NewSubBuffer(5*1024);
         auto DU_buffer = BufferPool.NewSubBuffer(5*1024);
 
-        auto StagingBuffer = StagingBufferPool.NewSubBuffer(10*1024*1024);
+        auto StagingBuffer = StagingBufferPool.NewSubBuffer(5*1024*1024);
 
         // using the map< > method, we can return an array_view into the
         // memory. We are going to place them in their own scope so that
         // the array_view is destroyed after exiting the scope. This is
         // so we do not accidenty access the array_view after the
         // staging_buffer has been unmapped.
+
+        // 1. Allocates 2 staging sub buffers. TO accept the transfer from the host
+        auto S_vertex = StagingBufferPool.NewSubBuffer( vertices.size()* sizeof(Vertex));
+        auto S_index  = StagingBufferPool.NewSubBuffer( indices.size()* sizeof(uint16_t));
+
+        // 2. Copy the data from the host to the staging buffers
+        S_vertex->CopyData( vertices.data(), vertices.size() * sizeof(Vertex) );
+        S_index->CopyData( indices.data(), indices .size() * sizeof(uint16_t) );
+
+        // 3. Copy the data from the host-visible buffer to the vertex/index buffers
         {
+            vka::command_buffer copy_cmd = cp->AllocateCommandBuffer();
+            copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
-            void * vertex_map =  StagingBuffer->MapBuffer();
+                // write the commands to copy each of the buffer data
+                const vk::DeviceSize vertex_size     = vertices.size()*sizeof(Vertex);
+                const vk::DeviceSize index_size      = indices.size()*sizeof(uint16_t);
 
-            memcpy( vertex_map, vertices.data(), vertices.size()*sizeof(Vertex));
+                copy_cmd.copySubBuffer( S_vertex, V_buffer, vk::BufferCopy{ 0 , 0 , vertex_size } );
+                copy_cmd.copySubBuffer( S_index , I_buffer, vk::BufferCopy{ 0 , 0 , index_size  } );
 
-            LOG << "Size of Vertices: " << vertices.size()*sizeof(Vertex) << ENDL;
-
-            void * index_map = static_cast<char*>(vertex_map) + vertices.size()*sizeof(Vertex);
-
-            memcpy( index_map, indices.data(), indices.size()*sizeof(uint16_t));
-
+            copy_cmd.end();
+            C.submit_cmd_buffer(copy_cmd);
+            cp->FreeCommandBuffer(copy_cmd);
         }
-
-        // 2. Copy the data from the host-visible buffer to the vertex/index buffers
-
-        // allocate a comand buffer
-        vka::command_buffer copy_cmd = cp->AllocateCommandBuffer();
-        copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-
-        // write the commands to copy each of the buffer data
-        const vk::DeviceSize vertex_offset   = 0;
-        const vk::DeviceSize vertex_size     = vertices.size()*sizeof(Vertex);
-
-        const vk::DeviceSize index_offset    = vertices.size()*sizeof(Vertex);
-        const vk::DeviceSize index_size      = indices.size()*sizeof(uint16_t);
-
-        copy_cmd.copySubBuffer( StagingBuffer , V_buffer, vk::BufferCopy{ vertex_offset    , 0 , vertex_size } );
-        copy_cmd.copySubBuffer( StagingBuffer , I_buffer, vk::BufferCopy{ index_offset     , 0 , index_size  } );
-
-        copy_cmd.end();
-        C.submit_cmd_buffer(copy_cmd);
-        ////===============
-        //
-        cp->FreeCommandBuffer(copy_cmd);
 
         // Unmap the memory.
         //   WARNING: DO NOT ACCESS the vertex and index array_views as these
