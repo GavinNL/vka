@@ -54,6 +54,13 @@ private:
     void* MapBuffer();
     void  UnmapBuffer();
 
+    void CopyData( void const * src, vk::DeviceSize d)
+    {
+        void * dst = MapBuffer();
+        memcpy( dst, src, d );
+        UnmapBuffer();
+    }
+
     protected:
         BufferMemoryPool *    m_parent = nullptr;
         vk::DeviceSize        m_offset=0;
