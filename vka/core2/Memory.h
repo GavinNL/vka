@@ -13,6 +13,157 @@ namespace vka {
 
 class context;
 
+/**
+ * @brief The MappedMemory class
+ *
+ * MappedMemory is a wrapper around a void* data type + extra handling to
+ * unmap the memory from the host_visible vuklan memory.
+ *
+ * MappedMemory can be casted to void* so it can be passed into memcpy
+ * It can be incremented using += / -=
+ */
+class MappedMemory
+{
+    public:
+        MappedMemory(void * address, void * begin, uint32_t size, std::shared_ptr<int> unmapper_) :
+            m_address((unsigned char*)address),
+            m_begin(  (unsigned char*)begin),
+            m_end(     m_begin + size ),
+            m_shared(unmapper_)
+        {
+        }
+
+        MappedMemory( MappedMemory const & M) :
+            m_address(M.m_address),
+            m_begin(  M.m_begin),
+            m_end (   M.m_end),
+            m_shared( M.m_shared)
+        {
+        }
+
+        MappedMemory( MappedMemory && M)
+        {
+            m_address = M.m_address;         M.m_address = nullptr;
+            m_begin    = M.m_begin;          M.m_begin    = nullptr;
+            m_end      = M.m_end;            M.m_end      = nullptr;
+            m_shared  = std::move(M.m_shared);
+        }
+
+        MappedMemory & operator = ( MappedMemory const & M)
+        {
+            if( &M != this)
+            {
+                m_address = M.m_address;
+                m_begin    = M.m_begin;
+                m_end      = M.m_end;
+                m_shared  = std::move(M.m_shared);
+            }
+            return *this;
+        }
+
+        MappedMemory & operator = ( MappedMemory && M)
+        {
+            if( &M != this)
+            {
+                m_address = M.m_address;       M.m_address = nullptr;
+                m_begin    = M.m_begin;          M.m_begin    = nullptr;
+                m_end      = M.m_end;            M.m_end      = nullptr;
+                m_shared  = std::move(M.m_shared);
+            }
+            return *this;
+        }
+
+        template<typename IntType>
+        MappedMemory & operator += (IntType i)
+        {
+            m_address += i;
+            assert( m_address < m_end);
+            return *this;
+        }
+        template<typename IntType>
+        MappedMemory & operator -= (IntType i)
+        {
+            m_address -= i;
+            assert( m_address >= m_begin);
+            return *this;
+        }
+        template<typename IntType>
+        MappedMemory operator + (IntType i)
+        {
+            auto M = *this;
+            M.m_address += i;
+            assert( M.m_address >= M.m_begin);
+            return M;
+        }
+        template<typename IntType>
+        MappedMemory operator - (IntType i)
+        {
+            auto M = *this;
+            M.m_address -= i;
+            assert( M.m_address < M.m_end);
+            return M;
+        }
+
+        template<typename T>
+        operator T*()
+        {
+            return (T*)((void*)(m_address));
+        }
+
+        operator void const *()
+        {
+            return (void const*)(m_address);
+        }
+        operator void*()
+        {
+            return (void*)(m_address);
+        }
+        operator unsigned char*()
+        {
+            return (unsigned char*)(m_address);
+        }
+        operator unsigned char const*()
+        {
+            return (unsigned char const*)(m_address);
+        }
+
+        template<typename T>
+        typename std::enable_if<  std::is_pod<T>::value , MappedMemory >::type&
+        operator << ( T const  & M)
+        {
+            memcpy(m_address, &M, sizeof(T));
+            m_address += sizeof(T);
+            return *this;
+        }
+
+        void Reset()
+        {
+            m_address = m_begin = m_end = nullptr;
+            m_shared.reset();
+        }
+
+        unsigned char & operator[]( std::uint32_t i)
+        {
+            return m_address[i];
+        }
+
+        void memcpy( void const * srcData, vk::DeviceSize srcSize, vk::DeviceSize dstOffset=0)
+        {
+            assert( srcSize < size()-dstOffset);
+            ::memcpy( m_address + dstOffset, srcData, srcSize);
+        }
+
+        vk::DeviceSize size() const
+        {
+            return m_end - m_begin;
+        }
+
+        unsigned char       *m_address;
+        unsigned char       *m_begin;
+        unsigned char       *m_end;
+        std::shared_ptr<int> m_shared;
+};
+
 
 class Memory : public context_child
 {
@@ -23,6 +174,7 @@ class Memory : public context_child
         vk::MemoryAllocateInfo  m_info;
         vk::MemoryPropertyFlags m_memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
         vk::MemoryRequirements  m_memory_req;
+        int32_t                 m_mapped_count = 0;
         void*                   m_mapped = nullptr;
     };
 
@@ -101,12 +253,15 @@ class Memory : public context_child
     {
         if(m_memory)
         {
+            assert( m_data->m_mapped_count==0);
             if(IsMapped())
             {
                 UnMap();
             }
             get_device().freeMemory(m_memory);
             m_memory = vk::DeviceMemory();
+            m_data->m_mapped = nullptr;
+            m_data->m_mapped_count = 0;
             LOG << "Memory Freed" << ENDL;
         }
     }
@@ -118,28 +273,67 @@ class Memory : public context_child
         return false;
     }
 
-    void * Map()
+    MappedMemory GetMappedMemory(vk::DeviceSize offset=0)
     {
         if( m_data->m_memory_properties & vk::MemoryPropertyFlagBits::eHostVisible )
         {
             if(m_data->m_mapped)
-                return m_data->m_mapped;
+            {
+                m_data->m_mapped_count++;
+
+                //-------------------------
+                auto Unmapper = [this](int * i)
+                {
+                    delete i;
+                    this->UnMap();
+                };
+                std::shared_ptr<int> Unmapper_( new int(),Unmapper);
+
+                MappedMemory M( (unsigned char*)(m_data->m_mapped) + offset,
+                                (unsigned char*)(m_data->m_mapped) + offset,
+                                GetSize()-offset,
+                                Unmapper_);
+                //-------------------------
+
+                return M;
+            }
 
             void * data = get_device().mapMemory( m_memory, 0, GetSize(), vk::MemoryMapFlags());
 
+            m_data->m_mapped_count++;
             m_data->m_mapped = data;
-            return data;
+
+
+            //-------------------------
+            auto Unmapper = [this](int * i)
+            {
+                delete i;
+                this->UnMap();
+            };
+            std::shared_ptr<int> Unmapper_( new int(),Unmapper);
+            MappedMemory M( (unsigned char*)data + offset,
+                            (unsigned char*)data + offset,
+                            GetSize()-offset,
+                            Unmapper_);
+            //-------------------------
+
+            return M;
         }
         throw std::runtime_error("Device is not HostVisible. Cannot map data");
-        return nullptr;
+        //return nullptr;
     }
 
     void   UnMap()
     {
         if(m_data->m_mapped)
         {
-            get_device().unmapMemory(m_memory);
-            m_data->m_mapped = nullptr;
+            m_data->m_mapped_count--;
+
+            if( m_data->m_mapped_count==0)
+            {
+                get_device().unmapMemory(m_memory);
+                m_data->m_mapped = nullptr;
+            }
         }
     }
 

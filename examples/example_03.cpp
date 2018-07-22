@@ -221,7 +221,7 @@ int main(int argc, char ** argv)
         auto U_buffer  = BufferPool.NewSubBuffer(5*1024);
         auto DU_buffer = BufferPool.NewSubBuffer(5*1024);
 
-        auto StagingBuffer = StagingBufferPool.NewSubBuffer(5*1024*1024);
+        //auto StagingBuffer = StagingBufferPool.NewSubBuffer(5*1024*1024);
 
         // using the map< > method, we can return an array_view into the
         // memory. We are going to place them in their own scope so that
@@ -229,13 +229,14 @@ int main(int argc, char ** argv)
         // so we do not accidenty access the array_view after the
         // staging_buffer has been unmapped.
 
-        // 1. Allocates 2 staging sub buffers. TO accept the transfer from the host
+        // 1. Allocates 2 staging sub buffers to accept the transfer from the host
+        // These Subbuffers will
         auto S_vertex = StagingBufferPool.NewSubBuffer( vertices.size()* sizeof(Vertex));
         auto S_index  = StagingBufferPool.NewSubBuffer( indices.size()* sizeof(uint16_t));
 
         // 2. Copy the data from the host to the staging buffers
-        S_vertex->CopyData( vertices.data(), vertices.size() * sizeof(Vertex) );
-        S_index->CopyData( indices.data(), indices .size() * sizeof(uint16_t) );
+        S_vertex->CopyData( vertices.data(), vertices.size() * sizeof(Vertex)   );
+        S_index->CopyData( indices.data()  , indices .size() * sizeof(uint16_t) );
 
         // 3. Copy the data from the host-visible buffer to the vertex/index buffers
         {
@@ -253,11 +254,6 @@ int main(int argc, char ** argv)
             C.submit_cmd_buffer(copy_cmd);
             cp->FreeCommandBuffer(copy_cmd);
         }
-
-        // Unmap the memory.
-        //   WARNING: DO NOT ACCESS the vertex and index array_views as these
-        //            now point to unknown memory spaces
-
 
 //==============================================================================
 // Create a texture
@@ -278,29 +274,29 @@ int main(int argc, char ** argv)
 
 
 
-    // 3. Map the buffer to memory and copy the image to it.
+        // 3. Create a scope so that when we create Staging Buffers, they'll automatically
+        //    be deallocated. StagingBuffers allocated from a pool can be allocated and deallocated
+        //    without much performance issues.
         {
-            void * image_buffer_data = StagingBuffer->MapBuffer();
-            memcpy( image_buffer_data, D.data(), D.size() );
-            StagingBuffer->CopyData( D.data(), D.size() );
-            #warning Make sure to test Unmapping the memory
-        }
+            auto StagingBuffer = StagingBufferPool.NewSubBuffer( D.size() );
+            StagingBuffer->CopyData(D.data(), D.size() );
 
-    // 4. Now that the data is on the device. We need to get it from the buffer
-    //    to the texture. To do this we will record a command buffer to do the
-    //    following:
-    //         a. convert the texture2d into a layout which can accept transfer data
-    //         b. copy the data from the buffer to the texture2d.
-    //         c. convert the texture2d into a layout which is good for shader use
 
-        // allocate the command buffer
-        vka::command_buffer cb1 = cp->AllocateCommandBuffer();
-        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+        // 4. Now that the data is on the device. We need to get it from the buffer
+        //    to the texture. To do this we will record a command buffer to do the
+        //    following:
+        //         a. convert the texture2d into a layout which can accept transfer data
+        //         b. copy the data from the buffer to the texture2d.
+        //         c. convert the texture2d into a layout which is good for shader use
 
-            // a. convert the texture to eTransferDstOptimal
-            cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eTransferDstOptimal,
-                                     vk::PipelineStageFlagBits::eBottomOfPipe,
-                                     vk::PipelineStageFlagBits::eTopOfPipe);
+            // allocate the command buffer
+            vka::command_buffer cb1 = cp->AllocateCommandBuffer();
+            cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+
+                // a. convert the texture to eTransferDstOptimal
+                cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eTransferDstOptimal,
+                                         vk::PipelineStageFlagBits::eBottomOfPipe,
+                                         vk::PipelineStageFlagBits::eTopOfPipe);
 
 
 
@@ -322,11 +318,12 @@ int main(int argc, char ** argv)
             cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eShaderReadOnlyOptimal,
                                      vk::PipelineStageFlagBits::eBottomOfPipe,
                                      vk::PipelineStageFlagBits::eTopOfPipe);
-        // end and submit the command buffer
-        cb1.end();
-        C.submit_cmd_buffer(cb1);
-        // free the command buffer
-        cp->FreeCommandBuffer(cb1);
+            // end and submit the command buffer
+            cb1.end();
+            C.submit_cmd_buffer(cb1);
+            // free the command buffer
+            cp->FreeCommandBuffer(cb1);
+        }
 //==============================================================================
 
 
@@ -407,8 +404,33 @@ int main(int argc, char ** argv)
 
 
 
-    vka::array_view<uniform_buffer_t>         StagingBufferMap        = vka::array_view<uniform_buffer_t>(1, StagingBuffer->MapBuffer());
-    vka::array_view<dynamic_uniform_buffer_t> DynamicStagingBufferMap = vka::array_view<dynamic_uniform_buffer_t>(2, StagingBuffer->MapBuffer(sizeof(uniform_buffer_t)) );
+    // We will allocate two Staging buffers to copy uniform data as well as dynamic uniform data
+    // for each of the objects. Each of the Staging Buffers act like an individual buffer
+    // But are simply an offset into the BufferPool it was allocated from.
+    //
+    //
+    // +--------------+
+    // | uniform_data |  UniformStagingBuffer
+    // +--------------+
+    //
+    // +------+------+
+    // | obj1 | obj2 |    DynamicUniformStagingBuffer
+    // +------+------+
+    //
+    // +--------------+---------+------+------+-------------------------+
+    // | uniform_data |         | obj1 | obj2 |                         | StagingBufferPool
+    // +--------------+---------+------+------+-------------------------+
+    auto UniformStagingBuffer        = StagingBufferPool.NewSubBuffer(   sizeof(uniform_buffer_t ));
+    auto DynamicUniformStagingBuffer = StagingBufferPool.NewSubBuffer( 2*sizeof(dynamic_uniform_buffer_t ));
+
+    // Get a MappedMemory object so that we can write data directly into it.
+    vka::MappedMemory  UniformStagingBufferMap = UniformStagingBuffer->GetMappedMemory();
+    vka::MappedMemory  DynamicStagingBufferMap = DynamicUniformStagingBuffer->GetMappedMemory();
+
+    // Cast the memory to a reference so we can access
+    // aliased data.
+    uniform_buffer_t & UniformStagingStruct               = *( (uniform_buffer_t*)UniformStagingBufferMap );
+    dynamic_uniform_buffer_t * DynamicUniformStagingArray = (dynamic_uniform_buffer_t*)DynamicStagingBufferMap;
 
     vka::command_buffer cb = cp->AllocateCommandBuffer();
 
@@ -442,47 +464,26 @@ int main(int argc, char ** argv)
       cb.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
 
 
-
-      // The staging buffer will hold all data that will be sent to
-      // the other two buffers.
-      //
-      // +--------------+------+--------------------------------+
-      // | uniform_data | obj1 | obj2 |                         | Staging Buffer
-      // +--------------+------+--------------------------------+
-      uint32_t ub_src_offset = 0;
-      uint32_t ub_size       = sizeof(uniform_buffer_t);
-
-      std::vector<uint32_t> dub_src_offset = { ub_size ,
-                                               ub_size + sizeof(dynamic_uniform_buffer_t)};
-
-
-
-
-
+      //--------------------------------------------------------------------------------------
+      // Copy the Data from thost to the staging buffers.
+      //--------------------------------------------------------------------------------------
       #define MAX_OBJECTS 2
       // Copy the uniform buffer data into the staging buffer
       const float AR = WIDTH / ( float )HEIGHT;
-      StagingBufferMap[0].view        = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-      StagingBufferMap[0].proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
-      StagingBufferMap[0].proj[1][1] *= -1;
-
-
+      UniformStagingStruct.view        = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+      UniformStagingStruct.proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
+      UniformStagingStruct.proj[1][1] *= -1;
 
       // Copy the dynamic uniform buffer data into the staging buffer
-      DynamicStagingBufferMap[0].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
-      DynamicStagingBufferMap[1].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
+      DynamicUniformStagingArray[0].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
+      DynamicUniformStagingArray[1].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
+      //--------------------------------------------------------------------------------------
 
-      // +------------------------------------------------------+
-      // | uniform_data |                                       | Uniform Buffer
-      // +------------------------------------------------------+
-
-
-      // Copy the uniform buffer data from the staging buffer to the uniform buffer. THis normally only needs to be done
+      //--------------------------------------------------------------------------------------
+      // Copy the uniform buffer data from the staging buffer to the uniform buffer. This normally only needs to be done
       // once per rendering frame because it contains frame constant data.
-      //cb.copyBuffer( *staging_buffer ,  *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
-      //-------------------------------
-      cb.copySubBuffer( StagingBuffer ,  U_buffer , vk::BufferCopy{ 0,0, sizeof(uniform_buffer_t) } );
-
+      cb.copySubBuffer( UniformStagingBuffer ,  U_buffer , vk::BufferCopy{ 0,0, sizeof(uniform_buffer_t) } );
+      //--------------------------------------------------------------------------------------
 
       // Copy the dynamic uniform buffer data from the staging buffer
       // to the appropriate offset in the Dynamic Uniform Buffer.
@@ -490,17 +491,16 @@ int main(int argc, char ** argv)
       // | obj1        | obj2         | obj3...                | Dynamic Uniform Buffer
       // +-------------+---------------------------------------+
       // |<-alignment->|
-
       for(uint32_t j=0; j < MAX_OBJECTS; j++)
       {
           // byte offset within the staging buffer where teh data resides
-          auto srcOffset = sizeof(uniform_buffer_t) + j * sizeof(dynamic_uniform_buffer_t);
+          auto srcOffset = j * sizeof(dynamic_uniform_buffer_t);
           // byte offset within the dynamic uniform buffer where to copy the data
           auto dstOffset = j * alignment;
           // number of bytes to copy
           auto size      = sizeof(dynamic_uniform_buffer_t);
 
-          cb.copySubBuffer( StagingBuffer , DU_buffer , vk::BufferCopy{ srcOffset, dstOffset, size } );
+          cb.copySubBuffer( DynamicUniformStagingBuffer , DU_buffer , vk::BufferCopy{ srcOffset, dstOffset, size } );
       }
 
       uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
@@ -541,7 +541,7 @@ int main(int argc, char ** argv)
 
 
 
-    // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
+            // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
             cb.drawIndexed(36, 1, 0 , 0, 0);
       }
 
