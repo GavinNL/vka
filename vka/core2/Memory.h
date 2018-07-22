@@ -13,6 +13,61 @@ namespace vka {
 
 class context;
 
+class MappedMemory
+{
+    public:
+        MappedMemory(void * address, std::shared_ptr<int> unmapper_) :
+            m_address((unsigned char*)address),
+            m_head(m_address),
+            shared(unmapper_)
+        {
+        }
+
+        MappedMemory(unsigned char * address, std::shared_ptr<int> unmapper_) :
+            m_address((unsigned char*)address),
+            m_head(m_address),
+            shared(unmapper_)
+        {
+        }
+
+        template<typename IntType>
+        MappedMemory operator + (IntType i)
+        {
+            return MappedMemory(m_address + i, shared);
+        }
+        template<typename IntType>
+        MappedMemory operator - (IntType i)
+        {
+            return MappedMemory(m_address - i, shared);
+        }
+
+        operator void const *()
+        {
+            return (void const*)(m_address);
+        }
+        operator void*()
+        {
+            return (void*)(m_address);
+        }
+        operator unsigned char*()
+        {
+            return (unsigned char*)(m_address);
+        }
+        operator unsigned char const*()
+        {
+            return (unsigned char const*)(m_address);
+        }
+
+        void Reset()
+        {
+            m_address = m_head;
+        }
+
+        unsigned char       *m_address;
+        unsigned char       *m_head;
+        std::shared_ptr<int> shared;
+};
+
 
 class Memory : public context_child
 {
