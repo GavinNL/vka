@@ -65,7 +65,7 @@ private:
     void CopyData( void const * src, vk::DeviceSize d)
     {
         auto dst = GetMappedMemory();
-        memcpy( dst, src, d );
+        dst.memcpy( src, d , 0);
     }
 
     protected:

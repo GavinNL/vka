@@ -276,10 +276,8 @@ int main(int argc, char ** argv)
 
     // 3. Map the buffer to memory and copy the image to it.
         {
-            void * image_buffer_data = StagingBuffer->GetMappedMemory();
-            memcpy( image_buffer_data, D.data(), D.size() );
-            StagingBuffer->CopyData( D.data(), D.size()  );
-            #warning Make sure to test Unmapping the memory
+            auto image_buffer_data = StagingBuffer->GetMappedMemory();
+            image_buffer_data.memcpy( D.data(), D.size() );
         }
 
     // 4. Now that the data is on the device. We need to get it from the buffer

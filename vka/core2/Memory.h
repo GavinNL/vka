@@ -77,23 +77,31 @@ class MappedMemory
         MappedMemory & operator += (IntType i)
         {
             m_address += i;
+            assert( m_address < m_end);
             return *this;
         }
         template<typename IntType>
         MappedMemory & operator -= (IntType i)
         {
             m_address -= i;
+            assert( m_address >= m_begin);
             return *this;
         }
         template<typename IntType>
         MappedMemory operator + (IntType i)
         {
-            return MappedMemory(m_address + i, m_shared);
+            auto M = *this;
+            M.m_address += i;
+            assert( M.m_address >= M.m_begin);
+            return M;
         }
         template<typename IntType>
         MappedMemory operator - (IntType i)
         {
-            return MappedMemory(m_address - i, m_shared);
+            auto M = *this;
+            M.m_address -= i;
+            assert( M.m_address < M.m_end);
+            return M;
         }
 
         operator void const *()
@@ -124,13 +132,24 @@ class MappedMemory
 
         void Reset()
         {
-            m_address = m_begin = nullptr;
+            m_address = m_begin = m_end = nullptr;
             m_shared.reset();
         }
 
         unsigned char & operator[]( std::uint32_t i)
         {
             return m_address[i];
+        }
+
+        void memcpy( void const * srcData, vk::DeviceSize srcSize, vk::DeviceSize dstOffset=0)
+        {
+            assert( srcSize < size()-dstOffset);
+            ::memcpy( m_address + dstOffset, srcData, srcSize);
+        }
+
+        vk::DeviceSize size() const
+        {
+            return m_end - m_begin;
         }
 
         unsigned char       *m_address;
