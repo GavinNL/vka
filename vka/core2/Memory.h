@@ -23,6 +23,7 @@ class Memory : public context_child
         vk::MemoryAllocateInfo  m_info;
         vk::MemoryPropertyFlags m_memory_properties = vk::MemoryPropertyFlagBits::eDeviceLocal;
         vk::MemoryRequirements  m_memory_req;
+        int32_t                 m_mapped_count = 0;
         void*                   m_mapped = nullptr;
     };
 
@@ -101,12 +102,15 @@ class Memory : public context_child
     {
         if(m_memory)
         {
+            assert( m_data->m_mapped_count==0);
             if(IsMapped())
             {
                 UnMap();
             }
             get_device().freeMemory(m_memory);
             m_memory = vk::DeviceMemory();
+            m_data->m_mapped = nullptr;
+            m_data->m_mapped_count = 0;
             LOG << "Memory Freed" << ENDL;
         }
     }
@@ -123,10 +127,14 @@ class Memory : public context_child
         if( m_data->m_memory_properties & vk::MemoryPropertyFlagBits::eHostVisible )
         {
             if(m_data->m_mapped)
+            {
+                m_data->m_mapped_count++;
                 return m_data->m_mapped;
+            }
 
             void * data = get_device().mapMemory( m_memory, 0, GetSize(), vk::MemoryMapFlags());
 
+            m_data->m_mapped_count++;
             m_data->m_mapped = data;
             return data;
         }
@@ -138,8 +146,13 @@ class Memory : public context_child
     {
         if(m_data->m_mapped)
         {
-            get_device().unmapMemory(m_memory);
-            m_data->m_mapped = nullptr;
+            m_data->m_mapped_count--;
+
+            if( m_data->m_mapped_count==0)
+            {
+                get_device().unmapMemory(m_memory);
+                m_data->m_mapped = nullptr;
+            }
         }
     }
 
