@@ -464,7 +464,9 @@ int main(int argc, char ** argv)
       cb.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
 
 
-
+      //--------------------------------------------------------------------------------------
+      // Copy the Data from thost to the staging buffers.
+      //--------------------------------------------------------------------------------------
       #define MAX_OBJECTS 2
       // Copy the uniform buffer data into the staging buffer
       const float AR = WIDTH / ( float )HEIGHT;
@@ -472,23 +474,16 @@ int main(int argc, char ** argv)
       UniformStagingStruct.proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
       UniformStagingStruct.proj[1][1] *= -1;
 
-
-
       // Copy the dynamic uniform buffer data into the staging buffer
       DynamicUniformStagingArray[0].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
       DynamicUniformStagingArray[1].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
+      //--------------------------------------------------------------------------------------
 
-      // +------------------------------------------------------+
-      // | uniform_data |                                       | Uniform Buffer
-      // +------------------------------------------------------+
-
-
-      // Copy the uniform buffer data from the staging buffer to the uniform buffer. THis normally only needs to be done
+      //--------------------------------------------------------------------------------------
+      // Copy the uniform buffer data from the staging buffer to the uniform buffer. This normally only needs to be done
       // once per rendering frame because it contains frame constant data.
-      //cb.copyBuffer( *staging_buffer ,  *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
-      //-------------------------------
       cb.copySubBuffer( UniformStagingBuffer ,  U_buffer , vk::BufferCopy{ 0,0, sizeof(uniform_buffer_t) } );
-
+      //--------------------------------------------------------------------------------------
 
       // Copy the dynamic uniform buffer data from the staging buffer
       // to the appropriate offset in the Dynamic Uniform Buffer.
@@ -496,7 +491,6 @@ int main(int argc, char ** argv)
       // | obj1        | obj2         | obj3...                | Dynamic Uniform Buffer
       // +-------------+---------------------------------------+
       // |<-alignment->|
-
       for(uint32_t j=0; j < MAX_OBJECTS; j++)
       {
           // byte offset within the staging buffer where teh data resides
@@ -547,7 +541,7 @@ int main(int argc, char ** argv)
 
 
 
-    // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
+            // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
             cb.drawIndexed(36, 1, 0 , 0, 0);
       }
 
