@@ -51,14 +51,21 @@ private:
 
     vk::Buffer GetParentBufferHandle() const;
 
-    void* MapBuffer(vk::DeviceSize offset=0);
-    void  UnmapBuffer();
+    /**
+     * @brief GetMappedMemory
+     * @param offset
+     * @return
+     *
+     * Returns a MappedMemory object which is a wrapper around
+     * void*. It will automatically unmap itself when the
+     * object goes out of scope.
+     */
+    MappedMemory GetMappedMemory(vk::DeviceSize offset=0);
 
     void CopyData( void const * src, vk::DeviceSize d)
     {
-        void * dst = MapBuffer();
+        auto dst = GetMappedMemory();
         memcpy( dst, src, d );
-        UnmapBuffer();
     }
 
     protected:
@@ -178,16 +185,9 @@ public:
         return m_buffer;
     }
 
-    void * MapBuffer(vk::DeviceSize offset = 0)
+    MappedMemory GetMappedMemory(vk::DeviceSize offset = 0)
     {
-        uint8_t * d = (uint8_t*)m_memory.Map() + offset;
-
-        return d;
-    }
-
-    void UnmapBuffer()
-    {
-        m_memory.UnMap();;
+        return m_memory.GetMappedMemory(offset);
     }
 
 protected:
@@ -209,15 +209,11 @@ inline vk::Buffer SubBuffer::GetParentBufferHandle() const
     return m_parent->GetBufferHandle();
 }
 
-inline void *SubBuffer::MapBuffer(vk::DeviceSize offset)
+inline MappedMemory SubBuffer::GetMappedMemory(vk::DeviceSize offset)
 {
-    return m_parent->MapBuffer(m_offset+offset);
+    return m_parent->GetMappedMemory(m_offset+offset);
 }
 
-inline void SubBuffer::UnmapBuffer()
-{
-    m_parent->UnmapBuffer();
-}
 
 }
 

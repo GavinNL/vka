@@ -229,13 +229,14 @@ int main(int argc, char ** argv)
         // so we do not accidenty access the array_view after the
         // staging_buffer has been unmapped.
 
-        // 1. Allocates 2 staging sub buffers. TO accept the transfer from the host
+        // 1. Allocates 2 staging sub buffers to accept the transfer from the host
+        // These Subbuffers will
         auto S_vertex = StagingBufferPool.NewSubBuffer( vertices.size()* sizeof(Vertex));
         auto S_index  = StagingBufferPool.NewSubBuffer( indices.size()* sizeof(uint16_t));
 
         // 2. Copy the data from the host to the staging buffers
-        S_vertex->CopyData( vertices.data(), vertices.size() * sizeof(Vertex) );
-        S_index->CopyData( indices.data(), indices .size() * sizeof(uint16_t) );
+        S_vertex->CopyData( vertices.data(), vertices.size() * sizeof(Vertex)   );
+        S_index->CopyData( indices.data()  , indices .size() * sizeof(uint16_t) );
 
         // 3. Copy the data from the host-visible buffer to the vertex/index buffers
         {
@@ -253,11 +254,6 @@ int main(int argc, char ** argv)
             C.submit_cmd_buffer(copy_cmd);
             cp->FreeCommandBuffer(copy_cmd);
         }
-
-        // Unmap the memory.
-        //   WARNING: DO NOT ACCESS the vertex and index array_views as these
-        //            now point to unknown memory spaces
-
 
 //==============================================================================
 // Create a texture
@@ -280,9 +276,9 @@ int main(int argc, char ** argv)
 
     // 3. Map the buffer to memory and copy the image to it.
         {
-            void * image_buffer_data = StagingBuffer->MapBuffer();
+            void * image_buffer_data = StagingBuffer->GetMappedMemory();
             memcpy( image_buffer_data, D.data(), D.size() );
-            StagingBuffer->CopyData( D.data(), D.size() );
+            StagingBuffer->CopyData( D.data(), D.size()  );
             #warning Make sure to test Unmapping the memory
         }
 
@@ -407,8 +403,8 @@ int main(int argc, char ** argv)
 
 
 
-    vka::array_view<uniform_buffer_t>         StagingBufferMap        = vka::array_view<uniform_buffer_t>(1, StagingBuffer->MapBuffer());
-    vka::array_view<dynamic_uniform_buffer_t> DynamicStagingBufferMap = vka::array_view<dynamic_uniform_buffer_t>(2, StagingBuffer->MapBuffer(sizeof(uniform_buffer_t)) );
+    vka::array_view<uniform_buffer_t>         StagingBufferMap        = vka::array_view<uniform_buffer_t>(1, StagingBuffer->GetMappedMemory());
+    vka::array_view<dynamic_uniform_buffer_t> DynamicStagingBufferMap = vka::array_view<dynamic_uniform_buffer_t>(2, StagingBuffer->GetMappedMemory(sizeof(uniform_buffer_t)) );
 
     vka::command_buffer cb = cp->AllocateCommandBuffer();
 

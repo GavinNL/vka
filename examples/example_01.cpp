@@ -199,7 +199,7 @@ int main(int argc, char ** argv)
             vertex[2] = {glm::vec3(-1.0,  0.0, -1.0 ) , glm::vec2(1   , 1) };
 
 #if defined USE_REFACTORED
-            void * m = StagingBuffer->MapBuffer();
+            void * m = StagingBuffer->GetMappedMemory();
 #else
             void * m = staging_buffer->map_memory();
 #endif
@@ -219,7 +219,7 @@ int main(int argc, char ** argv)
             index[2] = 2;
 
 #if defined USE_REFACTORED
-            void * m = (uint8_t*)StagingBuffer->MapBuffer() + 3*sizeof(Vertex);
+            void * m = (uint8_t*)StagingBuffer->GetMappedMemory() + 3*sizeof(Vertex);
 #else
             void * m = (uint8_t*)staging_buffer->map_memory() + 3*sizeof(Vertex);
 #endif
@@ -315,7 +315,7 @@ int main(int argc, char ** argv)
 
     // 3. Map the buffer to memory and copy the image to it.
 #if defined USE_REFACTORED
-        void * image_buffer_data = StagingBuffer->MapBuffer();
+        void * image_buffer_data = StagingBuffer->GetMappedMemory();
 #else
         void * image_buffer_data = staging_buffer->map_memory();
 #endif
@@ -471,7 +471,7 @@ int main(int argc, char ** argv)
 
 
 #if defined USE_REFACTORED
-    vka::array_view<uniform_buffer_t> StagingBufferMap   = vka::array_view<uniform_buffer_t>(1, StagingBuffer->MapBuffer());
+    vka::array_view<uniform_buffer_t> StagingBufferMap   = vka::array_view<uniform_buffer_t>(1, StagingBuffer->GetMappedMemory());
 #else
     vka::array_view<uniform_buffer_t> StagingBufferMap = staging_buffer->map<uniform_buffer_t>();
 #endif
