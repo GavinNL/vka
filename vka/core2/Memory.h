@@ -104,6 +104,12 @@ class MappedMemory
             return M;
         }
 
+        template<typename T>
+        operator T*()
+        {
+            return (T*)((void*)(m_address));
+        }
+
         operator void const *()
         {
             return (void const*)(m_address);
