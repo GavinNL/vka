@@ -471,7 +471,7 @@ int main(int argc, char ** argv)
 
 
 #if defined USE_REFACTORED
-    vka::array_view<uniform_buffer_t> StagingBufferMap   = vka::array_view<uniform_buffer_t>(1, StagingBuffer->GetMappedMemory());
+    vka::MappedMemory StagingBufferMap   = StagingBuffer->GetMappedMemory();
 #else
     vka::array_view<uniform_buffer_t> StagingBufferMap = staging_buffer->map<uniform_buffer_t>();
 #endif
@@ -499,12 +499,15 @@ int main(int argc, char ** argv)
 
       const float AR = WIDTH / ( float )HEIGHT;
 
-      StagingBufferMap[0].model = glm::rotate( glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-      StagingBufferMap[0].view  = glm::lookAt( glm::vec3(5.0f, 5.0f, 5.0f),
-                                                 glm::vec3(0.0f, 0.0f, 0.0f),
-                                                 glm::vec3(0.0f, 1.0f, 0.0f));
-      StagingBufferMap[0].proj  = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
-      StagingBufferMap[0].proj[1][1] *= -1;
+      // Create a Reference to the staging buffer map so that we can
+      // write data into the buffer
+      uniform_buffer_t & UniformBufferRef = *( (uniform_buffer_t*)(StagingBufferMap) );
+      UniformBufferRef.model = glm::rotate( glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+      UniformBufferRef.view  = glm::lookAt( glm::vec3(5.0f, 5.0f, 5.0f),
+                                              glm::vec3(0.0f, 0.0f, 0.0f),
+                                              glm::vec3(0.0f, 1.0f, 0.0f));
+      UniformBufferRef.proj  = glm::perspective(glm::radians(45.0f), AR, 0.1f, 10.0f);
+      UniformBufferRef.proj[1][1] *= -1;
 
       //============================================================
 
