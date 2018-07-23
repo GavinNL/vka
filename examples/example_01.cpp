@@ -341,7 +341,7 @@ int main(int argc, char ** argv)
 
             // a. convert the texture to eTransferDstOptimal
 #if defined USE_REFACTORED
-        cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eTransferDstOptimal,
+        cb1.convertTextureLayer( Tex,0,1,vk::ImageLayout::eTransferDstOptimal,
                                  vk::PipelineStageFlagBits::eBottomOfPipe,
                                  vk::PipelineStageFlagBits::eTopOfPipe);
 #else
@@ -371,7 +371,7 @@ int main(int argc, char ** argv)
 
             // c. convert the texture into eShaderReadOnlyOptimal
 #if defined USE_REFACTORED
-            cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eShaderReadOnlyOptimal,
+            cb1.convertTextureLayer( Tex,0,1,vk::ImageLayout::eShaderReadOnlyOptimal,
                                      vk::PipelineStageFlagBits::eBottomOfPipe,
                                      vk::PipelineStageFlagBits::eTopOfPipe);
 #else

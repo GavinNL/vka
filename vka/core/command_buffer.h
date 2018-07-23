@@ -110,7 +110,7 @@ class command_buffer : public vk::CommandBuffer
     // Converts a specific texture layer and all it's mipmaps to the
     // new layout. All mip levels must be of the same layout
     void convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
-                             uint32_t layer,
+                             uint32_t layer, uint32_t layer_count,
                              vk::ImageLayout new_layout,
                              vk::PipelineStageFlags srcStageMask,
                              vk::PipelineStageFlags dstStageMask);

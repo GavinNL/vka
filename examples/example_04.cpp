@@ -302,10 +302,7 @@ int main(int argc, char ** argv)
             cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
                 // a. convert the texture to eTransferDstOptimal
-                cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eTransferDstOptimal,
-                                         vk::PipelineStageFlagBits::eBottomOfPipe,
-                                         vk::PipelineStageFlagBits::eTopOfPipe);
-                cb1.convertTextureLayer( Tex,1,vk::ImageLayout::eTransferDstOptimal,
+                cb1.convertTextureLayer( Tex,0,2,vk::ImageLayout::eTransferDstOptimal,
                                          vk::PipelineStageFlagBits::eBottomOfPipe,
                                          vk::PipelineStageFlagBits::eTopOfPipe);
 
@@ -325,12 +322,10 @@ int main(int argc, char ** argv)
             cb1.copySubBufferToTexture( StagingBuffer, Tex, vk::ImageLayout::eTransferDstOptimal, BIC);
 
             // c. convert the texture into eShaderReadOnlyOptimal
-            cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eShaderReadOnlyOptimal,
+            cb1.convertTextureLayer( Tex,0,2,vk::ImageLayout::eShaderReadOnlyOptimal,
                                      vk::PipelineStageFlagBits::eBottomOfPipe,
                                      vk::PipelineStageFlagBits::eTopOfPipe);
-            cb1.convertTextureLayer( Tex,1,vk::ImageLayout::eShaderReadOnlyOptimal,
-                                     vk::PipelineStageFlagBits::eBottomOfPipe,
-                                     vk::PipelineStageFlagBits::eTopOfPipe);
+
             // end and submit the command buffer
             cb1.end();
             C.submit_cmd_buffer(cb1);
