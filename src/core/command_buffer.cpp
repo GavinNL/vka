@@ -201,6 +201,28 @@ void command_buffer::convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
                     );
 }
 
+void command_buffer::convertTextureLayerMips(std::shared_ptr<vka::Texture> & tex,
+                                             uint32_t layer, uint32_t layer_count,
+                                             uint32_t mipLevel, uint32_t mipLevelCount,
+                                             vk::ImageLayout new_layout,
+                                             vk::PipelineStageFlags srcStageMask,
+                                             vk::PipelineStageFlags dstStageMask)
+{
+    vk::ImageSubresourceRange R;
+    R.baseMipLevel = mipLevel;
+    R.levelCount  = mipLevelCount;
+    R.baseArrayLayer = layer;
+    R.layerCount = layer_count;
+    convertTexture( tex,
+                    tex->GetLayout(mipLevel,layer), // old layout, all mips must be the same
+                    new_layout,
+                    R,
+                    srcStageMask,
+                    dstStageMask
+                    );
+}
+
+
 void command_buffer::convertTexture( std::shared_ptr<vka::Texture> & tex,
                                      vk::ImageLayout old_layout ,
                                      vk::ImageLayout new_layout ,
@@ -328,5 +350,44 @@ void command_buffer::convertTexture( std::shared_ptr<vka::Texture> & tex,
     }
 
 }
+
+
+
+void command_buffer::blitMipMap( std::shared_ptr<vka::Texture> & tex,
+                                uint32_t Layer, uint32_t LayerCount,
+                                uint32_t src_miplevel,
+                                uint32_t dst_miplevel)
+{
+    auto & extents = tex->GetExtents();
+    vk::ImageBlit imgBlit;
+
+    // Source
+    imgBlit.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    imgBlit.srcSubresource.baseArrayLayer = Layer;
+    imgBlit.srcSubresource.layerCount = LayerCount;
+    imgBlit.srcSubresource.mipLevel   = src_miplevel;
+
+
+    imgBlit.srcOffsets[1].x = int32_t( extents.width  >> src_miplevel);
+    imgBlit.srcOffsets[1].y = int32_t( extents.height >> src_miplevel);
+    imgBlit.srcOffsets[1].z = std::max( int32_t(1), int32_t( extents.depth >> src_miplevel));
+
+    // Destination
+    imgBlit.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+    imgBlit.dstSubresource.baseArrayLayer = Layer;
+    imgBlit.dstSubresource.layerCount = LayerCount;
+    imgBlit.dstSubresource.mipLevel   = dst_miplevel;
+
+    imgBlit.dstOffsets[1].x = int32_t( extents.width  >> dst_miplevel);
+    imgBlit.dstOffsets[1].y = int32_t( extents.height >> dst_miplevel);
+    imgBlit.dstOffsets[1].z = std::max( int32_t(1), int32_t( extents.depth >> dst_miplevel) );
+
+
+    LOG << "Generating Mipmap Level: " << dst_miplevel << ENDL;
+    blitImage( tex->GetImage(), vk::ImageLayout::eTransferSrcOptimal,
+               tex->GetImage(), vk::ImageLayout::eTransferDstOptimal,
+               imgBlit, vk::Filter::eLinear);
+}
+
 
 }

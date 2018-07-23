@@ -114,6 +114,19 @@ class command_buffer : public vk::CommandBuffer
                              vk::ImageLayout new_layout,
                              vk::PipelineStageFlags srcStageMask,
                              vk::PipelineStageFlags dstStageMask);
+
+    void convertTextureLayerMips(std::shared_ptr<vka::Texture> & tex,
+                                 uint32_t layer, uint32_t layer_count,
+                                 uint32_t mipLevel, uint32_t mipLevelCount,
+                                 vk::ImageLayout new_layout,
+                                 vk::PipelineStageFlags srcStageMask,
+                                 vk::PipelineStageFlags dstStageMask);
+
+
+    void blitMipMap( std::shared_ptr<vka::Texture> & tex,
+                     uint32_t Layer, uint32_t LayerCount,
+                     uint32_t src_miplevel,
+                     uint32_t dst_miplevel);
 };
 
 }
