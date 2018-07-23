@@ -17,10 +17,11 @@
  *
  * We can let the shader choose what mipmap level to use automatically (recomended)
  * or we can manually choose the level we want. We are going to add a
- * variable in the Push Constants to indicate what leve we want, or if we choose
+ * variable in the Push Constants to indicate what level we want, or if we choose
  * -1, we will let the shader choose.
  *
  */
+
 
 
 
@@ -31,13 +32,19 @@
 #include <chrono>
 #include <thread>
 #include <vka/core/image.h>
+#include <vka/core/screen_target.h>
 #include <vka/vka.h>
+
+
+#include <vka/core2/BufferMemoryPool.h>
+#include <vka/core2/TextureMemoryPool.h>
+
 
 #include <vka/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
-#define APP_TITLE "Example_05 - Mip Maps"
+#define APP_TITLE "Example_04 - Texture Arrays and Push Constants"
 
 // This is the vertex structure we are going to use
 // it contains a position and a UV coordates field
@@ -89,15 +96,6 @@ float get_elapsed_time()
 }
 
 
-uint32_t tick()
-{
-    static auto startTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration_cast<std::chrono::microseconds>(currentTime - startTime).count();
-
-    //return time;
-}
 /**
  * @brief create_box_mesh
  * @param dx - dimension of the box
@@ -120,8 +118,7 @@ int main(int argc, char ** argv)
     //==========================================================================
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
+    glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE); GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
 
     unsigned int glfwExtensionCount = 0;
     const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -166,6 +163,8 @@ int main(int argc, char ** argv)
 
 
 
+
+
     //==========================================================================
     // Initialize the Command and Descriptor Pools
     //==========================================================================
@@ -185,6 +184,30 @@ int main(int argc, char ** argv)
 
 
 
+    //==============================================================================
+    // Initalize all the Buffer/Texture Pools
+    //==============================================================================
+    vka::BufferMemoryPool StagingBufferPool(&C);
+    StagingBufferPool.SetMemoryProperties( vk::MemoryPropertyFlagBits::eHostCoherent| vk::MemoryPropertyFlagBits::eHostVisible);
+    StagingBufferPool.SetSize(10*1024*1024);
+    StagingBufferPool.SetUsage( vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc| vk::BufferUsageFlagBits::eIndexBuffer| vk::BufferUsageFlagBits::eVertexBuffer| vk::BufferUsageFlagBits::eUniformBuffer);
+    StagingBufferPool.Create();
+
+    vka::BufferMemoryPool BufferPool(&C);
+    BufferPool.SetMemoryProperties( vk::MemoryPropertyFlagBits::eDeviceLocal);
+    BufferPool.SetSize(10*1024*1024);
+    BufferPool.SetUsage( vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc| vk::BufferUsageFlagBits::eIndexBuffer| vk::BufferUsageFlagBits::eVertexBuffer| vk::BufferUsageFlagBits::eUniformBuffer);
+    BufferPool.Create();
+
+    vka::TextureMemoryPool TexturePool(&C);
+    TexturePool.SetSize( 50*1024*1024 );
+    TexturePool.SetUsage( vk::ImageUsageFlagBits::eColorAttachment
+                 | vk::ImageUsageFlagBits::eSampled
+                 | vk::ImageUsageFlagBits::eTransferDst
+                 | vk::ImageUsageFlagBits::eTransferSrc);
+
+    //==============================================================================
+
 //==============================================================================
 // Create the Vertex and Index buffers
 //
@@ -203,67 +226,47 @@ int main(int argc, char ** argv)
 
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
-        vka::buffer* vertex_buffer = C.new_vertex_buffer(  "vb", 5*1024 );
-        vka::buffer* index_buffer  = C.new_index_buffer(   "ib", 5*1024 );
-        vka::buffer* u_buffer      = C.new_uniform_buffer( "ub", 5*1024);
+        auto V_buffer  = BufferPool.NewSubBuffer(5*1024);
+        auto I_buffer  = BufferPool.NewSubBuffer(5*1024);
+        auto U_buffer  = BufferPool.NewSubBuffer(5*1024);
+        auto DU_buffer = BufferPool.NewSubBuffer(5*1024);
 
-        // [NEW]
-        vka::buffer* du_buffer     = C.new_uniform_buffer( "dub", 5*1024);
-
-
-
-        // allocate a staging buffer of 10MB
-        vka::buffer * staging_buffer = C.new_staging_buffer( "sb", 1024*1024*10 );
+        //auto StagingBuffer = StagingBufferPool.NewSubBuffer(5*1024*1024);
 
         // using the map< > method, we can return an array_view into the
         // memory. We are going to place them in their own scope so that
         // the array_view is destroyed after exiting the scope. This is
         // so we do not accidenty access the array_view after the
         // staging_buffer has been unmapped.
+
+        // 1. Allocates 2 staging sub buffers to accept the transfer from the host
+        // These Subbuffers will
+        auto S_vertex = StagingBufferPool.NewSubBuffer( vertices.size()* sizeof(Vertex));
+        auto S_index  = StagingBufferPool.NewSubBuffer( indices.size()* sizeof(uint16_t));
+
+        // 2. Copy the data from the host to the staging buffers
+        S_vertex->CopyData( vertices.data(), vertices.size() * sizeof(Vertex)   );
+        S_index->CopyData( indices.data()  , indices .size() * sizeof(uint16_t) );
+
+        // 3. Copy the data from the host-visible buffer to the vertex/index buffers
         {
-            void * vertex_map =  staging_buffer->map_memory();
-            memcpy( vertex_map, vertices.data(), vertices.size()*sizeof(Vertex));
+            vka::command_buffer copy_cmd = cp->AllocateCommandBuffer();
+            copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
-            LOG << "Size of Vertices: " << vertices.size()*sizeof(Vertex) << ENDL;
+                // write the commands to copy each of the buffer data
+                const vk::DeviceSize vertex_size     = vertices.size()*sizeof(Vertex);
+                const vk::DeviceSize index_size      = indices.size()*sizeof(uint16_t);
 
-            void * index_map = static_cast<char*>(vertex_map) + vertices.size()*sizeof(Vertex);
+                copy_cmd.copySubBuffer( S_vertex, V_buffer, vk::BufferCopy{ 0 , 0 , vertex_size } );
+                copy_cmd.copySubBuffer( S_index , I_buffer, vk::BufferCopy{ 0 , 0 , index_size  } );
 
-            memcpy( index_map, indices.data(), indices.size()*sizeof(uint16_t));
-
-            LOG << "Size of Indices: " << indices.size()*sizeof(uint16_t) << ENDL;
+            copy_cmd.end();
+            C.submit_cmd_buffer(copy_cmd);
+            cp->FreeCommandBuffer(copy_cmd);
         }
 
-        // 2. Copy the data from the host-visible buffer to the vertex/index buffers
-
-        // allocate a comand buffer
-        vk::CommandBuffer copy_cmd = cp->AllocateCommandBuffer();
-        copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-
-        // write the commands to copy each of the buffer data
-        const vk::DeviceSize vertex_offset   = 0;
-        const vk::DeviceSize vertex_size     = vertices.size()*sizeof(Vertex);
-
-        const vk::DeviceSize index_offset    = vertices.size()*sizeof(Vertex);
-        const vk::DeviceSize index_size      = indices.size()*sizeof(uint16_t);
-
-
-        copy_cmd.copyBuffer( *staging_buffer , *vertex_buffer, vk::BufferCopy{ vertex_offset    , 0 , vertex_size } );
-        copy_cmd.copyBuffer( *staging_buffer , *index_buffer , vk::BufferCopy{ index_offset     , 0 , index_size  } );
-
-        copy_cmd.end();
-        C.submit_cmd_buffer(copy_cmd);
-        ////===============
-        //
-        cp->FreeCommandBuffer(copy_cmd);
-
-        // Unmap the memory.
-        //   WARNING: DO NOT ACCESS the vertex and index array_views as these
-        //            now point to unknown memory spaces
-        staging_buffer->unmap_memory();
-
-
 //==============================================================================
-// Create the Texture2dArray
+// Create a texture
 //
 //==============================================================================
 
@@ -271,60 +274,41 @@ int main(int argc, char ** argv)
         vka::host_image D("resources/textures/Brick-2852a.jpg",4);
         vka::host_image D2("resources/textures/noise.jpg",4);
 
-
-
     // 2. Use the context's helper function to create a device local texture
     //    We will be using a texture2d which is a case specific version of the
     //    generic texture
-        vka::texture2darray * tex = C.new_texture2darray("test_texture");
-        tex->set_size( D.width() , D.height() );
-        tex->set_format(vk::Format::eR8G8B8A8Unorm);
-        tex->set_mipmap_levels(8);
-        tex->set_layers(10);
-        tex->create();
-        tex->create_image_view(vk::ImageAspectFlagBits::eColor);
+        auto Tex = TexturePool.AllocateTexture2D( vk::Format::eR8G8B8A8Unorm,
+                                         vk::Extent2D(D.width(), D.height() ),
+                                         2,8
+                                         );
 
 
-#if 0
-        auto t1 = tick();
-        tex->copy_image( D , 0, vk::Offset2D(0,0) );
-        tex->copy_image( D2, 1, vk::Offset2D(0,0) );
 
-        LOG << "Time to copy image: " << (tick()-t1) << ENDL;
-#else
-    // 3. Map the buffer to memory and copy the the two images to it
-    //    one right after the other.
-    //
-    //  Because we only have 2 textures to copy, both will easily fit in the
-    //  staging buffer. If you have many textures, you will have to run
-    //  this section multiple times: write to staging buffer, copy to array
-    //   write to staging buffer, copy to array. etc.
-        auto t1 = tick();
-        void * image_buffer_data = staging_buffer->map_memory();
-        memcpy( image_buffer_data, D.data(), D.size() );
+        // 3. Create a scope so that when we create Staging Buffers, they'll automatically
+        //    be deallocated. StagingBuffers allocated from a pool can be allocated and deallocated
+        //    without much performance issues.
+        {
+            auto StagingBuffer = StagingBufferPool.NewSubBuffer( D.size() + D2.size() );
+            StagingBuffer->CopyData( D.data(), D.size() );
+            StagingBuffer->CopyData(D2.data(), D2.size() , D.size());
 
 
-        image_buffer_data = static_cast<char*>(image_buffer_data) + D.size();
-        memcpy( image_buffer_data, D2.data(), D2.size() );
+        // 4. Now that the data is on the device. We need to get it from the buffer
+        //    to the texture. To do this we will record a command buffer to do the
+        //    following:
+        //         a. convert the texture2d into a layout which can accept transfer data
+        //         b. copy the data from the buffer to the texture2d.
+        //         c. convert the texture2d into a layout which is good for shader use
 
-        staging_buffer->unmap_memory();
+            // allocate the command buffer
+            vka::command_buffer cb1 = cp->AllocateCommandBuffer();
+            cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
+                // a. convert the texture to eTransferDstOptimal
+                cb1.convertTextureLayer( Tex,0,2,vk::ImageLayout::eTransferDstOptimal,
+                                         vk::PipelineStageFlagBits::eBottomOfPipe,
+                                         vk::PipelineStageFlagBits::eTopOfPipe);
 
-    // 4. Now that the data is on the device. We need to get it from the buffer
-    //    to the texture array. To do this we will record a command buffer to do the
-    //    following:
-    //         a. Convert the layers in the texture array into a layout which can accept transfer data
-    //         b. copy the data from the buffer to the texture2darray.
-    //         c. convert the layers into a layout which is good for shader use
-
-        // allocate the command buffer
-        vk::CommandBuffer cb1 = cp->AllocateCommandBuffer();
-        cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-
-
-            // a. convert the texture to eTransferDstOptimal
-            tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0,0);
-            tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,1,0);
 
             // b. copy the data from the buffer to the texture
             vk::BufferImageCopy BIC;
@@ -334,52 +318,72 @@ int main(int argc, char ** argv)
                .setImageOffset( vk::Offset3D(0,0,0)) // where in the texture we want to paste the image
                .imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
                                 .setBaseArrayLayer(0) // the layer to copy
-                                .setLayerCount(2) // only copy 2 layers
+                                .setLayerCount(2) // only copy one layer
                                 .setMipLevel(0);  // only the first mip-map level
 
-            tex->copy_buffer( cb1, staging_buffer, BIC);
-
+            //---------------------------------------------
+            cb1.copySubBufferToTexture( StagingBuffer, Tex, vk::ImageLayout::eTransferDstOptimal, BIC);
 
 
             //==================================================================
             // Generate the mipmaps manually for layer 0
             //==================================================================
-            for(uint32_t i=0; i< tex->get_mipmap_levels()-1 ; i++)
+            for(uint32_t i=0; i < Tex->GetMipLevels()-1 ; i++)
             {
-                // convert the upper layer to be a Transfer Source
-                tex->convert_layer(cb1, vk::ImageLayout::eTransferSrcOptimal,0, i);
-                // convert the next lower level to be transfer dest
-                tex->convert_layer(cb1, vk::ImageLayout::eTransferDstOptimal,0, i+1);
+                // Convert layers 0-2 mip level i to TransferDstOptimal
+                cb1.convertTextureLayerMips( Tex,
+                                             0,2, // convert Layer's 0-1
+                                             i,1, // convert mip level i
+                                             vk::ImageLayout::eTransferSrcOptimal,
+                                             vk::PipelineStageFlagBits::eBottomOfPipe,
+                                             vk::PipelineStageFlagBits::eTopOfPipe);
 
-                // copy from the above layer down one
-                tex->blit_mipmap(cb1, 0,  // copy from layer 0
-                                      0,  // to layer 0
-                                      i,  // from mipmap i
-                                      i+1); //  to mipmap i+1
+                // Convert layers 0-2 mip level i+1 to TransferDstOptimal
+                cb1.convertTextureLayerMips( Tex,
+                                             0,2, // layers 0-1
+                                             i+1,1, // mips level i+1
+                                             vk::ImageLayout::eTransferDstOptimal,
+                                             vk::PipelineStageFlagBits::eBottomOfPipe,
+                                             vk::PipelineStageFlagBits::eTopOfPipe);
+
+                // Blit from miplevel i to i+1 for layers 0 and 1
+                cb1.blitMipMap( Tex,
+                                0,2,
+                                i,i+1);
+
 
                 // convert the upper layer back to eShaderReadOnlyOptimal
-                tex->convert_layer(cb1, vk::ImageLayout::eShaderReadOnlyOptimal, 0, i);
+                cb1.convertTextureLayerMips( Tex,
+                                             0,2, // layers 0-1
+                                             i,1, // mips level i+1
+                                             vk::ImageLayout::eShaderReadOnlyOptimal,
+                                             vk::PipelineStageFlagBits::eBottomOfPipe,
+                                             vk::PipelineStageFlagBits::eTopOfPipe);
+
             }
             // convert the last layer to eShaderReadOnlyOptimal
-            tex->convert_layer(cb1, vk::ImageLayout::eShaderReadOnlyOptimal, 0, tex->get_mipmap_levels()-1);
+            cb1.convertTextureLayerMips( Tex,
+                                         0,2, // layers 0-1
+                                         Tex->GetMipLevels()-1,1, // mips level i+1
+                                         vk::ImageLayout::eShaderReadOnlyOptimal,
+                                         vk::PipelineStageFlagBits::eBottomOfPipe,
+                                         vk::PipelineStageFlagBits::eTopOfPipe);
+
             //==================================================================
 
 
-            //==================================================================
-            // Generate mip maps automatically using the texture classes
-            // built in method. This method does the same as the above.
-            //==================================================================
-            tex->generate_mipmaps(cb1,1);
-            //==================================================================
 
+            // c. convert the texture into eShaderReadOnlyOptimal
+            cb1.convertTextureLayer( Tex,0,2,vk::ImageLayout::eShaderReadOnlyOptimal,
+                                     vk::PipelineStageFlagBits::eBottomOfPipe,
+                                     vk::PipelineStageFlagBits::eTopOfPipe);
 
-        // end and submit the command buffer
-        cb1.end();
-        C.submit_cmd_buffer(cb1);
-        // free the command buffer
-        cp->FreeCommandBuffer(cb1);
-        LOG << "Time to copy image: " << (tick()-t1) << ENDL;
-#endif
+            // end and submit the command buffer
+            cb1.end();
+            C.submit_cmd_buffer(cb1);
+            // free the command buffer
+            cp->FreeCommandBuffer(cb1);
+        }
 //==============================================================================
 
 
@@ -442,6 +446,7 @@ int main(int argc, char ** argv)
 
 
 
+
 //==============================================================================
 // Create a descriptor set:
 //   once the pipeline has been created. We need to create a descriptor set
@@ -451,19 +456,46 @@ int main(int argc, char ** argv)
     // we want a descriptor set for set #0 in the pipeline.
     vka::descriptor_set * texture_descriptor = pipeline->create_new_descriptor_set(0, descriptor_pool);
     //  attach our texture to binding 0 in the set.
-    texture_descriptor->attach_sampler(0, tex);
+    texture_descriptor->AttachSampler(0, Tex);
     texture_descriptor->update();
 
     vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
-    ubuffer_descriptor->attach_uniform_buffer(0, u_buffer, sizeof(uniform_buffer_t), 0);
+    ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
     ubuffer_descriptor->update();
 
     vka::descriptor_set * dubuffer_descriptor = pipeline->create_new_descriptor_set(2, descriptor_pool);
-    dubuffer_descriptor->attach_dynamic_uniform_buffer(0, du_buffer, sizeof(dynamic_uniform_buffer_t), 0);
+    dubuffer_descriptor->AttachDynamicUniformBuffer(0,DU_buffer, DU_buffer->GetSize() );
     dubuffer_descriptor->update();
 
-    vka::array_view<uniform_buffer_t> staging_buffer_map        = staging_buffer->map<uniform_buffer_t>();
-    vka::array_view<dynamic_uniform_buffer_t> staging_dbuffer_map = staging_buffer->map<dynamic_uniform_buffer_t>(sizeof(uniform_buffer_t));
+
+
+    // We will allocate two Staging buffers to copy uniform data as well as dynamic uniform data
+    // for each of the objects. Each of the Staging Buffers act like an individual buffer
+    // But are simply an offset into the BufferPool it was allocated from.
+    //
+    //
+    // +--------------+
+    // | uniform_data |  UniformStagingBuffer
+    // +--------------+
+    //
+    // +------+------+
+    // | obj1 | obj2 |    DynamicUniformStagingBuffer
+    // +------+------+
+    //
+    // +--------------+---------+------+------+-------------------------+
+    // | uniform_data |         | obj1 | obj2 |                         | StagingBufferPool
+    // +--------------+---------+------+------+-------------------------+
+    auto UniformStagingBuffer        = StagingBufferPool.NewSubBuffer(   sizeof(uniform_buffer_t ));
+    auto DynamicUniformStagingBuffer = StagingBufferPool.NewSubBuffer( 2*sizeof(dynamic_uniform_buffer_t ));
+
+    // Get a MappedMemory object so that we can write data directly into it.
+    vka::MappedMemory  UniformStagingBufferMap = UniformStagingBuffer->GetMappedMemory();
+    vka::MappedMemory  DynamicStagingBufferMap = DynamicUniformStagingBuffer->GetMappedMemory();
+
+    // Cast the memory to a reference so we can access
+    // aliased data.
+    uniform_buffer_t & UniformStagingStruct               = *( (uniform_buffer_t*)UniformStagingBufferMap );
+    dynamic_uniform_buffer_t * DynamicUniformStagingArray = (dynamic_uniform_buffer_t*)DynamicStagingBufferMap;
 
     vka::command_buffer cb = cp->AllocateCommandBuffer();
 
@@ -497,47 +529,26 @@ int main(int argc, char ** argv)
       cb.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
 
 
-
-      // The staging buffer will hold all data that will be sent to
-      // the other two buffers.
-      //
-      // +--------------+------+--------------------------------+
-      // | uniform_data | obj1 | obj2 |                         | Staging Buffer
-      // +--------------+------+--------------------------------+
-      uint32_t ub_src_offset = 0;
-      uint32_t ub_size       = sizeof(uniform_buffer_t);
-
-      std::vector<uint32_t> dub_src_offset = { ub_size ,
-                                               ub_size + sizeof(dynamic_uniform_buffer_t)};
-
-
-
-
-
+      //--------------------------------------------------------------------------------------
+      // Copy the Data from thost to the staging buffers.
+      //--------------------------------------------------------------------------------------
       #define MAX_OBJECTS 2
       // Copy the uniform buffer data into the staging buffer
       const float AR = WIDTH / ( float )HEIGHT;
-      staging_buffer_map[0].view        = glm::lookAt(glm::vec3(0.0f, 2.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-      staging_buffer_map[0].proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 100.0f);
-      staging_buffer_map[0].proj[1][1] *= -1;
+      UniformStagingStruct.view        = glm::lookAt(  ( 5*cosf(0.1*t)*cosf(0.1*t) + 1 )*glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+      UniformStagingStruct.proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 30.0f);
+      UniformStagingStruct.proj[1][1] *= -1;
 
       // Copy the dynamic uniform buffer data into the staging buffer
-      staging_dbuffer_map[0].model       =  glm::rotate(glm::mat4(1.0), t * glm::radians(30.0f), glm::vec3(1.0f, -2.0f, 1.0f))
-                                           *glm::rotate(glm::mat4(1.0), t * glm::radians(60.0f), glm::vec3(-4.0f, -2.0f, 1.3f))*glm::translate( glm::mat4(), glm::vec3( 1,0,0) );;
+      DynamicUniformStagingArray[0].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
+      DynamicUniformStagingArray[1].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
+      //--------------------------------------------------------------------------------------
 
-      staging_dbuffer_map[1].model       =  glm::rotate(glm::mat4(1.0), t * glm::radians(30.0f), glm::vec3(1.0f, -2.0f, 1.0f))
-                                           *glm::rotate(glm::mat4(1.0), t * glm::radians(60.0f), glm::vec3(-4.0f, -2.0f, 1.3f))*glm::translate( glm::mat4(), glm::vec3(-1,0,0) );
-
-
-      // +------------------------------------------------------+
-      // | uniform_data |                                       | Uniform Buffer
-      // +------------------------------------------------------+
-
-
-      // Copy the uniform buffer data from the stating buffer to the uniform buffer. THis normally only needs to be done
+      //--------------------------------------------------------------------------------------
+      // Copy the uniform buffer data from the staging buffer to the uniform buffer. This normally only needs to be done
       // once per rendering frame because it contains frame constant data.
-      cb.copyBuffer( *staging_buffer ,  *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
-
+      cb.copySubBuffer( UniformStagingBuffer ,  U_buffer , vk::BufferCopy{ 0,0, sizeof(uniform_buffer_t) } );
+      //--------------------------------------------------------------------------------------
 
       // Copy the dynamic uniform buffer data from the staging buffer
       // to the appropriate offset in the Dynamic Uniform Buffer.
@@ -545,23 +556,21 @@ int main(int argc, char ** argv)
       // | obj1        | obj2         | obj3...                | Dynamic Uniform Buffer
       // +-------------+---------------------------------------+
       // |<-alignment->|
-
       for(uint32_t j=0; j < MAX_OBJECTS; j++)
       {
           // byte offset within the staging buffer where teh data resides
-          auto srcOffset = sizeof(uniform_buffer_t) + j * sizeof(dynamic_uniform_buffer_t);
+          auto srcOffset = j * sizeof(dynamic_uniform_buffer_t);
           // byte offset within the dynamic uniform buffer where to copy the data
           auto dstOffset = j * alignment;
           // number of bytes to copy
           auto size      = sizeof(dynamic_uniform_buffer_t);
 
-          cb.copyBuffer( *staging_buffer , *du_buffer , vk::BufferCopy{ srcOffset,dstOffset, size } );
+          cb.copySubBuffer( DynamicUniformStagingBuffer , DU_buffer , vk::BufferCopy{ srcOffset, dstOffset, size } );
       }
-
-
 
       uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
       screen->beginRender(cb, frame_index);
+
 
       // bind the pipeline that we want to use next
         cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
@@ -580,8 +589,8 @@ int main(int argc, char ** argv)
                                                 nullptr );
 
     // bind the vertex/index buffers
-        cb.bindVertexBuffers(0, vertex_buffer->get(), {0} );
-        cb.bindIndexBuffer(  index_buffer->get() , 0 , vk::IndexType::eUint16);
+        cb.bindVertexSubBuffer(0, V_buffer, 0 );
+        cb.bindIndexSubBuffer(  I_buffer, vk::IndexType::eUint16, 0);
 
       //========================================================================
       // Draw all the objects while binding the dynamic uniform buffer
@@ -589,31 +598,31 @@ int main(int argc, char ** argv)
       //========================================================================
       for(uint32_t j=0 ; j < MAX_OBJECTS; j++)
       {
-          // Here we write the data to the command buffer.
-          push_constants_t push;
-          push.index    = 0;
+            // Here we write the data to the command buffer.
+            push_constants_t push;
+            push.index    = 0;
 
-       //   fmod( get_elapsed_time(), 2);
-          if(j==0)
-          {
-            push.miplevel = -1;
-          } else {
-            push.miplevel = (int)fmod( t ,tex->get_mipmap_levels());
-          }
+            if(j==0)
+            {
+              push.miplevel = -1;
+            } else {
+              push.miplevel = (int)fmod( t ,Tex->GetMipLevels() );
+            }
 
-          cb.pushConstants( pipeline->get_layout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(push_constants_t), &push);
+            cb.pushConstants( pipeline->get_layout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(push_constants_t), &push);
 
-          cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                                  pipeline->get_layout(),
-                                                  2,
-                                                  vk::ArrayProxy<const vk::DescriptorSet>( dubuffer_descriptor->get()),
-                                                  vk::ArrayProxy<const uint32_t>(j*alignment) );
-
+            cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
+                                                    pipeline->get_layout(),
+                                                    2,
+                                                    vk::ArrayProxy<const vk::DescriptorSet>( dubuffer_descriptor->get()),
+                                                    vk::ArrayProxy<const uint32_t>(j*alignment) );
 
 
-    // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
+
+            // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
             cb.drawIndexed(36, 1, 0 , 0, 0);
       }
+
 
 
       screen->endRender(cb);
@@ -625,7 +634,7 @@ int main(int argc, char ** argv)
 
       // present the image to the surface, but wait for the render_complete_semaphore
       // to be flagged by the submit_command_buffer
-      screen->present_frame( frame_index, render_complete_semaphore);
+      screen->present_frame(frame_index, render_complete_semaphore);
 
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );
     }
