@@ -42,7 +42,7 @@
 
 #define WIDTH 1024
 #define HEIGHT 768
-#define APP_TITLE "Example_03 - Dynamic Uniform Buffers"
+#define APP_TITLE "Example_04 - Texture Arrays and Push Constants"
 
 // This is the vertex structure we are going to use
 // it contains a position and a UV coordates field
@@ -66,6 +66,13 @@ struct uniform_buffer_t
 struct dynamic_uniform_buffer_t
 {
     glm::mat4 model;
+};
+
+// This data will be written directly to the command buffer to
+// be passed to the shader as a push constant.
+struct push_constants_t
+{
+    int index; // index into the texture array layer
 };
 
 /**
@@ -262,14 +269,14 @@ int main(int argc, char ** argv)
 
     // 1. First load host_image into memory, and specifcy we want 4 channels.
         vka::host_image D("resources/textures/Brick-2852a.jpg",4);
-
+        vka::host_image D2("resources/textures/noise.jpg",4);
 
     // 2. Use the context's helper function to create a device local texture
     //    We will be using a texture2d which is a case specific version of the
     //    generic texture
         auto Tex = TexturePool.AllocateTexture2D( vk::Format::eR8G8B8A8Unorm,
                                          vk::Extent2D(D.width(), D.height() ),
-                                         1,1
+                                         2,1
                                          );
 
 
@@ -278,8 +285,9 @@ int main(int argc, char ** argv)
         //    be deallocated. StagingBuffers allocated from a pool can be allocated and deallocated
         //    without much performance issues.
         {
-            auto StagingBuffer = StagingBufferPool.NewSubBuffer( D.size() );
-            StagingBuffer->CopyData(D.data(), D.size() );
+            auto StagingBuffer = StagingBufferPool.NewSubBuffer( D.size() + D2.size() );
+            StagingBuffer->CopyData( D.data(), D.size() );
+            StagingBuffer->CopyData(D2.data(), D2.size() , D.size());
 
 
         // 4. Now that the data is on the device. We need to get it from the buffer
@@ -297,7 +305,9 @@ int main(int argc, char ** argv)
                 cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eTransferDstOptimal,
                                          vk::PipelineStageFlagBits::eBottomOfPipe,
                                          vk::PipelineStageFlagBits::eTopOfPipe);
-
+                cb1.convertTextureLayer( Tex,1,vk::ImageLayout::eTransferDstOptimal,
+                                         vk::PipelineStageFlagBits::eBottomOfPipe,
+                                         vk::PipelineStageFlagBits::eTopOfPipe);
 
 
             // b. copy the data from the buffer to the texture
@@ -308,7 +318,7 @@ int main(int argc, char ** argv)
                .setImageOffset( vk::Offset3D(0,0,0)) // where in the texture we want to paste the image
                .imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
                                 .setBaseArrayLayer(0) // the layer to copy
-                                .setLayerCount(1) // only copy one layer
+                                .setLayerCount(2) // only copy one layer
                                 .setMipLevel(0);  // only the first mip-map level
 
             //---------------------------------------------
@@ -316,6 +326,9 @@ int main(int argc, char ** argv)
 
             // c. convert the texture into eShaderReadOnlyOptimal
             cb1.convertTextureLayer( Tex,0,vk::ImageLayout::eShaderReadOnlyOptimal,
+                                     vk::PipelineStageFlagBits::eBottomOfPipe,
+                                     vk::PipelineStageFlagBits::eTopOfPipe);
+            cb1.convertTextureLayer( Tex,1,vk::ImageLayout::eShaderReadOnlyOptimal,
                                      vk::PipelineStageFlagBits::eBottomOfPipe,
                                      vk::PipelineStageFlagBits::eTopOfPipe);
             // end and submit the command buffer
@@ -333,11 +346,11 @@ int main(int argc, char ** argv)
 //==============================================================================
         // create the vertex shader from a pre compiled SPIR-V file
         vka::shader* vertex_shader = C.new_shader_module("vs");
-        vertex_shader->load_from_file("resources/shaders/dynamic_uniform_buffer/dynamic_uniform_buffer.vert");
+        vertex_shader->load_from_file("resources/shaders/texture_array/texture_array.vert");
 
         // create the fragment shader from a pre compiled SPIR-V file
         vka::shader* fragment_shader = C.new_shader_module("fs");
-        fragment_shader->load_from_file("resources/shaders/dynamic_uniform_buffer/dynamic_uniform_buffer.frag");
+        fragment_shader->load_from_file("resources/shaders/texture_array/texture_array.frag");
 
         vka::pipeline* pipeline = C.new_pipeline("triangle");
 
@@ -350,12 +363,12 @@ int main(int argc, char ** argv)
 
                   // tell the pipeline that attribute 0 contains 3 floats
                   // and the data starts at offset 0
-                  ->set_vertex_attribute(0,0 ,  offsetof(Vertex,p),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
+                  ->set_vertex_attribute(0, 0 ,  offsetof(Vertex,p),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
                   // tell the pipeline that attribute 1 contains 3 floats
                   // and the data starts at offset 12
-                  ->set_vertex_attribute(0,1 , offsetof(Vertex,u),  vk::Format::eR32G32Sfloat,  sizeof(Vertex) )
+                  ->set_vertex_attribute(0, 1 , offsetof(Vertex,u),  vk::Format::eR32G32Sfloat,  sizeof(Vertex) )
 
-                  ->set_vertex_attribute(0,2 , offsetof(Vertex,n),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
+                  ->set_vertex_attribute(0, 2 , offsetof(Vertex,n),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
 
                   // Triangle vertices are drawn in a counter clockwise manner
                   // using the right hand rule which indicates which face is the
@@ -363,7 +376,7 @@ int main(int argc, char ** argv)
                   ->set_front_face(vk::FrontFace::eCounterClockwise)
 
                   // Cull all back facing triangles.
-                  ->set_cull_mode(vk::CullModeFlagBits::eNone)
+                  ->set_cull_mode(vk::CullModeFlagBits::eBack)
 
                   // Tell the shader that we are going to use a texture
                   // in Set #0 binding #0
@@ -376,9 +389,14 @@ int main(int argc, char ** argv)
                   // Tell teh shader that we are going to use a uniform buffer
                   // in Set #0 binding #0
                   ->add_dynamic_uniform_layout_binding(2, 0, vk::ShaderStageFlagBits::eVertex)
+
+                  // Add a push constant to the layout. It is accessable in the vertex shader
+                  // stage only.
+                  ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
                   //
                   ->set_render_pass( screen->get_renderpass() )
                   ->create();
+
 
 
 
@@ -533,6 +551,11 @@ int main(int argc, char ** argv)
       //========================================================================
       for(uint32_t j=0 ; j < MAX_OBJECTS; j++)
       {
+            push_constants_t push;
+            push.index = j%2;
+
+            cb.pushConstants( pipeline->get_layout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(push_constants_t), &push);
+
             cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
                                                     pipeline->get_layout(),
                                                     2,
