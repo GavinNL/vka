@@ -182,7 +182,7 @@ void command_buffer::copySubBufferToTexture( const std::shared_ptr<SubBuffer> & 
 
 
 void command_buffer::convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
-                                         uint32_t layer,
+                                         uint32_t layer, uint32_t layer_count,
                                          vk::ImageLayout new_layout,
                                          vk::PipelineStageFlags srcStageMask,
                                          vk::PipelineStageFlags dstStageMask)
@@ -191,7 +191,7 @@ void command_buffer::convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
     R.baseMipLevel = 0;
     R.levelCount = tex->GetMipLevels();
     R.baseArrayLayer = layer;
-    R.layerCount = 1;
+    R.layerCount = layer_count;
     convertTexture( tex,
                     tex->GetLayout(0,layer), // old layout, all mips must be the same
                     new_layout,

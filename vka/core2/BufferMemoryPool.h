@@ -62,10 +62,10 @@ private:
      */
     MappedMemory GetMappedMemory(vk::DeviceSize offset=0);
 
-    void CopyData( void const * src, vk::DeviceSize d)
+    void CopyData( void const * src, vk::DeviceSize d, vk::DeviceSize offset=0)
     {
         auto dst = GetMappedMemory();
-        dst.memcpy( src, d , 0);
+        dst.memcpy( src, d , offset);
     }
 
     protected:
