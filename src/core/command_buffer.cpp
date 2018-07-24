@@ -192,6 +192,7 @@ void command_buffer::convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
     R.levelCount = tex->GetMipLevels();
     R.baseArrayLayer = layer;
     R.layerCount = layer_count;
+    R.aspectMask = vk::ImageAspectFlagBits::eColor;
     convertTexture( tex,
                     tex->GetLayout(0,layer), // old layout, all mips must be the same
                     new_layout,
@@ -213,6 +214,7 @@ void command_buffer::convertTextureLayerMips(std::shared_ptr<vka::Texture> & tex
     R.levelCount  = mipLevelCount;
     R.baseArrayLayer = layer;
     R.layerCount = layer_count;
+    R.aspectMask = vk::ImageAspectFlagBits::eColor;
     convertTexture( tex,
                     tex->GetLayout(mipLevel,layer), // old layout, all mips must be the same
                     new_layout,
