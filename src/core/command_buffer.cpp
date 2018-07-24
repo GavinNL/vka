@@ -234,6 +234,13 @@ void command_buffer::convertTexture( std::shared_ptr<vka::Texture> & tex,
                                      )
 {
 
+    LOG << "Converting Texture: " << ENDL;
+    LOG << "           Array Layer: (" << range.baseArrayLayer << ", " << range.layerCount << ENDL;
+    LOG << "           Mip Level  : (" << range.baseMipLevel << ", " << range.levelCount << ENDL;
+    LOG << "          From        : (" << vk::to_string(old_layout ) << ENDL;
+    LOG << "          To          : (" << vk::to_string(new_layout ) << ENDL;
+
+
     vk::ImageMemoryBarrier barrier;
 
     barrier.oldLayout = old_layout;
