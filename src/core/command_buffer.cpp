@@ -12,6 +12,7 @@
 
 
 #include <vka/core2/TextureMemoryPool.h>
+#include <vka/core2/MeshObject.h>
 
 void vka::command_buffer::bindVertexSubBuffer(uint32_t firstBinding,
                               vka::sub_buffer const * buffer , vk::DeviceSize offset) const
@@ -145,6 +146,19 @@ void command_buffer::bindIndexSubBuffer( const std::shared_ptr<SubBuffer> & buff
                                          vk::DeviceSize offset) const
 {
     vk::CommandBuffer::bindIndexBuffer( buffer->GetParentBufferHandle(), buffer->GetOffset()+offset, indexType);
+}
+
+void command_buffer::bindMeshObject(const MeshObject &obj)
+{
+    if( obj.GetIndexBuffer() )
+    {
+        bindIndexSubBuffer( obj.GetIndexBuffer(), obj.GetIndexType() );
+    }
+
+    for(auto & b : obj.GetAttributeBuffers() )
+    {
+        bindVertexSubBuffer( b.first, b.second);
+    }
 }
 
 void command_buffer::copySubBufferToImage( const std::shared_ptr<SubBuffer> & buffer,
