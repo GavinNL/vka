@@ -205,7 +205,7 @@ void command_buffer::convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
 void command_buffer::convertTextureLayerMips(std::shared_ptr<vka::Texture> & tex,
                                              uint32_t layer, uint32_t layer_count,
                                              uint32_t mipLevel, uint32_t mipLevelCount,
-                                             vk::ImageLayout new_layout,
+                                             vk::ImageLayout old_layout, vk::ImageLayout new_layout,
                                              vk::PipelineStageFlags srcStageMask,
                                              vk::PipelineStageFlags dstStageMask)
 {
@@ -216,7 +216,7 @@ void command_buffer::convertTextureLayerMips(std::shared_ptr<vka::Texture> & tex
     R.layerCount = layer_count;
     R.aspectMask = vk::ImageAspectFlagBits::eColor;
     convertTexture( tex,
-                    tex->GetLayout(mipLevel,layer), // old layout, all mips must be the same
+                    old_layout, // old layout, all mips must be the same
                     new_layout,
                     R,
                     srcStageMask,
@@ -392,11 +392,56 @@ void command_buffer::blitMipMap( std::shared_ptr<vka::Texture> & tex,
     imgBlit.dstOffsets[1].z = std::max( int32_t(1), int32_t( extents.depth >> dst_miplevel) );
 
 
-    LOG << "Generating Mipmap Level: " << dst_miplevel << ENDL;
+
     blitImage( tex->GetImage(), vk::ImageLayout::eTransferSrcOptimal,
                tex->GetImage(), vk::ImageLayout::eTransferDstOptimal,
                imgBlit, vk::Filter::eLinear);
 }
 
+
+
+void command_buffer::generateMipMaps( std::shared_ptr<vka::Texture> & Tex,
+                                      uint32_t Layer, uint32_t LayerCount)
+{
+    // Convert mip level 0 to SrcOptimal
+    convertTextureLayerMips( Tex,
+                             Layer,LayerCount, // layers 0-1
+                             0,1, // mips level i+1
+                             Tex->GetLayout(0,Layer), vk::ImageLayout::eTransferSrcOptimal,
+                             vk::PipelineStageFlagBits::eTransfer,
+                             vk::PipelineStageFlagBits::eHost);
+
+    for(uint32_t i=1; i < Tex->GetMipLevels() ; i++)
+    {
+        // Convert Layer i to TransferDst
+        convertTextureLayerMips( Tex,
+                                 Layer,LayerCount, // layers 0-1
+                                 i,1, // mips level i+1
+                                 Tex->GetLayout(i,Layer), vk::ImageLayout::eTransferDstOptimal,
+                                 vk::PipelineStageFlagBits::eTransfer,
+                                 vk::PipelineStageFlagBits::eHost);
+
+        // Blit from miplevel i-1 to i for layers 0 and 1
+        blitMipMap( Tex,
+                    Layer,LayerCount,
+                    i-1,i);
+
+
+        // convert layer i into src so it can be copied from in the next iteraation
+        convertTextureLayerMips( Tex,
+                                 Layer,LayerCount, // layers 0-1
+                                 i,1, // mips level i+1
+                                 vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal,
+                                 vk::PipelineStageFlagBits::eHost,
+                                 vk::PipelineStageFlagBits::eTransfer);
+
+    }
+    convertTextureLayerMips( Tex,
+                             Layer,LayerCount, // layers 0-1
+                             0,Tex->GetMipLevels(), // mips level i+1
+                             vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
+                             vk::PipelineStageFlagBits::eHost,
+                             vk::PipelineStageFlagBits::eTransfer);
+}
 
 }

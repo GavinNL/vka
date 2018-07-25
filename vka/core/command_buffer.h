@@ -99,7 +99,17 @@ class command_buffer : public vk::CommandBuffer
                                  vk::BufferImageCopy const & C) const;
 
 
-    // Generic convertTexture
+    /**
+     * @brief convertTexture
+     * @param tex
+     * @param old_layout
+     * @param new_layout
+     * @param range
+     * @param srcStageMask
+     * @param dstStageMask
+     *
+     * Convert an entire texture into another layout.
+     */
     void convertTexture(std::shared_ptr<vka::Texture> & tex,
                         vk::ImageLayout old_layout,
                         vk::ImageLayout new_layout,
@@ -107,26 +117,75 @@ class command_buffer : public vk::CommandBuffer
                         vk::PipelineStageFlags srcStageMask,
                         vk::PipelineStageFlags dstStageMask);
 
-    // Converts a specific texture layer and all it's mipmaps to the
-    // new layout. All mip levels must be of the same layout
+    /**
+     * @brief convertTextureLayer
+     * @param tex
+     * @param layer
+     * @param layer_count
+     * @param new_layout
+     * @param srcStageMask
+     * @param dstStageMask
+     *
+     * Convert a texture layer and all it's mipmaps into another
+     * layout. All mipmap levels must be of the same layout.
+     */
     void convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
                              uint32_t layer, uint32_t layer_count,
                              vk::ImageLayout new_layout,
                              vk::PipelineStageFlags srcStageMask,
                              vk::PipelineStageFlags dstStageMask);
 
+    /**
+     * @brief convertTextureLayerMips
+     * @param tex
+     * @param layer
+     * @param layer_count
+     * @param mipLevel
+     * @param mipLevelCount
+     * @param old_layout
+     * @param new_layout
+     * @param srcStageMask
+     * @param dstStageMask
+     *
+     * Convert a texture layer range and mipmap range from one
+     * layout to another.
+     */
     void convertTextureLayerMips(std::shared_ptr<vka::Texture> & tex,
                                  uint32_t layer, uint32_t layer_count,
-                                 uint32_t mipLevel, uint32_t mipLevelCount,
+                                 uint32_t mipLevel, uint32_t mipLevelCount, vk::ImageLayout old_layout,
                                  vk::ImageLayout new_layout,
                                  vk::PipelineStageFlags srcStageMask,
                                  vk::PipelineStageFlags dstStageMask);
 
-
+    /**
+     * @brief blitMipMap
+     * @param tex
+     * @param Layer
+     * @param LayerCount
+     * @param src_miplevel
+     * @param dst_miplevel
+     *
+     * Blit one layer onto another. The source layer should be
+     * at vk::ImageLayout::eTransferSrcOptimal and the
+     * destination should be vk::ImageLayout::eTransferDstOptimal
+     */
     void blitMipMap( std::shared_ptr<vka::Texture> & tex,
                      uint32_t Layer, uint32_t LayerCount,
                      uint32_t src_miplevel,
                      uint32_t dst_miplevel);
+
+    /**
+     * @brief generateMipMaps
+     * @param Tex
+     * @param Layer
+     * @param LayerCount
+     *
+     * Generate mipmaps for the Layers indicated by
+     * Layer and LayerCount. All Layers should already
+     * be at the same layout.
+     */
+    void generateMipMaps(std::shared_ptr<vka::Texture> &Tex,
+                         uint32_t Layer, uint32_t LayerCount);
 };
 
 }
