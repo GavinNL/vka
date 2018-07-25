@@ -45,16 +45,8 @@
 
 #define WIDTH 1024
 #define HEIGHT 768
-#define APP_TITLE "Example_04 - Texture Arrays and Push Constants"
+#define APP_TITLE "Example_07 - Mesh Objects"
 
-// This is the vertex structure we are going to use
-// it contains a position and a UV coordates field
-struct Vertex
-{
-    glm::vec3 p; // position
-    glm::vec2 u; // uv coords
-    glm::vec3 n; // normal
-};
 
 // This is the structure of the uniform buffer we want.
 // it needs to match the structure in the shader.
@@ -92,21 +84,6 @@ float get_elapsed_time()
     return time;
 
 }
-
-
-/**
- * @brief create_box_mesh
- * @param dx - dimension of the box
- * @param dy - dimension of the box
- * @param dz - dimension of the box
- * @param vertices
- * @param indices
- *
- * Create a box mesh and save the vertices and indices in the input vectors.
- * The vertices/indices will then be copied into the graphics's buffers
- */
-void create_box_mesh(float dx , float dy , float dz , std::vector<Vertex> & vertices, std::vector<uint16_t> & indices );
-
 
 
 int main(int argc, char ** argv)
@@ -347,7 +324,7 @@ int main(int argc, char ** argv)
             // b. copy the data from the buffer to the texture
             vk::BufferImageCopy BIC;
             BIC.setBufferImageHeight(  D.height() )
-               .setBufferOffset(0) // the image data starts at the start of the buffer
+               .setBufferOffset(0) // the image data starts at the start of the SubBuffer
                .setImageExtent( vk::Extent3D(D.width(), D.height(), 1) ) // size of the image
                .setImageOffset( vk::Offset3D(0,0,0)) // where in the texture we want to paste the image
                .imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
@@ -359,62 +336,8 @@ int main(int argc, char ** argv)
             //---------------------------------------------
             cb1.copySubBufferToTexture( StagingBuffer, Tex, vk::ImageLayout::eTransferDstOptimal, BIC);
 
-#define MANUAL_MIP_MAPS
 
-#if defined MANUAL_MIP_MAPS
-            // convert the first layer into transferSrc
-            cb1.convertTextureLayerMips( Tex,
-                                         0,2, // convert Layer's 0-1
-                                         0,1, // convert mip level i
-                                         vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal,
-                                         vk::PipelineStageFlagBits::eAllCommands,
-                                         vk::PipelineStageFlagBits::eAllCommands);
-
-            //==================================================================
-            // Generate the mipmaps manually for layer 0
-            //==================================================================
-            for(uint32_t i=1; i < Tex->GetMipLevels() ; i++)
-            {
-                LOG << "Generating Mipmap Level: " << i+1 << ENDL;
-
-                // Convert Layer i to TransferDst
-                cb1.convertTextureLayerMips( Tex,
-                                             0,2, // layers 0-1
-                                             i,1, // mips level i+1
-                                             vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
-                                             vk::PipelineStageFlagBits::eTransfer,
-                                             vk::PipelineStageFlagBits::eHost);
-
-                // Blit from miplevel i-1 to i for layers 0 and 1
-                cb1.blitMipMap( Tex,
-                                0,2,
-                                i-1,i);
-
-
-                // convert layer i into src so it can be copied from in the next iteraation
-                cb1.convertTextureLayerMips( Tex,
-                                             0,2, // layers 0-1
-                                             i,1, // mips level i+1
-                                             vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal,
-                                             vk::PipelineStageFlagBits::eHost,
-                                             vk::PipelineStageFlagBits::eTransfer);
-
-            }
-
-            //==================================================================
-
-            // c. convert the texture into eShaderReadOnlyOptimal
-            cb1.convertTextureLayerMips( Tex,
-                                         0,2, // layers 0-1
-                                         0,Tex->GetMipLevels(), // mips level i+1
-                                         vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                         vk::PipelineStageFlagBits::eHost,
-                                         vk::PipelineStageFlagBits::eTransfer);
-
-            // end and submit the command buffer
-#else
             cb1.generateMipMaps( Tex, 0, 2);
-#endif
 
             cb1.end();
             C.submit_cmd_buffer(cb1);
@@ -428,22 +351,14 @@ int main(int argc, char ** argv)
 // Create a Rendering pipeline
 //
 //==============================================================================
-        // create the vertex shader from a pre compiled SPIR-V file
-        vka::shader* vertex_shader = C.new_shader_module("vs");
-        vertex_shader->load_from_file("resources/shaders/push_consts_default/push_consts_default.vert");
-
-        // create the fragment shader from a pre compiled SPIR-V file
-        vka::shader* fragment_shader = C.new_shader_module("fs");
-        fragment_shader->load_from_file("resources/shaders/push_consts_default/push_consts_default.frag");
-
         vka::pipeline* pipeline = C.new_pipeline("triangle");
 
         // Create the graphics Pipeline
           pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                   ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                  ->set_vertex_shader(   vertex_shader )   // the shaders we want to use
-                  ->set_fragment_shader( fragment_shader ) // the shaders we want to use
+                  ->set_vertex_shader(   "resources/shaders/push_consts_default/push_consts_default.vert" , "main")   // the shaders we want to use
+                  ->set_fragment_shader( "resources/shaders/push_consts_default/push_consts_default.frag" , "main") // the shaders we want to use
 
                   // tell the pipeline that attribute 0 contains 3 floats
                   // and the data starts at offset 0
@@ -471,9 +386,6 @@ int main(int argc, char ** argv)
                   // in Set #0 binding #0
                   ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
 
-                 // // Tell teh shader that we are going to use a uniform buffer
-                 // // in Set #0 binding #0
-                 // ->add_dynamic_uniform_layout_binding(2, 0, vk::ShaderStageFlagBits::eVertex)
 
                   // Add a push constant to the layout. It is accessable in the vertex shader
                   // stage only.
@@ -500,12 +412,6 @@ int main(int argc, char ** argv)
     vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
     ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
     ubuffer_descriptor->update();
-
-    //vka::descriptor_set * dubuffer_descriptor = pipeline->create_new_descriptor_set(2, descriptor_pool);
-    //dubuffer_descriptor->AttachDynamicUniformBuffer(0,DU_buffer, DU_buffer->GetSize() );
-    //dubuffer_descriptor->update();
-
-
 
     // We will allocate two Staging buffers to copy uniform data as well as dynamic uniform data
     // for each of the objects. Each of the Staging Buffers act like an individual buffer
@@ -540,11 +446,6 @@ int main(int argc, char ** argv)
 
 
 
-    // Dynamic Uniform buffers have a set alignment, meaning the number of bytes
-    // bound to the pipeline must be a multiple of the alignment
-    // In most case the alignment is 256 bytes.
-    auto alignment = C.get_physical_device_limits().minUniformBufferOffsetAlignment;
-
     //==========================================================================
     // Perform the Rendering
     //==========================================================================
@@ -573,10 +474,6 @@ int main(int argc, char ** argv)
       UniformStagingStruct.view        = glm::lookAt( glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
       UniformStagingStruct.proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 30.0f);
       UniformStagingStruct.proj[1][1] *= -1;
-
-      // // Copy the dynamic uniform buffer data into the staging buffer
-      // DynamicUniformStagingArray[0].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
-      // DynamicUniformStagingArray[1].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
       //--------------------------------------------------------------------------------------
 
       //--------------------------------------------------------------------------------------
@@ -605,10 +502,9 @@ int main(int argc, char ** argv)
                                                 vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
                                                 nullptr );
 
-    // bind the vertex/index buffers
+        // Bind the MeshObject. That is, bind each of the buffers in the mesh object
+        // to their appropriate index.
         cb.bindMeshObject( CubeObj );
-        // cb.bindVertexSubBuffer(0, V_buffer, 0 );
-        // cb.bindIndexSubBuffer(  I_buffer, vk::IndexType::eUint16, 0);
 
       //========================================================================
       // Draw all the objects while binding the dynamic uniform buffer
@@ -618,7 +514,7 @@ int main(int argc, char ** argv)
       {
             // Here we write the data to the command buffer.
             push_constants_t push;
-            push.index    = 0;
+            push.index    = j%2;
 
             if(j==0)
             {
@@ -656,64 +552,3 @@ int main(int argc, char ** argv)
 
 #define STB_IMAGE_IMPLEMENTATION
 #include<stb/stb_image.h>
-
-
-
-void create_box_mesh(float dx , float dy , float dz , std::vector<Vertex> & vertices, std::vector<uint16_t> & indices )
-{
-
-    indices .clear();
-    vertices.clear();
-
-    using namespace glm;
-
-
-    std::vector<uint16_t> I;
-//       |       Position                           |   UV         |     Normal    |
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {0.0,0.0}  ,  { 0.0,  0.0,  1.0} } );   // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  { 0.0,  0.0,  1.0} } );   // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0,  0.0,  1.0} } );   // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {0.0,0.0}  ,  { 0.0,  0.0,  1.0} } );   // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0,  0.0,  1.0} } );   // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0,  0.0,  1.0} } );   // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 0.0,  0.0, -1.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {1.0,1.0}  ,  { 0.0,  0.0, -1.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0,  0.0, -1.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 0.0,  0.0, -1.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0,  0.0, -1.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0,  0.0, -1.0} } ); // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  {-1.0f, 0.0,  0.0} } );  // 0
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  {-1.0f, 0.0,  0.0} } );  // 1
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  {-1.0f, 0.0,  0.0} } );  // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  {-1.0f, 0.0,  0.0} } );  // 0
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  {-1.0f, 0.0,  0.0} } );  // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  {-1.0f, 0.0,  0.0} } );  // 3
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 1.0f, 0.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 1.0f, 0.0,  0.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  { 1.0f, 0.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 1.0f, 0.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  { 1.0f, 0.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 1.0f, 0.0,  0.0} } ); // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0f,-1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0f,-1.0,  0.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0f,-1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0f,-1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0f,-1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0f,-1.0,  0.0} } ); // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0f, 1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0f, 1.0,  0.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0f, 1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0f, 1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0f, 1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0f, 1.0,  0.0} } ); // 3
-
-    //=========================
-    // Edges of the triangle : postion delta
-
-
-    //=========================
-    for(uint16_t i=0;i<36;i++)
-        indices.push_back(i);
-
-
-}
