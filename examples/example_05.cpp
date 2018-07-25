@@ -279,7 +279,7 @@ int main(int argc, char ** argv)
     //    generic texture
         auto Tex = TexturePool.AllocateTexture2D( vk::Format::eR8G8B8A8Unorm,
                                          vk::Extent2D(D.width(), D.height() ),
-                                         2,8
+                                         2,5
                                          );
 
 
@@ -304,11 +304,13 @@ int main(int argc, char ** argv)
             vka::command_buffer cb1 = cp->AllocateCommandBuffer();
             cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
-                // a. convert the texture to eTransferDstOptimal
-                cb1.convertTextureLayer( Tex,0,2,vk::ImageLayout::eTransferDstOptimal,
-                                         vk::PipelineStageFlagBits::eBottomOfPipe,
-                                         vk::PipelineStageFlagBits::eTopOfPipe);
-
+            // a. convert the texture to eTransferDstOptimal
+            cb1.convertTextureLayerMips( Tex,
+                                         0,2, // convert Layer's 0-1
+                                         0,1, // convert mip level i
+                                         vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+                                         vk::PipelineStageFlagBits::eAllCommands,
+                                         vk::PipelineStageFlagBits::eAllCommands);
 
             // b. copy the data from the buffer to the texture
             vk::BufferImageCopy BIC;
@@ -321,64 +323,67 @@ int main(int argc, char ** argv)
                                 .setLayerCount(2) // only copy one layer
                                 .setMipLevel(0);  // only the first mip-map level
 
+
             //---------------------------------------------
             cb1.copySubBufferToTexture( StagingBuffer, Tex, vk::ImageLayout::eTransferDstOptimal, BIC);
 
+#define MANUAL_MIP_MAPS
+
+#if defined MANUAL_MIP_MAPS
+            // convert the first layer into transferSrc
+            cb1.convertTextureLayerMips( Tex,
+                                         0,2, // convert Layer's 0-1
+                                         0,1, // convert mip level i
+                                         vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal,
+                                         vk::PipelineStageFlagBits::eAllCommands,
+                                         vk::PipelineStageFlagBits::eAllCommands);
 
             //==================================================================
             // Generate the mipmaps manually for layer 0
             //==================================================================
-            for(uint32_t i=0; i < Tex->GetMipLevels()-1 ; i++)
+            for(uint32_t i=1; i < Tex->GetMipLevels() ; i++)
             {
-                // Convert layers 0-2 mip level i to TransferDstOptimal
-                cb1.convertTextureLayerMips( Tex,
-                                             0,2, // convert Layer's 0-1
-                                             i,1, // convert mip level i
-                                             vk::ImageLayout::eTransferSrcOptimal,
-                                             vk::PipelineStageFlagBits::eBottomOfPipe,
-                                             vk::PipelineStageFlagBits::eTopOfPipe);
+                LOG << "Generating Mipmap Level: " << i+1 << ENDL;
 
-                // Convert layers 0-2 mip level i+1 to TransferDstOptimal
-                cb1.convertTextureLayerMips( Tex,
-                                             0,2, // layers 0-1
-                                             i+1,1, // mips level i+1
-                                             vk::ImageLayout::eTransferDstOptimal,
-                                             vk::PipelineStageFlagBits::eBottomOfPipe,
-                                             vk::PipelineStageFlagBits::eTopOfPipe);
-
-                // Blit from miplevel i to i+1 for layers 0 and 1
-                cb1.blitMipMap( Tex,
-                                0,2,
-                                i,i+1);
-
-
-                // convert the upper layer back to eShaderReadOnlyOptimal
+                // Convert Layer i to TransferDst
                 cb1.convertTextureLayerMips( Tex,
                                              0,2, // layers 0-1
                                              i,1, // mips level i+1
-                                             vk::ImageLayout::eShaderReadOnlyOptimal,
-                                             vk::PipelineStageFlagBits::eBottomOfPipe,
-                                             vk::PipelineStageFlagBits::eTopOfPipe);
+                                             vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+                                             vk::PipelineStageFlagBits::eTransfer,
+                                             vk::PipelineStageFlagBits::eHost);
+
+                // Blit from miplevel i-1 to i for layers 0 and 1
+                cb1.blitMipMap( Tex,
+                                0,2,
+                                i-1,i);
+
+
+                // convert layer i into src so it can be copied from in the next iteraation
+                cb1.convertTextureLayerMips( Tex,
+                                             0,2, // layers 0-1
+                                             i,1, // mips level i+1
+                                             vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal,
+                                             vk::PipelineStageFlagBits::eHost,
+                                             vk::PipelineStageFlagBits::eTransfer);
 
             }
-            // convert the last layer to eShaderReadOnlyOptimal
-            cb1.convertTextureLayerMips( Tex,
-                                         0,2, // layers 0-1
-                                         Tex->GetMipLevels()-1,1, // mips level i+1
-                                         vk::ImageLayout::eShaderReadOnlyOptimal,
-                                         vk::PipelineStageFlagBits::eBottomOfPipe,
-                                         vk::PipelineStageFlagBits::eTopOfPipe);
 
             //==================================================================
 
-
-
             // c. convert the texture into eShaderReadOnlyOptimal
-            cb1.convertTextureLayer( Tex,0,2,vk::ImageLayout::eShaderReadOnlyOptimal,
-                                     vk::PipelineStageFlagBits::eBottomOfPipe,
-                                     vk::PipelineStageFlagBits::eTopOfPipe);
+            cb1.convertTextureLayerMips( Tex,
+                                         0,2, // layers 0-1
+                                         0,Tex->GetMipLevels(), // mips level i+1
+                                         vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
+                                         vk::PipelineStageFlagBits::eHost,
+                                         vk::PipelineStageFlagBits::eTransfer);
 
             // end and submit the command buffer
+#else
+            cb1.generateMipMaps( Tex, 0, 2);
+#endif
+
             cb1.end();
             C.submit_cmd_buffer(cb1);
             // free the command buffer
