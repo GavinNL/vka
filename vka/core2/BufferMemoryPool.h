@@ -76,8 +76,7 @@ private:
         friend class BufferMemoryPool;
 };
 
-
-
+using SubBuffer_p = std::shared_ptr<SubBuffer>;
 
 class BufferMemoryPool : public context_child
 {
@@ -159,13 +158,13 @@ public:
      *
      * Allocate a new SubBuffer from the buffer pool
      */
-    std::shared_ptr<SubBuffer> NewSubBuffer(vk::DeviceSize size)
+    SubBuffer_p NewSubBuffer(vk::DeviceSize size)
     {
         assert( size <= m_memory.GetSize() );
         auto offset = m_manager.allocate( size, m_memory.GetAlignment() );
 
         assert( offset < m_manager.error );
-        auto S = std::shared_ptr<SubBuffer>( new SubBuffer() );
+        auto S = SubBuffer_p( new SubBuffer() );
         S->m_parent = this;
         S->m_offset = offset;
         S->m_size   = size;
