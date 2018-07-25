@@ -15,7 +15,7 @@ class texture;
 
 class SubBuffer;
 class Texture;
-
+class MeshObject;
 
 class PushDescriptorInfo
 {
@@ -86,6 +86,17 @@ class command_buffer : public vk::CommandBuffer
     void bindIndexSubBuffer( const std::shared_ptr<SubBuffer> & buffer,
                                              vk::IndexType indexType,
                                              vk::DeviceSize offset=0) const;
+
+
+    /**
+     * @brief bindMeshObject
+     * @param obj
+     *
+     * Binds a MeshObject. A MeshObject is a container
+     * of mulitple SubBuffers used for different attributes
+     * in a renderable mesh.
+     */
+    void bindMeshObject( const MeshObject & obj);
 
     // this function will be deprecated
     void copySubBufferToImage( const std::shared_ptr<SubBuffer> & buffer,
