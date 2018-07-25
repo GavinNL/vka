@@ -223,7 +223,7 @@ public:
         m_CreateInfo.format        = vk::Format::eR8G8B8A8Unorm;
         m_CreateInfo.tiling        = vk::ImageTiling::eLinear;
 
-        m_CreateInfo.initialLayout = vk::ImageLayout::ePreinitialized;
+        m_CreateInfo.initialLayout = vk::ImageLayout::eUndefined;
 
         m_CreateInfo.usage         = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;// VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         m_CreateInfo.samples       = vk::SampleCountFlagBits::e1; // VK_SAMPLE_COUNT_1_BIT;
@@ -360,7 +360,7 @@ public:
 
 
             std::vector<vk::ImageLayout> mips;
-            mips.assign(mipLevels, vk::ImageLayout::ePreinitialized);
+            mips.assign(mipLevels, vk::ImageLayout::eUndefined);
 
             T->m_LayoutsA.assign(arrayLayers, mips);
 
