@@ -209,6 +209,7 @@ public:
     size_t allocate(size_t n, size_t alignment=1)
     {
 
+        n = n%alignment==0 ? n : ((n/alignment + 1)*alignment);
         auto i = m_list.begin();
         while( i != m_list.end() )
         {
