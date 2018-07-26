@@ -85,6 +85,93 @@ float get_elapsed_time()
 
 }
 
+vka::MeshObject HostToGPU( vka::host_mesh & host_mesh ,
+                           vka::BufferMemoryPool & BufferPool,
+                           vka::BufferMemoryPool & StagingBufferPool,
+                           vka::command_pool * cp,
+                           vka::context & C)
+{
+
+    vka::host_mesh & CubeMesh = host_mesh;
+
+    assert(  CubeMesh.has_attribute( vka::VertexAttribute::ePosition ) );
+    assert(  CubeMesh.has_attribute( vka::VertexAttribute::eUV       ) );
+    assert(  CubeMesh.has_attribute( vka::VertexAttribute::eNormal   ) );
+    assert(  CubeMesh.has_attribute( vka::VertexAttribute::eIndex    ) );
+
+    //=====================================================================
+
+    // A MeshObject is essentially just a container that holde
+    // information about a Mesh. It contains multiple SubBuffers; one for
+    // each attribute in the mesh (eg: position, UV, normals)
+    // and an additional optional buffer for Indices.
+    //
+    // MeshObjects can be bound using a command buffer similarly to how
+    // a vertex or index buffer is bound. Under the hood, it simply
+    // binds the individual buffers to their appropriate bind index.
+    vka::MeshObject CubeObj;
+
+    vka::VertexAttribute Attr[] =
+    {
+        vka::VertexAttribute::ePosition ,
+        vka::VertexAttribute::eUV,
+        vka::VertexAttribute::eNormal,
+    };
+
+    // We're going to keep a vector of staging buffers so that
+    // they do not deallocate themselves until after we are
+    // done with them.
+    std::vector<vka::SubBuffer_p>    staging_buffers;
+
+
+    vka::command_buffer copy_cmd = cp->AllocateCommandBuffer();
+    copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit ) );
+
+    for(uint32_t i =0; i < 3 ; i++)
+    {
+        auto & P = CubeMesh.get_attribute( Attr[i] );
+
+        const auto byte_size = P.data_size();
+
+        CubeObj.AddAttributeBuffer(i,  BufferPool.NewSubBuffer( byte_size) );
+
+
+        // Create a staging buffer for copying attribute i;
+        auto S = StagingBufferPool.NewSubBuffer( byte_size );
+
+        // copy data to staging buffer
+        S->CopyData( P.data(), byte_size );
+
+        // keep a reference to the staging buffer so it doesn't
+        // get erased.
+        staging_buffers.push_back(S);
+
+        copy_cmd.copySubBuffer( S, CubeObj.GetAttributeBuffer(i), vk::BufferCopy{ 0 , 0 , byte_size } );
+    }
+
+    {
+        auto & I = CubeMesh.get_attribute( vka::VertexAttribute::eIndex );
+
+        CubeObj.AddIndexBuffer( vk::IndexType::eUint16,  BufferPool.NewSubBuffer(I.data_size()) );
+
+        auto byte_size = I.data_size();
+        auto S = StagingBufferPool.NewSubBuffer( byte_size );
+
+        // copy data to staging buffer
+        S->CopyData( I.data(), byte_size );
+
+        // keep a reference to the staging buffer so it doesn't
+        // get erased when we exit the scope
+        staging_buffers.push_back(S);
+        copy_cmd.copySubBuffer( S, CubeObj.GetIndexBuffer(), vk::BufferCopy{ 0 , 0 , byte_size } );
+    }
+
+    copy_cmd.end();
+    C.submit_cmd_buffer( copy_cmd );
+    cp->FreeCommandBuffer( copy_cmd );
+
+    return CubeObj;
+}
 
 int main(int argc, char ** argv)
 {
@@ -183,7 +270,10 @@ int main(int argc, char ** argv)
 
     //==============================================================================
 
-
+#if 1
+    vka::host_mesh CubeMesh = vka::box_mesh(1,1,1);
+    auto CubeObj = HostToGPU( CubeMesh, BufferPool,StagingBufferPool, cp,C);
+#else
         //=====================================================================
         // This is a host_mesh, it's a mesh of a Box stored in RAM.
         // we are going to use this to copy build a Box mesh in GPU memory
@@ -213,7 +303,7 @@ int main(int argc, char ** argv)
         CubeObj.AddAttributeBuffer(1,  BufferPool.NewSubBuffer(U.data_size()) );
         CubeObj.AddAttributeBuffer(2,  BufferPool.NewSubBuffer(N.data_size()) );
         // Also allocate an Index Buffer
-        CubeObj.AddIndexBuffer( vk::IndexType::eUint16,  BufferPool.NewSubBuffer(N.data_size()) );
+        CubeObj.AddIndexBuffer( vk::IndexType::eUint16,  BufferPool.NewSubBuffer(I.data_size()) );
 
 
 
@@ -271,6 +361,7 @@ int main(int argc, char ** argv)
         // clear this.
         staging_buffers.clear();
 
+#endif
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
         auto U_buffer  = BufferPool.NewSubBuffer(5*1024);
