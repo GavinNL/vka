@@ -10,6 +10,15 @@
 namespace vka
 {
 
+struct SubObject_t
+{
+    uint32_t index_count = 0;
+    uint32_t first_index = 0;
+    uint32_t vertex_offset = 0;
+};
+
+
+
 /**
  * @brief The MeshObject class
  *
@@ -18,6 +27,51 @@ namespace vka
 class MeshObject
 {
 public:
+
+    MeshObject() {}
+    ~MeshObject() {}
+
+    MeshObject( MeshObject const & other)
+    {
+        m_attributes    =    other.m_attributes;
+        m_index_buffer  =    other.m_index_buffer;
+        m_index_type    =    other.m_index_type;
+        m_subObjects    =    other.m_subObjects;
+    }
+
+    MeshObject( MeshObject && other)
+    {
+        m_attributes    = std::move(     other.m_attributes );
+        m_index_buffer  = std::move(     other.m_index_buffer );
+        m_index_type    = std::move(     other.m_index_type );
+        m_subObjects    = std::move(     other.m_subObjects );
+    }
+
+    MeshObject & operator = ( MeshObject const & other)
+    {
+        if( this != & other)
+        {
+            m_attributes     =    other.m_attributes;
+            m_index_buffer   =    other.m_index_buffer;
+            m_index_type     =    other.m_index_type;
+            m_subObjects     =    other.m_subObjects;
+        }
+        return *this;
+    }
+
+    MeshObject & operator = ( MeshObject && other)
+    {
+        if( this != & other)
+        {
+            m_attributes    = std::move(     other.m_attributes );
+            m_index_buffer  = std::move(     other.m_index_buffer );
+            m_index_type    = std::move(     other.m_index_type );
+            m_subObjects    = std::move(     other.m_subObjects );
+        }
+        return *this;
+    }
+
+
     void AddIndexBuffer(vk::IndexType index_type, SubBuffer_p index_buffer)
     {
         m_index_buffer = index_buffer;
@@ -62,6 +116,7 @@ public:
     std::map<uint32_t, SubBuffer_p > m_attributes;
     SubBuffer_p                      m_index_buffer;
     vk::IndexType                    m_index_type;
+    std::vector< SubObject_t >       m_subObjects;
 };
 
 }
