@@ -194,6 +194,7 @@ private:
         friend class command_buffer;
 };
 
+using Texture_p = std::shared_ptr<Texture>;
 
 
 /**
@@ -305,12 +306,12 @@ public:
         assert(m_size != 0);
 
         vk::ImageCreateInfo create_info = m_CreateInfo;
-        create_info.extent = extent;
-        create_info.arrayLayers = arrayLayers;
-        create_info.format = format;
-        create_info.mipLevels = mipLevels;
-        create_info.tiling = tiling;
-        create_info.sharingMode = sharingMode;
+        create_info.extent              = extent;
+        create_info.arrayLayers         = arrayLayers;
+        create_info.format              = format;
+        create_info.mipLevels           = mipLevels;
+        create_info.tiling              = tiling;
+        create_info.sharingMode         = sharingMode;
 
         auto image = device.createImage( create_info );
 
@@ -423,8 +424,59 @@ public:
         return T;
     }
 
+    std::shared_ptr<Texture> AllocateColorAttachment( vk::Format format,
+                                                      vk::Extent2D extent)
+    {
+        auto T = AllocateTexture( format,
+                                  vk::Extent3D{extent.width,extent.height,1},
+                                  1,
+                                  1,
+                                  vk::ImageTiling::eOptimal,
+                                  vk::SharingMode::eExclusive);
+
+        T->CreateImageView( "default",
+                            vk::ImageViewType::e2D,
+                            vk::ImageAspectFlagBits::eColor,
+                            0, 1,
+                            0, 1);
+
+        auto SCI = T->GetDefaultSamplerCreateInfo();
+        SCI.magFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
+        SCI.minFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
+        T->CreateSampler("default", SCI );
+
+        return T;
+    }
+
+    std::shared_ptr<Texture> AllocateDepthAttachment( vk::Extent2D extent,
+                                                      vk::Format format = vk::Format::eD32Sfloat)
+    {
+        assert(
+         ( format  == vk::Format::eD32Sfloat       ) ||
+         ( format  == vk::Format::eD32SfloatS8Uint ) ||
+         ( format  == vk::Format::eD24UnormS8Uint  ) );
 
 
+        auto T = AllocateTexture( format,
+                                  vk::Extent3D{extent.width,extent.height,1},
+                                  1,
+                                  1,
+                                  vk::ImageTiling::eOptimal,
+                                  vk::SharingMode::eExclusive);
+
+        T->CreateImageView( "default",
+                            vk::ImageViewType::e2D,
+                            vk::ImageAspectFlagBits::eDepth,
+                            0, 1,
+                            0, 1);
+
+        auto SCI = T->GetDefaultSamplerCreateInfo();
+        SCI.magFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
+        SCI.minFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
+        T->CreateSampler("default", SCI );
+
+        return T;
+    }
 protected:
     vka::Memory                m_memory;
     vka::buffer_memory_manager m_manager;
