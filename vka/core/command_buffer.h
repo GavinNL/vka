@@ -17,6 +17,7 @@ class SubBuffer;
 class Texture;
 class MeshObject;
 class RenderTarget;
+class RenderTarget2;
 
 class PushDescriptorInfo
 {
@@ -200,7 +201,7 @@ class command_buffer : public vk::CommandBuffer
                          uint32_t Layer, uint32_t LayerCount);
 
 
-    void beginRender(RenderTarget &cb);
+    void beginRender(RenderTarget2 &cb);
 };
 
 }

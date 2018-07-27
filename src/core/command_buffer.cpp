@@ -14,6 +14,7 @@
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
 #include <vka/core2/RenderTarget.h>
+#include <vka/core2/RenderTarget2.h>
 
 void vka::command_buffer::bindVertexSubBuffer(uint32_t firstBinding,
                               vka::sub_buffer const * buffer , vk::DeviceSize offset) const
@@ -460,12 +461,12 @@ void command_buffer::generateMipMaps( std::shared_ptr<vka::Texture> & Tex,
 }
 
 
-void command_buffer::beginRender(RenderTarget & target)
+void command_buffer::beginRender(RenderTarget2 & target)
 {
     vk::RenderPassBeginInfo m_renderpass_info;
 
     m_renderpass_info.renderPass        = target.GetRenderPass();// *get_renderpass();
-    m_renderpass_info.framebuffer       = target.GetFrameBuffer();// *get_framebuffer();
+    m_renderpass_info.framebuffer       = target.GetFramebuffer();// *get_framebuffer();
     m_renderpass_info.clearValueCount   = target.GetClearValues().size();
     m_renderpass_info.pClearValues      = target.GetClearValues().data();//m_clear_values.data();
     m_renderpass_info.renderArea.extent = target.GetExtent();

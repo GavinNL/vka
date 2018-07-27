@@ -131,7 +131,7 @@ private:
         SamplerInfo.addressModeU     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
         SamplerInfo.addressModeV     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
         SamplerInfo.addressModeW     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        SamplerInfo.anisotropyEnable = VK_TRUE;
+        SamplerInfo.anisotropyEnable = VK_FALSE;
         SamplerInfo.maxAnisotropy    = 1;
         SamplerInfo.borderColor      = vk::BorderColor::eIntOpaqueBlack;// VK_BORDER_COLOR_INT_OPAQUE_BLACK ;
         SamplerInfo.unnormalizedCoordinates = VK_FALSE;
@@ -446,7 +446,7 @@ public:
         SCI.addressModeU     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
         SCI.addressModeV     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
         SCI.addressModeW     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        SCI.anisotropyEnable = VK_TRUE;
+        SCI.anisotropyEnable = VK_FALSE;
         SCI.maxAnisotropy    = 1;
         SCI.borderColor      = vk::BorderColor::eFloatOpaqueWhite;// VK_BORDER_COLOR_INT_OPAQUE_BLACK ;
         SCI.unnormalizedCoordinates = VK_FALSE;
@@ -479,7 +479,7 @@ public:
 
         T->CreateImageView( "default",
                             vk::ImageViewType::e2D,
-                            vk::ImageAspectFlagBits::eStencil| vk::ImageAspectFlagBits::eDepth,
+                              vk::ImageAspectFlagBits::eDepth,
                             0, 1,
                             0, 1);
 
