@@ -13,34 +13,6 @@ vka::renderpass::~renderpass()
         }
     }
 }
-void vka::renderpass::attach_color(vk::Format f)
-{
-    m_ColorAttach.format         = f;//vk::Format::eB8G8R8A8Unorm;// m_Swapchain->image_format();// m_SwapChainImageFormat;// swapChainImageFormat;
-    m_ColorAttach.samples        = vk::SampleCountFlagBits::e1;      // VK_SAMPLE_COUNT_1_BIT;
-    m_ColorAttach.loadOp         = vk::AttachmentLoadOp::eClear;     // VK_ATTACHMENT_LOAD_OP_CLEAR;
-    m_ColorAttach.storeOp        = vk::AttachmentStoreOp::eStore;    // VK_ATTACHMENT_STORE_OP_STORE;
-    m_ColorAttach.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;  // VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    m_ColorAttach.stencilStoreOp = vk::AttachmentStoreOp::eDontCare; // VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    m_ColorAttach.initialLayout  = vk::ImageLayout::eUndefined;      // VK_IMAGE_LAYOUT_UNDEFINED;
-    m_ColorAttach.finalLayout    = vk::ImageLayout::ePresentSrcKHR;  // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    m_ColorRef.attachment = 0;
-    m_ColorRef.layout     = vk::ImageLayout::eColorAttachmentOptimal;// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-}
-
-void vka::renderpass::attach_depth(vk::Format f)
-{
-    m_DepthAttach.format         = f;// m_Swapchain->image_format();// m_SwapChainImageFormat;// swapChainImageFormat;
-    m_DepthAttach.samples        = vk::SampleCountFlagBits::e1;//VK_SAMPLE_COUNT_1_BIT;
-    m_DepthAttach.loadOp         = vk::AttachmentLoadOp::eClear;//VK_ATTACHMENT_LOAD_OP_CLEAR;
-    m_DepthAttach.storeOp        = vk::AttachmentStoreOp::eDontCare;// VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    m_DepthAttach.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;//VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    m_DepthAttach.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;//VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    m_DepthAttach.initialLayout  = vk::ImageLayout::eUndefined;//VK_IMAGE_LAYOUT_UNDEFINED;
-    m_DepthAttach.finalLayout    = vk::ImageLayout::eDepthStencilAttachmentOptimal;//VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    m_DepthRef.attachment        = 1;
-    m_DepthRef.layout            = vk::ImageLayout::eDepthStencilAttachmentOptimal;// VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-}
 
 vka::renderpass *vka::renderpass::set_num_color_attachments(uint32_t n)
 {
