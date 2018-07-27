@@ -29,7 +29,7 @@ class FrameBuffer : public context_child
 
         }
 
-        operator vk::Framebuffer()
+        operator vk::Framebuffer() const
         {
             return m_framebuffer;
         }
