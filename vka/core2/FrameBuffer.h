@@ -42,6 +42,10 @@ class FrameBuffer : public context_child
             return this;
         }
 
+        Texture_p GetAttachment(uint32_t index)
+        {
+            return m_attachments.at(index);
+        }
         FrameBuffer* SetRenderPass( vk::RenderPass  P)
         {
             m_CreateInfo.renderPass = P;
