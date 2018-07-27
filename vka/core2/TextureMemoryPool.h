@@ -333,7 +333,7 @@ public:
                // the same as the one already created.
 
                 assert( m_MemoryRequirements.alignment == req.alignment );
-                assert( m_MemoryRequirements.memoryTypeBits== req.memoryTypeBits);
+                //assert( m_MemoryRequirements.memoryTypeBits== req.memoryTypeBits);
             }
             else
             {
