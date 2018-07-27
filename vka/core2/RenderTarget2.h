@@ -32,10 +32,7 @@ public:
 
     void Create()
     {
-#if 0
-        offScreenFrameBuf.width = FB_DIM;
-        offScreenFrameBuf.height = FB_DIM;
-#else
+
         vk::Extent2D extent(1024,768);
         m_Extent = extent;
 
@@ -44,48 +41,20 @@ public:
         m_ClearValues[1].color = vk::ClearColorValue{ std::array<float,4>{ 0.0f, 0.0f, 0.0f, 0.0f } };
         m_ClearValues[2].color = vk::ClearColorValue{ std::array<float,4>{ 0.0f, 0.0f, 0.0f, 0.0f } };
         m_ClearValues[3].depthStencil = vk::ClearDepthStencilValue{ 1.0f, 0 };
-#endif
+
         // Color attachments
 
 
         // (World space) Positions
-#if 0
-        createAttachment(
-            VK_FORMAT_R16G16B16A16_SFLOAT,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            &offScreenFrameBuf.position);
 
-        // (World space) Normals
-        ;
-        createAttachment(
-            VK_FORMAT_R16G16B16A16_SFLOAT,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            &offScreenFrameBuf.normal);
-
-        // Albedo (color)
-        createAttachment(
-            VK_FORMAT_R8G8B8A8_UNORM,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            &offScreenFrameBuf.albedo);
-#else
         createColorAttachment( vk::Format::eR32G32B32A32Sfloat, extent, nullptr );
         createColorAttachment( vk::Format::eR32G32B32A32Sfloat, extent, nullptr );
         createColorAttachment( vk::Format::eR8G8B8A8Unorm,   extent, nullptr );
-#endif
-        // Depth attachment
-#if 0
-        // Find a suitable depth format
-        VkFormat attDepthFormat;
-        VkBool32 validDepthFormat =  vks::tools::getSupportedDepthFormat(physicalDevice, &attDepthFormat);
-        assert(validDepthFormat);
 
-        createAttachment(
-            attDepthFormat,
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            &offScreenFrameBuf.depth);
-#else
+        // Depth attachment
+
         createDepthAttachment( vk::Format::eD32Sfloat, extent );
-#endif
+
         // Set up separate renderpass with references to the color and depth attachments
         std::array<vk::AttachmentDescription, 4> attachmentDescs = {};
 
@@ -180,22 +149,6 @@ public:
         assert(m_Framebuffer);
         //VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &offScreenFrameBuf.frameBuffer));
 
-#if 0
-        // Create sampler to sample from the color attachments
-        VkSamplerCreateInfo sampler = vks::initializers::samplerCreateInfo();
-        sampler.magFilter = VK_FILTER_NEAREST;
-        sampler.minFilter = VK_FILTER_NEAREST;
-        sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        sampler.addressModeV = sampler.addressModeU;
-        sampler.addressModeW = sampler.addressModeU;
-        sampler.mipLodBias = 0.0f;
-        sampler.maxAnisotropy = 1.0f;
-        sampler.minLod = 0.0f;
-        sampler.maxLod = 1.0f;
-        sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-        VK_CHECK_RESULT(vkCreateSampler(device, &sampler, nullptr, &colorSampler));
-#endif
     }
 
     struct FrameBufferAttachment
@@ -219,133 +172,15 @@ public:
 
     void createDepthAttachment( vk::Format format, vk::Extent2D extent)
     {
-#if 0
-        VkImageAspectFlags aspectMask = 0;
-        VkImageLayout imageLayout;
-
-        attachment->format = format;
-
-        if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-        {
-            aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        }
-        if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-        {
-            aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-            imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        }
-
-        assert(aspectMask > 0);
-#endif
-
-#if 0
-        VkImageCreateInfo image = vks::initializers::imageCreateInfo();
-        image.imageType = VK_IMAGE_TYPE_2D;
-        image.format = format;
-        image.extent.width = offScreenFrameBuf.width;
-        image.extent.height = offScreenFrameBuf.height;
-        image.extent.depth = 1;
-        image.mipLevels = 1;
-        image.arrayLayers = 1;
-        image.samples = VK_SAMPLE_COUNT_1_BIT;
-        image.tiling = VK_IMAGE_TILING_OPTIMAL;
-        image.usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT;
-#else
         m_depth_image = m_DepthPool.AllocateDepthAttachment( extent );
-#endif
-
-#if 0
-        VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-        VkMemoryRequirements memReqs;
-
-        VK_CHECK_RESULT(vkCreateImage(device, &image, nullptr, &attachment->image));
-        vkGetImageMemoryRequirements(device, attachment->image, &memReqs);
-        memAlloc.allocationSize = memReqs.size;
-        memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &attachment->mem));
-        VK_CHECK_RESULT(vkBindImageMemory(device, attachment->image, attachment->mem, 0));
-
-        VkImageViewCreateInfo imageView = vks::initializers::imageViewCreateInfo();
-        imageView.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        imageView.format = format;
-        imageView.subresourceRange = {};
-        imageView.subresourceRange.aspectMask = aspectMask;
-        imageView.subresourceRange.baseMipLevel = 0;
-        imageView.subresourceRange.levelCount = 1;
-        imageView.subresourceRange.baseArrayLayer = 0;
-        imageView.subresourceRange.layerCount = 1;
-        imageView.image = attachment->image;
-        VK_CHECK_RESULT(vkCreateImageView(device, &imageView, nullptr, &attachment->view));
-#endif
-
     }
 
 
     void createColorAttachment( vk::Format format, vk::Extent2D extent, FrameBufferAttachment *attachment)
     {
-#if 0
-        VkImageAspectFlags aspectMask = 0;
-        VkImageLayout imageLayout;
-
-        attachment->format = format;
-
-        if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-        {
-            aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        }
-        if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-        {
-            aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-            imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        }
-
-        assert(aspectMask > 0);
-#endif
-
-#if 0
-        VkImageCreateInfo image = vks::initializers::imageCreateInfo();
-        image.imageType = VK_IMAGE_TYPE_2D;
-        image.format = format;
-        image.extent.width = offScreenFrameBuf.width;
-        image.extent.height = offScreenFrameBuf.height;
-        image.extent.depth = 1;
-        image.mipLevels = 1;
-        image.arrayLayers = 1;
-        image.samples = VK_SAMPLE_COUNT_1_BIT;
-        image.tiling = VK_IMAGE_TILING_OPTIMAL;
-        image.usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT;
-#else
         auto image = m_ColorPool.AllocateColorAttachment( format, extent );
-#endif
 
-#if 0
-        VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-        VkMemoryRequirements memReqs;
-
-        VK_CHECK_RESULT(vkCreateImage(device, &image, nullptr, &attachment->image));
-        vkGetImageMemoryRequirements(device, attachment->image, &memReqs);
-        memAlloc.allocationSize = memReqs.size;
-        memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &attachment->mem));
-        VK_CHECK_RESULT(vkBindImageMemory(device, attachment->image, attachment->mem, 0));
-
-        VkImageViewCreateInfo imageView = vks::initializers::imageViewCreateInfo();
-        imageView.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        imageView.format = format;
-        imageView.subresourceRange = {};
-        imageView.subresourceRange.aspectMask = aspectMask;
-        imageView.subresourceRange.baseMipLevel = 0;
-        imageView.subresourceRange.levelCount = 1;
-        imageView.subresourceRange.baseArrayLayer = 0;
-        imageView.subresourceRange.layerCount = 1;
-        imageView.image = attachment->image;
-        VK_CHECK_RESULT(vkCreateImageView(device, &imageView, nullptr, &attachment->view));
-#else
-    m_images.push_back(image);
-#endif
-
+        m_images.push_back(image);
     }
 
 
