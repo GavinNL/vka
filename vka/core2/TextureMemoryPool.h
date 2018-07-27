@@ -443,6 +443,19 @@ public:
         auto SCI = T->GetDefaultSamplerCreateInfo();
         SCI.magFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
         SCI.minFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
+        SCI.addressModeU     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.addressModeV     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.addressModeW     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.anisotropyEnable = VK_TRUE;
+        SCI.maxAnisotropy    = 1;
+        SCI.borderColor      = vk::BorderColor::eFloatOpaqueWhite;// VK_BORDER_COLOR_INT_OPAQUE_BLACK ;
+        SCI.unnormalizedCoordinates = VK_FALSE;
+        SCI.compareEnable    = VK_FALSE;
+        SCI.compareOp        = vk::CompareOp::eAlways;// VK_COMPARE_OP_ALWAYS;
+        SCI.mipmapMode       = vk::SamplerMipmapMode::eLinear;// VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        SCI.mipLodBias       = 0.0f;
+        SCI.minLod           = 0.0f;
+        SCI.maxLod           = 1.0;
         T->CreateSampler("default", SCI );
 
         return T;
@@ -466,13 +479,26 @@ public:
 
         T->CreateImageView( "default",
                             vk::ImageViewType::e2D,
-                            vk::ImageAspectFlagBits::eDepth,
+                            vk::ImageAspectFlagBits::eStencil| vk::ImageAspectFlagBits::eDepth,
                             0, 1,
                             0, 1);
 
         auto SCI = T->GetDefaultSamplerCreateInfo();
         SCI.magFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
         SCI.minFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
+        SCI.addressModeU     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.addressModeV     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.addressModeW     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.anisotropyEnable = VK_TRUE;
+        SCI.maxAnisotropy    = 1;
+        SCI.borderColor      = vk::BorderColor::eFloatOpaqueWhite;// VK_BORDER_COLOR_INT_OPAQUE_BLACK ;
+        SCI.unnormalizedCoordinates = VK_FALSE;
+        SCI.compareEnable    = VK_FALSE;
+        SCI.compareOp        = vk::CompareOp::eAlways;// VK_COMPARE_OP_ALWAYS;
+        SCI.mipmapMode       = vk::SamplerMipmapMode::eLinear;// VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        SCI.mipLodBias       = 0.0f;
+        SCI.minLod           = 0.0f;
+        SCI.maxLod           = 1.0;
         T->CreateSampler("default", SCI );
 
         return T;
