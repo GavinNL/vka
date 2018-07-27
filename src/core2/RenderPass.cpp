@@ -12,12 +12,14 @@ RenderPass *RenderPass::SetNumColorAttachments(uint32_t n)
         m_AttachmentDescription.resize( n );
 
         vk::AttachmentDescription a;
-        a.format         = vk::Format::eUndefined;
         a.samples        = vk::SampleCountFlagBits::e1;      // VK_SAMPLE_COUNT_1_BIT;
+        a.format         = vk::Format::eUndefined;
+
         a.loadOp         = vk::AttachmentLoadOp::eClear;     // VK_ATTACHMENT_LOAD_OP_CLEAR;
-        a.storeOp        = vk::AttachmentStoreOp::eStore;    // VK_ATTACHMENT_STORE_OP_STORE;
+        a.storeOp        = vk::AttachmentStoreOp::eDontCare;    // VK_ATTACHMENT_STORE_OP_STORE;
         a.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;  // VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         a.stencilStoreOp = vk::AttachmentStoreOp::eDontCare; // VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
         a.initialLayout  = vk::ImageLayout::eUndefined;      // VK_IMAGE_LAYOUT_UNDEFINED;
         a.finalLayout    = vk::ImageLayout::ePresentSrcKHR;  // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 

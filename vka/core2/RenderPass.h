@@ -79,10 +79,7 @@ public:
     }
 protected:
     vk::RenderPass                         m_RenderPass;
-    vk::AttachmentDescription              m_ColorAttach;
-    vk::AttachmentReference                m_ColorRef;
-    vk::AttachmentDescription              m_DepthAttach;
-    vk::AttachmentReference                m_DepthRef;
+
     std::vector<vk::SubpassDependency>     m_SubpassDependency;
 
     std::vector<vk::AttachmentReference>   m_ColorReferences;
