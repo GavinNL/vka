@@ -202,7 +202,7 @@ vka::descriptor_set * vka::descriptor_set::AttachDynamicUniformBuffer(uint32_t i
 
 
 vka::descriptor_set * vka::descriptor_set::AttachSampler( uint32_t index,
-                                                          std::shared_ptr<vka::Texture> & texture,
+                                                          std::shared_ptr<vka::Texture>  texture,
                                                           vk::ImageView view,
                                                           vk::Sampler sampler
                                                           )
@@ -220,7 +220,7 @@ vka::descriptor_set * vka::descriptor_set::AttachSampler( uint32_t index,
 }
 
 vka::descriptor_set * vka::descriptor_set::AttachSampler(uint32_t index,
-                                                         std::shared_ptr<vka::Texture> &texture,
+                                                         std::shared_ptr<Texture> texture,
                                                          std::string const & view_name,
                                                          std::string const & sampler_name)
 {
