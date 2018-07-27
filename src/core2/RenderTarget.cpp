@@ -27,8 +27,8 @@ RenderTarget::RenderTarget(context *parent) : context_child(parent),
     S1.dstSubpass      = VK_SUBPASS_EXTERNAL;
     S1.srcStageMask    = vk::PipelineStageFlagBits::eColorAttachmentOutput;
     S1.dstStageMask    = vk::PipelineStageFlagBits::eBottomOfPipe;
-    S1.srcAccessMask   = vk::AccessFlagBits::eMemoryRead;
-    S1.dstAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+    S1.srcAccessMask   = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+    S1.dstAccessMask   = vk::AccessFlagBits::eMemoryRead;
     S1.dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
     m_RenderPass.AddSubpassdependency(S0);
@@ -83,12 +83,25 @@ RenderTarget * RenderTarget::SetColorAttachment(uint32_t index, Texture_p colorA
 RenderTarget * RenderTarget::SetDepthAttachment(uint32_t index, Texture_p depthAttachment)
 {
     m_RenderPass.SetDepthAttachmentLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
-    m_RenderPass.GetDepthAttachmentDescription().finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-    m_RenderPass.GetDepthAttachmentDescription().format      = depthAttachment->GetFormat();
+
+    auto & DepthDesc = m_RenderPass.GetDepthAttachmentDescription();
+
+    DepthDesc.format         = depthAttachment->GetFormat();
+    DepthDesc.samples        = vk::SampleCountFlagBits::e1;      // VK_SAMPLE_COUNT_1_BIT;
+    DepthDesc.loadOp         = vk::AttachmentLoadOp::eClear;     // VK_ATTACHMENT_LOAD_OP_CLEAR;
+    DepthDesc.storeOp        = vk::AttachmentStoreOp::eDontCare;    // VK_ATTACHMENT_STORE_OP_STORE;
+    DepthDesc.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;  // VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    DepthDesc.stencilStoreOp = vk::AttachmentStoreOp::eDontCare; // VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    DepthDesc.initialLayout  = vk::ImageLayout::eUndefined;      // VK_IMAGE_LAYOUT_UNDEFINED;
+    DepthDesc.finalLayout    = vk::ImageLayout::eShaderReadOnlyOptimal;  // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    //m_RenderPass.GetDepthAttachmentDescription().finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+    //m_RenderPass.GetDepthAttachmentDescription().format      = depthAttachment->GetFormat();
+
     m_FrameBuffer.SetAttachment( index, depthAttachment);
 
     m_depth_index = index;
-    m_clear_values.resize( m_attachments.size() );
+    m_clear_values.resize( m_attachments.size()+1 );
     m_clear_values.back().depthStencil = vk::ClearDepthStencilValue(1.0f, 0.0f);
 
     return this;
@@ -105,5 +118,6 @@ vka::Texture_p RenderTarget::GetImage(uint32_t i)
 {
     return m_FrameBuffer.GetAttachment(i);
 }
+
 
 }

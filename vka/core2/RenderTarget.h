@@ -56,7 +56,26 @@ public:
         return m_RenderPass.get();
     }
 
+    vk::Framebuffer GetFrameBuffer() const
+    {
+        return m_FrameBuffer;
+    }
+
     vka::Texture_p GetImage(uint32_t i);
+
+    vk::ClearValue & ClearValue(uint32_t i)
+    {
+        return m_clear_values.at(i);
+    }
+    std::vector<vk::ClearValue> & GetClearValues()
+    {
+        return m_clear_values;
+    }
+
+    vk::Extent2D GetExtent() const
+    {
+        return m_size;
+    }
 protected:
     vk::Extent2D m_size;
 
