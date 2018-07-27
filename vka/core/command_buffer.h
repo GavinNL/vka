@@ -16,6 +16,7 @@ class texture;
 class SubBuffer;
 class Texture;
 class MeshObject;
+class RenderTarget;
 
 class PushDescriptorInfo
 {
@@ -197,6 +198,9 @@ class command_buffer : public vk::CommandBuffer
      */
     void generateMipMaps(std::shared_ptr<vka::Texture> &Tex,
                          uint32_t Layer, uint32_t LayerCount);
+
+
+    void beginRender(RenderTarget &cb);
 };
 
 }
