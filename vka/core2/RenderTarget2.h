@@ -37,6 +37,13 @@ public:
         offScreenFrameBuf.height = FB_DIM;
 #else
         vk::Extent2D extent(1024,768);
+        m_Extent = extent;
+
+        m_ClearValues.resize(4);
+        m_ClearValues[0].color = vk::ClearColorValue{ std::array<float,4>{ 0.0f, 0.0f, 0.0f, 0.0f } };
+        m_ClearValues[1].color = vk::ClearColorValue{ std::array<float,4>{ 0.0f, 0.0f, 0.0f, 0.0f } };
+        m_ClearValues[2].color = vk::ClearColorValue{ std::array<float,4>{ 0.0f, 0.0f, 0.0f, 0.0f } };
+        m_ClearValues[3].depthStencil = vk::ClearDepthStencilValue{ 1.0f, 0 };
 #endif
         // Color attachments
 
@@ -61,8 +68,8 @@ public:
             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
             &offScreenFrameBuf.albedo);
 #else
-        createColorAttachment( vk::Format::eR32G32B32Sfloat, extent, nullptr );
-        createColorAttachment( vk::Format::eR32G32B32Sfloat, extent, nullptr );
+        createColorAttachment( vk::Format::eR32G32B32A32Sfloat, extent, nullptr );
+        createColorAttachment( vk::Format::eR32G32B32A32Sfloat, extent, nullptr );
         createColorAttachment( vk::Format::eR8G8B8A8Unorm,   extent, nullptr );
 #endif
         // Depth attachment
@@ -104,8 +111,8 @@ public:
 
         // Formats
         attachmentDescs[0].format = m_images[0]->GetFormat();  // offScreenFrameBuf.position.format;
-        attachmentDescs[1].format = m_images[0]->GetFormat();  //offScreenFrameBuf.normal.format;
-        attachmentDescs[2].format = m_images[0]->GetFormat();  //offScreenFrameBuf.albedo.format;
+        attachmentDescs[1].format = m_images[1]->GetFormat();  //offScreenFrameBuf.normal.format;
+        attachmentDescs[2].format = m_images[2]->GetFormat();  //offScreenFrameBuf.albedo.format;
         attachmentDescs[3].format = m_depth_image->GetFormat();// offScreenFrameBuf.depth.format;
 
         std::vector<vk::AttachmentReference> colorReferences;
@@ -341,6 +348,36 @@ public:
 
     }
 
+
+    vk::RenderPass GetRenderPass() const
+    {
+        return m_RenderPass;
+    }
+
+    vk::Framebuffer GetFramebuffer() const
+    {
+        return m_Framebuffer;
+    }
+
+    Texture_p GetColorImage(uint32_t i) const
+    {
+        return m_images.at(i);
+    }
+
+    Texture_p GetDepthImage() const
+    {
+        return m_depth_image;
+    }
+
+    std::vector<vk::ClearValue> const & GetClearValues() const
+    {
+        return m_ClearValues;
+    }
+
+    vk::Extent2D GetExtent() const
+    {
+        return m_Extent;
+    }
 protected:
     TextureMemoryPool m_ColorPool;
     TextureMemoryPool m_DepthPool;
@@ -350,6 +387,10 @@ protected:
 
     std::vector<Texture_p> m_images;
     Texture_p              m_depth_image;
+
+    std::vector<vk::ClearValue> m_ClearValues;
+
+    vk::Extent2D  m_Extent;
 };
 
 }
