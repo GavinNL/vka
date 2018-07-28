@@ -36,6 +36,24 @@ public:
         m_Extent = E;
     }
 
+    void SetClearColorValue(uint32_t i, float r, float g, float b, float a)
+    {
+        m_ClearValues[i] = vk::ClearColorValue{ std::array<float,4>{ r, g, b, a } } ;
+    }
+    void SetClearDepthValue(float v)
+    {
+        if( m_depth_idex != (uint32_t)-1)
+        {
+            m_ClearValues[ m_depth_idex].depthStencil.depth = v;
+        }
+    }
+    void SetClearStencilValue(float v)
+    {
+        if( m_depth_idex != (uint32_t)-1)
+        {
+            m_ClearValues[ m_depth_idex].depthStencil.stencil = v;
+        }
+    }
     /**
      * @brief Create
      * @param color_formats - a vector of color formats to use, one for each render image
@@ -114,6 +132,7 @@ public:
         attachmentDescs.back().finalLayout   = vk::ImageLayout::eDepthStencilAttachmentOptimal;//  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         attachmentDescs.back().format = m_depth_image->GetFormat();// offScreenFrameBuf.depth.format;
 
+        m_depth_idex = attachments.size();
         attachments.push_back( m_depth_image->GetImageView() );  //offScreenFrameBuf.depth.view;
 
         m_ClearValues.push_back( vk::ClearDepthStencilValue{ 1.0f, 0 } );
