@@ -537,40 +537,37 @@ int main(int argc, char ** argv)
     //
     while (!glfwWindowShouldClose(window) )
     {
-       float t = get_elapsed_time();
-      // Get the next available image in the swapchain
+           float t = get_elapsed_time();
+          // Get the next available image in the swapchain
 
-      glfwPollEvents();
+          glfwPollEvents();
 
       // reset the command buffer so that we can record from scratch again.
       offscreen_cmd_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
       offscreen_cmd_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
 
 
-      //--------------------------------------------------------------------------------------
-      // Copy the Data from thost to the staging buffers.
-      //--------------------------------------------------------------------------------------
-      #define MAX_OBJECTS 2
-      // Copy the uniform buffer data into the staging buffer
-      const float AR = WIDTH / ( float )HEIGHT;
-      UniformStagingStruct.view        = glm::lookAt( glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-      UniformStagingStruct.proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 30.0f);
-      UniformStagingStruct.proj[1][1] *= -1;
-      //--------------------------------------------------------------------------------------
+          //--------------------------------------------------------------------------------------
+          // Copy the Data from thost to the staging buffers.
+          //--------------------------------------------------------------------------------------
+          #define MAX_OBJECTS 2
+          // Copy the uniform buffer data into the staging buffer
+          const float AR = WIDTH / ( float )HEIGHT;
+          UniformStagingStruct.view        = glm::lookAt( glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+          UniformStagingStruct.proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 30.0f);
+          UniformStagingStruct.proj[1][1] *= -1;
+          //--------------------------------------------------------------------------------------
 
-      //--------------------------------------------------------------------------------------
-      // Copy the uniform buffer data from the staging buffer to the uniform buffer. This normally only needs to be done
-      // once per rendering frame because it contains frame constant data.
-      offscreen_cmd_buffer.copySubBuffer( UniformStagingBuffer ,  U_buffer , vk::BufferCopy{ 0,0, sizeof(uniform_buffer_t) } );
-      //--------------------------------------------------------------------------------------
+          //--------------------------------------------------------------------------------------
+          // Copy the uniform buffer data from the staging buffer to the uniform buffer. This normally only needs to be done
+          // once per rendering frame because it contains frame constant data.
+          offscreen_cmd_buffer.copySubBuffer( UniformStagingBuffer ,  U_buffer , vk::BufferCopy{ 0,0, sizeof(uniform_buffer_t) } );
+          //--------------------------------------------------------------------------------------
 
-      //--------------------------------------------------------------------------------------
-      // Draw to the Render Target
-      //--------------------------------------------------------------------------------------
-      {
-          //========================================================================
+          //--------------------------------------------------------------------------------------
+          // Draw to the Render Target
+          //--------------------------------------------------------------------------------------
           offscreen_cmd_buffer.beginRender( myRenderTarget );
-
           {
               offscreen_cmd_buffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *g_buffer_pipeline);
 
@@ -610,9 +607,9 @@ int main(int argc, char ** argv)
                     offscreen_cmd_buffer.drawIndexed(36, 1, 0 , 0, 0);
               }
           }
-
           offscreen_cmd_buffer.endRenderPass();
-      }
+
+
       offscreen_cmd_buffer.end();
       //--------------------------------------------------------------------------------------
 
