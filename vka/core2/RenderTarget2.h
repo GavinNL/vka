@@ -298,39 +298,6 @@ public:
 
     }
 
-    struct FrameBufferAttachment
-    {
-        VkImage image;
-        VkDeviceMemory mem;
-        VkImageView view;
-        vk::Format format;
-    };
-
-    void InitMemory()
-    {
-        m_ColorPool.SetUsage( vk::ImageUsageFlagBits::eColorAttachment  |
-                         vk::ImageUsageFlagBits::eSampled);
-        m_ColorPool.SetSize( 50*1024*1024 );
-
-        m_DepthPool.SetUsage( vk::ImageUsageFlagBits::eDepthStencilAttachment  |
-                         vk::ImageUsageFlagBits::eSampled);
-        m_DepthPool.SetSize( 20*1024*1024 );
-    }
-
-    void createDepthAttachment( vk::Format format, vk::Extent2D extent)
-    {
-        m_depth_image = m_DepthPool.AllocateDepthAttachment( extent );
-    }
-
-
-    void createColorAttachment( vk::Format format, vk::Extent2D extent, FrameBufferAttachment *attachment)
-    {
-        auto image = m_ColorPool.AllocateColorAttachment( format, extent );
-
-        m_images.push_back(image);
-    }
-
-
     vk::RenderPass GetRenderPass() const
     {
         return m_RenderPass;
