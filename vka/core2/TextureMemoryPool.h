@@ -338,8 +338,17 @@ public:
             else
             {
                 // Memory hasn't been created yet.
-                m_MemoryRequirements = req;
+                m_size = std::max( m_size, req.size );
+
+                auto alignment = req.alignment;
+
+                // When we are allocating, make sure our total size is always a multiple
+                // of the alignment.
+                m_size = m_size%alignment==0 ? m_size : ((m_size/alignment + 1)*alignment);
+
+                m_MemoryRequirements      = req;
                 m_MemoryRequirements.size = m_size;
+
                 m_memory.Allocate(m_MemoryRequirements);
 
                 m_manager.reset( m_size );
