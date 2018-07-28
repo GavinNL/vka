@@ -36,10 +36,28 @@ public:
         m_Extent = E;
     }
 
+    /**
+     * @brief SetClearColorValue
+     * @param i
+     * @param r
+     * @param g
+     * @param b
+     * @param a
+     *
+     * Sets the clear colour value for the particular render texture
+     * Default is 0,0,0,0
+     */
     void SetClearColorValue(uint32_t i, float r, float g, float b, float a)
     {
         m_ClearValues[i] = vk::ClearColorValue{ std::array<float,4>{ r, g, b, a } } ;
     }
+
+    /**
+     * @brief SetClearDepthValue
+     * @param v
+     *
+     * Sets the clear depth value. If this is not set, it is defaulted to 1.0
+     */
     void SetClearDepthValue(float v)
     {
         if( m_depth_idex != (uint32_t)-1)
@@ -47,6 +65,13 @@ public:
             m_ClearValues[ m_depth_idex].depthStencil.depth = v;
         }
     }
+
+    /**
+     * @brief SetClearStencilValue
+     * @param v
+     *
+     * Sets the clear Stencil value
+     */
     void SetClearStencilValue(float v)
     {
         if( m_depth_idex != (uint32_t)-1)
@@ -349,18 +374,19 @@ public:
         return m_Extent;
     }
 protected:
-    TextureMemoryPool m_ColorPool;
-    TextureMemoryPool m_DepthPool;
+    TextureMemoryPool           m_ColorPool;
+    TextureMemoryPool           m_DepthPool;
 
-    vk::RenderPass m_RenderPass;
-    vk::Framebuffer m_Framebuffer;
+    vk::RenderPass              m_RenderPass;
+    vk::Framebuffer             m_Framebuffer;
 
-    std::vector<Texture_p> m_images;
-    Texture_p              m_depth_image;
+    std::vector<Texture_p>      m_images;
+    Texture_p                   m_depth_image;
 
+    uint32_t                    m_depth_idex = -1;
     std::vector<vk::ClearValue> m_ClearValues;
 
-    vk::Extent2D  m_Extent;
+    vk::Extent2D                m_Extent;
 };
 
 }
