@@ -178,6 +178,7 @@ public:
     }
 
     //==========================================================
+#if 0
     void Create()
     {
         vk::Extent2D extent(1024,768);
@@ -297,6 +298,7 @@ public:
         //VK_CHECK_RESULT(vkCreateFramebuffer(device, &fbufCreateInfo, nullptr, &offScreenFrameBuf.frameBuffer));
 
     }
+#endif
 
     vk::RenderPass GetRenderPass() const
     {
