@@ -42,7 +42,7 @@
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
 
-#include <vka/core2/RenderTarget.h>
+//#include <vka/core2/RenderTarget.h>
 #include <vka/core2/RenderTarget2.h>
 #include <vka/linalg.h>
 
@@ -252,9 +252,10 @@ int main(int argc, char ** argv)
 
 
     vka::RenderTarget2 myRenderTarget(&C);
-    myRenderTarget.InitMemory();
-    myRenderTarget.Create();
-
+    myRenderTarget.SetExtent( vk::Extent2D(1024,768));
+    myRenderTarget.Create( { vk::Format::eR32G32B32A32Sfloat,
+                             vk::Format::eR32G32B32A32Sfloat,
+                             vk::Format::eR8G8B8A8Unorm },  vk::Format::eD32Sfloat);
 
 
     //==============================================================================
@@ -279,28 +280,6 @@ int main(int argc, char ** argv)
                   vk::ImageUsageFlagBits::eSampled
                  | vk::ImageUsageFlagBits::eTransferDst
                  | vk::ImageUsageFlagBits::eTransferSrc);
-
-
-    //============================================================================
-  ///  auto m_OffscreenTarget = C.new_offscreen_target("offscreen_target");
-  ///
-  ///  // We're going to watn to have 3 colour attachments and 1 depth
-  ///  // attachment. This will give us 4 images we can draw to.
-  ///  // we are going to use the first one for position values
-  ///  //                        second one for normal values
-  ///  //                         third one for albedo (color)
-  ///  //                        fourth one for depth information
-  ///  m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR32G32B32A32Sfloat);
-  ///  m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR32G32B32A32Sfloat);
-  ///  m_OffscreenTarget->add_color_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm);
-  ///  m_OffscreenTarget->add_depth_attachment( vk::Extent2D(WIDTH,HEIGHT), vk::Format::eR8G8B8A8Unorm); // NOTE the format isn't used here.  need to fix this.
-  ///
-  ///  // Set the dimensions of the offscreen target.
-  ///  m_OffscreenTarget->set_extents( vk::Extent2D(WIDTH,HEIGHT));
-  ///
-  ///  // Finally create the target in GPU memory.
-  ///  m_OffscreenTarget->create();
-    //==============================================================================
 
 
     vka::host_mesh CubeMesh = vka::box_mesh(1,1,1);
@@ -496,49 +475,6 @@ int main(int argc, char ** argv)
         renderTargets->update();
         //======================================================================
 
-//        vka::pipeline* pipeline = C.new_pipeline("triangle");
-//        // Create the graphics Pipeline
-//          pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
-//                  ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
-
-//                  ->set_vertex_shader(   "resources/shaders/push_consts_default/push_consts_default.vert" , "main")   // the shaders we want to use
-//                  ->set_fragment_shader( "resources/shaders/push_consts_default/push_consts_default.frag" , "main") // the shaders we want to use
-
-//                  // tell the pipeline that attribute 0 contains 3 floats
-//                  // and the data starts at offset 0
-//                  ->set_vertex_attribute(0, 0,  0 , vk::Format::eR32G32B32Sfloat, sizeof(glm::vec3) )
-//                  // tell the pipeline that attribute 1 contains 3 floats
-//                  // and the data starts at offset 12
-//                  ->set_vertex_attribute(1, 1,  0 , vk::Format::eR32G32Sfloat , sizeof(glm::vec2) )
-
-//                  ->set_vertex_attribute(2, 2,  0 , vk::Format::eR32G32B32Sfloat , sizeof(glm::vec3) )
-
-
-//                  // Triangle vertices are drawn in a counter clockwise manner
-//                  // using the right hand rule which indicates which face is the
-//                  // front
-//                  ->set_front_face(vk::FrontFace::eCounterClockwise)
-
-//                  // Cull all back facing triangles.
-//                  ->set_cull_mode(vk::CullModeFlagBits::eBack)
-
-//                  // Tell the shader that we are going to use a texture
-//                  // in Set #0 binding #0
-//                  ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
-
-//                  // Tell teh shader that we are going to use a uniform buffer
-//                  // in Set #0 binding #0
-//                  ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
-
-
-//                  // Add a push constant to the layout. It is accessable in the vertex shader
-//                  // stage only.
-//                  ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
-//                  //
-//                  ->set_render_pass( screen->get_renderpass() )
-//                  ->create();
-
-
 
 
 //==============================================================================
@@ -628,26 +564,11 @@ int main(int argc, char ** argv)
       offscreen_cmd_buffer.copySubBuffer( UniformStagingBuffer ,  U_buffer , vk::BufferCopy{ 0,0, sizeof(uniform_buffer_t) } );
       //--------------------------------------------------------------------------------------
 
-
-
-
-
-
       //--------------------------------------------------------------------------------------
       // Draw to the Render Target
       //--------------------------------------------------------------------------------------
-      // RESET THE COMMAND BUFFER
-      //offscreen_cmd_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
-      //
-      //// BEGIN RECORDING TO THE COMMAND BUFFER
-      //offscreen_cmd_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
       {
           //========================================================================
-          // 3. Render all the objects to the Offscreen Render Target
-          //myRenderTarget.ClearValue(0).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f}));
-          //myRenderTarget.ClearValue(1).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f}));
-          //myRenderTarget.ClearValue(2).color = vk::ClearColorValue( std::array<float,4>({0.0f, 0.0f, 0.0f, 0.0f }));
-
           offscreen_cmd_buffer.beginRender( myRenderTarget );
 
           {
