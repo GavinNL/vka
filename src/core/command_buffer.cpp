@@ -13,7 +13,6 @@
 
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
-#include <vka/core2/RenderTarget.h>
 #include <vka/core2/RenderTarget2.h>
 
 void vka::command_buffer::bindVertexSubBuffer(uint32_t firstBinding,
