@@ -210,6 +210,7 @@ inline vk::Buffer SubBuffer::GetParentBufferHandle() const
     return m_parent->GetBufferHandle();
 }
 
+[[nodiscard]]
 inline MappedMemory SubBuffer::GetMappedMemory(vk::DeviceSize offset)
 {
     return m_parent->GetMappedMemory(m_offset+offset);
