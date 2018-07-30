@@ -108,6 +108,7 @@ bool operator()(const std::vector<vk::DescriptorSetLayoutBinding> & lhs, const s
 struct blank{};
 
 
+
 class context :
                 #define X_MACRO(A) public registry_t<A>,
                 X_LIST
@@ -115,48 +116,32 @@ class context :
 {
 #undef X_MACRO
 private:
-    vk::Instance       m_instance;
-
+    vk::Instance                 m_instance;
     vk::PhysicalDevice           m_physical_device;
     vk::PhysicalDeviceProperties m_physical_device_properties;
-
     queue_family_index_t         m_queue_family;
-
-    vk::Device         m_device;
-
-
-    //=========== Swap Chain stuff=============
-    // vk::SwapchainKHR                  m_swapchain;
-    // std::vector<vk::SurfaceFormatKHR> m_swapchain_available_formats;
-    // std::vector<vk::PresentModeKHR>   m_swapchain_available_present_modes;
-    //
-    // vk::SurfaceCapabilitiesKHR        m_swapchain_capabilities;
-    // vk::SurfaceFormatKHR              m_swapchain_format;
-    // vk::PresentModeKHR                m_swapchain_present_mode;
-    //
-     vk::Extent2D                      m_extent;
-    // vk::Format                        m_image_format;
-    // std::vector<vk::Image>            m_images;
-    // std::vector<vk::ImageView>        m_image_views;
-    // std::vector<vk::Framebuffer>      m_framebuffers;
-    //==========================================
+    vk::Device                   m_device;
+    vk::SurfaceKHR               m_surface;
 
 
-    vk::Queue                  m_graphics_queue;
-    vk::Queue                  m_present_queue;
+    vk::Extent2D                 m_extent;
+    vk::Queue                    m_graphics_queue;
+    vk::Queue                    m_present_queue;
+    vk::Fence                    m_render_fence;
 
-
-    vk::Fence     m_render_fence;
-
-    vk::DebugReportCallbackEXT  m_callback;
-
-
-    vk::SurfaceKHR     m_surface;
+    vk::DebugReportCallbackEXT   m_callback;
 
 
     std::map< std::vector<vk::DescriptorSetLayoutBinding>,
               vka::descriptor_set_layout*,
               DescriptorSetLayoutBindingCmp> m_DescriptorSetLayouts;
+
+    std::vector< std::string > m_instance_extensions;
+    std::vector< std::string > m_device_extensions;
+    std::vector< std::string > m_validation_layers;
+
+    vka::command_pool * m_command_pool   = nullptr;
+    vka::buffer       * m_staging_buffer = nullptr;
 
 public:
     vk::Instance get_instance() { return m_instance; }
@@ -175,24 +160,14 @@ public:
         clean();
     }
 
-    context(context const & other) // copy constructor
-    {
-        *this = other;
-    }
+    context(context const & other)  = delete;// copy constructor
 
     context(context && other) // move constructor
     {
         *this = std::move(other);
     }
 
-    context & operator=(context const & other) // copy operator
-    {
-        if( this != &other)
-        {
-
-        }
-        return *this;
-    }
+    context & operator=(context const & other) = delete; // copy operator
 
     context & operator=(context && other) // move operator
     {
@@ -556,12 +531,7 @@ public:
     void enable_device_extension(const std::string & extension);
 
 private:
-    std::vector< std::string > m_instance_extensions;
-    std::vector< std::string > m_device_extensions;
-    std::vector< std::string > m_validation_layers;
 
-    vka::command_pool * m_command_pool = nullptr;
-    vka::buffer * m_staging_buffer = nullptr;
 
 };
 

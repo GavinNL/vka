@@ -225,7 +225,7 @@ int main(int argc, char ** argv)
     // and framebuffers.
     // in VKA we present images to the screen object.
     // This a simple initialization of creating a screen with depth testing
-    auto * screen = C.new_screen("screen");
+    vka::screen * screen = C.new_screen("screen");
     screen->set_extent( vk::Extent2D(WIDTH,HEIGHT) );
     screen->set_surface( surface );
     screen->create();
