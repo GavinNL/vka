@@ -43,7 +43,7 @@
 
 
 
-
+#include <vka/core2/Screen.h>
 
 
 
@@ -116,6 +116,8 @@ int main(int argc, char ** argv)
     screen->set_surface( surface );
     screen->create();
 
+    vka::Screen Screen(&C);
+    Screen.Create(surface, vk::Extent2D(WIDTH,HEIGHT));
     //==========================================================================
 
 

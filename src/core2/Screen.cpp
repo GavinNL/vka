@@ -28,11 +28,22 @@ Screen::Screen(context * parent) : context_child(parent),
 
 Screen::~Screen()
 {
+    auto device = get_device();
 
+    // destroy the framebuffers and the image views
+    for(auto & fb : m_Swapchain.framebuffer) device.destroyFramebuffer(fb);
+    for(auto & fb : m_Swapchain.view) device.destroyImageView(fb);
+
+
+    // destroy the render pass
+    if(m_renderpass) device.destroyRenderPass(m_renderpass);
+
+    // destroy the swapchain
+    if( m_Swapchain.swapchain) device.destroySwapchainKHR(m_Swapchain.swapchain);
 }
 
 
-void Screen::setupRenderPass()
+vk::RenderPass Screen::createRenderPass(vk::Format swapchain_format, vk::Format depth_format)
 {
     // This example will use a single render pass with one subpass
 
@@ -40,7 +51,7 @@ void Screen::setupRenderPass()
     std::array<vk::AttachmentDescription, 2> attachments = {};
 
     // Color attachment
-    attachments[0].format         = m_swapchain_format.format;									// Use the color format selected by the swapchain
+    attachments[0].format         = swapchain_format;									// Use the color format selected by the swapchain
     attachments[0].samples        = vk::SampleCountFlagBits::e1;//VK_SAMPLE_COUNT_1_BIT;									// We don't use multi sampling in this example
     attachments[0].loadOp         = vk::AttachmentLoadOp::eClear;//VK_ATTACHMENT_LOAD_OP_CLEAR;							// Clear this attachment at the start of the render pass
     attachments[0].storeOp        = vk::AttachmentStoreOp::eStore;//VK_ATTACHMENT_STORE_OP_STORE;							// Keep it's contents after the render pass is finished (for displaying it)
@@ -51,7 +62,7 @@ void Screen::setupRenderPass()
                                                                              // As we want to present the color buffer to the swapchain, we transition to PRESENT_KHR
 
 
-    attachments[1].format         = m_depth_format;									// Use the color format selected by the swapchain
+    attachments[1].format         = depth_format;									// Use the color format selected by the swapchain
     attachments[1].samples        = vk::SampleCountFlagBits::e1;//VK_SAMPLE_COUNT_1_BIT;									// We don't use multi sampling in this example
     attachments[1].loadOp         = vk::AttachmentLoadOp::eClear;//VK_ATTACHMENT_LOAD_OP_CLEAR;							// Clear this attachment at the start of the render pass
     attachments[1].storeOp        = vk::AttachmentStoreOp::eDontCare;//VK_ATTACHMENT_STORE_OP_STORE;							// Keep it's contents after the render pass is finished (for displaying it)
@@ -131,41 +142,42 @@ void Screen::setupRenderPass()
 
     auto device = get_device();
 
-    m_renderpass = device.createRenderPass(renderPassInfo);
-    assert( m_renderpass );
+    auto Render_Pass = device.createRenderPass(renderPassInfo);
+    assert( Render_Pass );
+
+    return Render_Pass;
 }
 
-void Screen::CreateSwapchain(uint32_t width, uint32_t height, bool vsync)
+void Screen::CreateSwapchain(SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync)
 {
     auto physicalDevice = get_physical_device();
 
-    vk::SwapchainKHR oldSwapchain = m_swapchain;
+    vk::SwapchainKHR oldSwapchain = SC.swapchain;
 
-    m_swapchain_format = GetSurfaceFormats(m_surface);
+    SC.format = GetSurfaceFormats(m_surface);
 
     // Get physical device surface properties and formats
     //VkSurfaceCapabilitiesKHR surfCaps;
     //vk::SurfaceCapabilitiesKHR surfCaps;
     //VK_CHECK_RESULT(fpGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfCaps));
-    vk::SurfaceCapabilitiesKHR surfCaps = physicalDevice.getSurfaceCapabilitiesKHR(m_surface);
+    vk::SurfaceCapabilitiesKHR surfCaps = physicalDevice.getSurfaceCapabilitiesKHR(surface);
 
     // Get available present modes
     //uint32_t presentModeCount;
     //VK_CHECK_RESULT(fpGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, NULL));
     //std::vector<VkPresentModeKHR> presentModes(presentModeCount);
     //VK_CHECK_RESULT(fpGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.data()));
-    auto presentModes = physicalDevice.getSurfacePresentModesKHR(m_surface);
+    auto presentModes = physicalDevice.getSurfacePresentModesKHR(surface);
     assert(presentModes.size() > 0);
 
 
-    vk::Extent2D swapchainExtent = {};
+    vk::Extent2D swapchainExtent;// = {};
     // If width (and height) equals the special value 0xFFFFFFFF, the size of the surface will be set by the swapchain
     if (surfCaps.currentExtent.width == (uint32_t)-1)
     {
         // If the surface size is undefined, the size is set to
         // the size of the images requested.
-        swapchainExtent.width  = width;
-        swapchainExtent.height = height;
+        swapchainExtent = extent;
     }
     else
     {
@@ -245,8 +257,8 @@ void Screen::CreateSwapchain(uint32_t width, uint32_t height, bool vsync)
     vk::SwapchainCreateInfoKHR swapchainCI;
     swapchainCI.surface         = m_surface;
     swapchainCI.minImageCount   = desiredNumberOfSwapchainImages;
-    swapchainCI.imageFormat     = m_swapchain_format.format;
-    swapchainCI.imageColorSpace = m_swapchain_format.colorSpace;
+    swapchainCI.imageFormat     = SC.format.format;
+    swapchainCI.imageColorSpace = SC.format.colorSpace;
     swapchainCI.imageExtent     =  swapchainExtent;//{ swapchainExtent.width, swapchainExtent.height };
     swapchainCI.imageUsage      = vk::ImageUsageFlagBits::eColorAttachment;// VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     swapchainCI.preTransform = (vk::SurfaceTransformFlagBitsKHR)preTransform;
@@ -272,8 +284,8 @@ void Screen::CreateSwapchain(uint32_t width, uint32_t height, bool vsync)
 
     auto device = get_device();
 
-    m_swapchain = device.createSwapchainKHR(swapchainCI);
-    if( !m_swapchain)
+    SC.swapchain = device.createSwapchainKHR(swapchainCI);
+    if( !SC.swapchain )
     {
         throw std::runtime_error("Error creating swapchain");
     }
@@ -283,15 +295,15 @@ void Screen::CreateSwapchain(uint32_t width, uint32_t height, bool vsync)
     // This also cleans up all the presentable images
     if (oldSwapchain)
     {
-        for (uint32_t i = 0; i < m_buffers.size(); i++)
+        for (uint32_t i = 0; i < SC.view.size(); i++)
         {
-            device.destroyImageView( m_buffers[i].view );
+            device.destroyImageView( SC.view[i]);
             //vkDestroyImageView(device, buffers[i].view, nullptr);
         }
         device.destroySwapchainKHR(oldSwapchain);
     }
 
-    auto images = device.getSwapchainImagesKHR(m_swapchain);
+    auto images = device.getSwapchainImagesKHR(SC.swapchain);
     assert(images.size());
     //VK_CHECK_RESULT(fpGetSwapchainImagesKHR(device, swapChain, &imageCount, NULL));
 
@@ -300,12 +312,14 @@ void Screen::CreateSwapchain(uint32_t width, uint32_t height, bool vsync)
     //VK_CHECK_RESULT(fpGetSwapchainImagesKHR(device, swapChain, &imageCount, images.data()));
 
     // Get the swap chain buffers containing the image and imageview
-    m_buffers.resize( images.size() );
+    SC.image.clear();
+    SC.view.clear();
+    //m_buffers.resize( images.size() );
     for (uint32_t i = 0; i < images.size() ; i++)
     {
         vk::ImageViewCreateInfo colorAttachmentView;
 
-        colorAttachmentView.format = m_swapchain_format.format;
+        colorAttachmentView.format = SC.format.format;
         colorAttachmentView.components = {
             vk::ComponentSwizzle::eR,
             vk::ComponentSwizzle::eG,
@@ -319,12 +333,14 @@ void Screen::CreateSwapchain(uint32_t width, uint32_t height, bool vsync)
         colorAttachmentView.subresourceRange.layerCount     = 1;
         colorAttachmentView.viewType = vk::ImageViewType::e2D;// VK_IMAGE_VIEW_TYPE_2D;
 
-        m_buffers[i].image = images[i];
+        SC.image.push_back(images[i]);
 
-        colorAttachmentView.image = m_buffers[i].image;
+        colorAttachmentView.image = SC.image.back();//m_buffers[i].image;
 
-        m_buffers[i].view = device.createImageView(colorAttachmentView);
-        assert(m_buffers[i].view);
+
+        auto view = device.createImageView(colorAttachmentView);
+        assert(view);
+        SC.view.push_back(view);
         //VK_CHECK_RESULT(vkCreateImageView(device, &colorAttachmentView, nullptr, &buffers[i].view));
     }
 }
@@ -381,41 +397,40 @@ vk::SurfaceFormatKHR Screen::GetSurfaceFormats(vk::SurfaceKHR surface)
 
 // Create a frame buffer for each swap chain image
 // Note: Override of virtual function in the base class and called from within VulkanExampleBase::prepare
-void Screen::setupFrameBuffer()
+std::vector<vk::Framebuffer> Screen::setupFrameBuffer(
+                                                      vk::Extent2D const & extent,
+                                                      vk::RenderPass renderpass,
+                                                      std::vector<vk::ImageView> const & swapchain_views,
+                                                      vk::ImageView depth_view)
 {
-    auto size = format_size(m_depth_format) * m_extent.width * m_extent.height;
-
-    m_DepthPool.SetUsage( vk::ImageUsageFlagBits::eDepthStencilAttachment  |
-                          vk::ImageUsageFlagBits::eSampled);
-    m_DepthPool.SetSize( size + 1024 );
-    m_DepthImage = m_DepthPool.AllocateDepthAttachment( m_extent );
-
-    m_depth_format = m_DepthImage->GetFormat();
-    setupRenderPass();
-
+    std::vector<vk::Framebuffer> framebuffers;
     // Create a frame buffer for every image in the swapchain
     //frameBuffers.resize(swapChain.imageCount);
     auto device = get_device();
 
-    for (size_t i = 0; i < m_buffers.size(); i++)
+    for (size_t i = 0; i < swapchain_views.size(); i++)
     {
         std::array<vk::ImageView, 2> attachments;
-        attachments[0] = m_buffers[i].view;									// Color attachment is the view of the swapchain image
-        attachments[1] = m_DepthImage->GetImageView();
+        attachments[0] = swapchain_views[i];									// Color attachment is the view of the swapchain image
+        attachments[1] = depth_view;
+
 
         vk::FramebufferCreateInfo frameBufferCreateInfo;
         // All frame buffers use the same renderpass setup
-        frameBufferCreateInfo.renderPass      = m_renderpass;
+        frameBufferCreateInfo.renderPass      = renderpass;
         frameBufferCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
         frameBufferCreateInfo.pAttachments    = attachments.data();
-        frameBufferCreateInfo.width           = m_extent.width;
-        frameBufferCreateInfo.height          = m_extent.height;
+        frameBufferCreateInfo.width           = extent.width;
+        frameBufferCreateInfo.height          = extent.height;
         frameBufferCreateInfo.layers          = 1;
         // Create the framebuffer
 
-        m_buffers[i].framebuffer = device.createFramebuffer(frameBufferCreateInfo);
-        assert(m_buffers[i].framebuffer);
+        auto fb  = device.createFramebuffer(frameBufferCreateInfo);
+        assert(fb);
+        framebuffers.push_back(fb);
     }
+
+    return framebuffers;
 }
 
 }

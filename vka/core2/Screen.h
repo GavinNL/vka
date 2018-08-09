@@ -3,23 +3,23 @@
 
 #include <vka/core/context_child.h>
 #include <vka/core2/TextureMemoryPool.h>
+#include <vka/core/types.h>
 
 namespace vka
 {
 
 class command_buffer;
 
-struct SwapChainBuffer
-{
-        vk::Image     image;
-        vk::ImageView view;
-        vk::Framebuffer framebuffer;
-};
 
-struct DepthImage
+
+
+struct SwapChainData
 {
-    vk::Image image;
-    vk::ImageView view;
+    vk::SwapchainKHR             swapchain;
+    std::vector<vk::Image>       image;
+    std::vector<vk::ImageView>   view;
+    std::vector<vk::Framebuffer> framebuffer;
+    vk::SurfaceFormatKHR         format;
 };
 
 class Screen : public context_child
@@ -29,20 +29,17 @@ class Screen : public context_child
 
         vk::SurfaceKHR                    m_surface;
 
-        vk::SurfaceFormatKHR              m_swapchain_format;
-        vk::SwapchainKHR                  m_swapchain;
-
-        vk::Format                        m_image_format;
+        //vk::Format                        m_image_format;
         vk::RenderPass                    m_renderpass;
 
-        vk::Format                        m_depth_format;
-        std::vector<vk::Image>            m_images;
-        std::vector<vk::ImageView>        m_image_views;
+        //vk::Format                        m_depth_format;
+        //std::vector<vk::Image>            m_images;
+        //std::vector<vk::ImageView>        m_image_views;
 
         std::array<vk::ClearValue, 2>     m_clear_values;
 
-        std::vector<SwapChainBuffer>      m_buffers;
-
+        //std::vector<SwapChainBuffer>      m_buffers;
+        SwapChainData                     m_Swapchain;
 
         TextureMemoryPool                 m_DepthPool;
         Texture_p                         m_DepthImage;
@@ -81,18 +78,28 @@ class Screen : public context_child
         {
             set_surface(surface);
             set_extent(extent);
-            m_depth_format = depth_format;
 
-            CreateSwapchain(extent.width,extent.height,true);
-            setupRenderPass();
-            setupFrameBuffer();
+            CreateSwapchain( m_Swapchain, surface, extent,true);
+            m_renderpass = createRenderPass(m_Swapchain.format.format, depth_format);
+
+            //--------
+            auto size = format_size(depth_format) * extent.width * extent.height;
+
+            m_DepthPool.SetUsage( vk::ImageUsageFlagBits::eDepthStencilAttachment  |
+                                  vk::ImageUsageFlagBits::eSampled);
+            m_DepthPool.SetSize( size + 1024 );
+            m_DepthImage = m_DepthPool.AllocateDepthAttachment( m_extent , depth_format);
+
+            depth_format = m_DepthImage->GetFormat();
+            //----------
+            m_Swapchain.framebuffer = setupFrameBuffer(extent, m_renderpass, m_Swapchain.view, m_DepthImage->GetImageView());
         }
 protected:
 
-        void CreateSwapchain(uint32_t width, uint32_t height, bool vsync = false);
-        vk::SurfaceFormatKHR GetSurfaceFormats(vk::SurfaceKHR surface);
-        void setupRenderPass();
-        void setupFrameBuffer();
+        void                         CreateSwapchain(SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync = false);
+        vk::SurfaceFormatKHR         GetSurfaceFormats(vk::SurfaceKHR surface);
+        vk::RenderPass               createRenderPass(vk::Format swapchain_format, vk::Format depth_format);
+        std::vector<vk::Framebuffer> setupFrameBuffer(const vk::Extent2D &extent, vk::RenderPass renderpass, const std::vector<vk::ImageView> &swapchain_views, vk::ImageView depth_view);
 };
 
 }
