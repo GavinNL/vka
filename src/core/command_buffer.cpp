@@ -14,6 +14,7 @@
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
 #include <vka/core2/RenderTarget2.h>
+#include <vka/core2/Screen.h>
 
 void vka::command_buffer::bindVertexSubBuffer(uint32_t firstBinding,
                               vka::sub_buffer const * buffer , vk::DeviceSize offset) const
@@ -472,6 +473,20 @@ void command_buffer::beginRender(RenderTarget2 & target)
 
     beginRenderPass(m_renderpass_info, vk::SubpassContents::eInline);
 }
+
+void command_buffer::beginRender(Screen & target, uint32_t frame_buffer_index)
+{
+    vk::RenderPassBeginInfo m_renderpass_info;
+
+    m_renderpass_info.renderPass        = target.GetRenderPass();// *get_renderpass();
+    m_renderpass_info.framebuffer       = target.GetFramebuffer(frame_buffer_index);// *get_framebuffer();
+    m_renderpass_info.clearValueCount   = target.GetClearValues().size();
+    m_renderpass_info.pClearValues      = target.GetClearValues().data();//m_clear_values.data();
+    m_renderpass_info.renderArea.extent = target.GetExtent();
+
+    beginRenderPass(m_renderpass_info, vk::SubpassContents::eInline);
+}
+
 
 
 }
