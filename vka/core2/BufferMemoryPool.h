@@ -60,6 +60,8 @@ private:
      * void*. It will automatically unmap itself when the
      * object goes out of scope.
      */
+
+    [[ nodiscard ]]
     MappedMemory GetMappedMemory(vk::DeviceSize offset=0);
 
     void CopyData( void const * src, vk::DeviceSize d, vk::DeviceSize offset=0)
@@ -208,6 +210,7 @@ inline vk::Buffer SubBuffer::GetParentBufferHandle() const
     return m_parent->GetBufferHandle();
 }
 
+[[nodiscard]]
 inline MappedMemory SubBuffer::GetMappedMemory(vk::DeviceSize offset)
 {
     return m_parent->GetMappedMemory(m_offset+offset);

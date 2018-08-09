@@ -1,3 +1,9 @@
+#pragma once
+
+#ifndef VKA_TYPES_H
+#define VKA_TYPES_H
+
+
 #include <vulkan/vulkan.hpp>
 #include <exception>
 
@@ -216,3 +222,5 @@ vk::Format get_format()
 }
 
 }
+
+#endif

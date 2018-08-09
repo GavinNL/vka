@@ -71,6 +71,7 @@ private:
     std::string   m_TesselationControlShaderEntry;
 
     vka::renderpass  * m_RenderPass = nullptr;
+    vk::RenderPass     m_RenderPass_raw;
 
     pipeline(context * parent) : context_child(parent)
     {
@@ -245,7 +246,7 @@ public:
     }
 
     pipeline* set_render_pass( vka::renderpass * p);
-
+    pipeline* SetRenderPass( vk::RenderPass P);
 
     pipeline* set_vertex_attribute(uint32_t binding, uint32_t location, uint32_t offset, vk::Format format , uint32_t size);
 

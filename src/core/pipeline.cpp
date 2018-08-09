@@ -126,6 +126,11 @@ vka::pipeline* vka::pipeline::set_render_pass( vka::renderpass * p)
     return this;
 }
 
+vka::pipeline* vka::pipeline::SetRenderPass(vk::RenderPass P)
+{
+    m_RenderPass_raw = P;
+    return this;
+}
 vka::pipeline * vka::pipeline::set_vertex_shader( const std::string & path  , std::string const & entry_point)
 {
     static int i=0;
@@ -288,7 +293,10 @@ void vka::pipeline::create()
         pipelineInfo.pTessellationState  = &m_TesselationState;
     }
 
-    pipelineInfo.renderPass          = m_RenderPass->m_RenderPass;
+    if( m_RenderPass_raw)
+        pipelineInfo.renderPass          = m_RenderPass_raw;
+    else
+        pipelineInfo.renderPass          = m_RenderPass->m_RenderPass;
     pipelineInfo.subpass = 0;
 
 

@@ -131,7 +131,7 @@ private:
         SamplerInfo.addressModeU     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
         SamplerInfo.addressModeV     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
         SamplerInfo.addressModeW     = vk::SamplerAddressMode::eRepeat;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        SamplerInfo.anisotropyEnable = VK_TRUE;
+        SamplerInfo.anisotropyEnable = VK_FALSE;
         SamplerInfo.maxAnisotropy    = 1;
         SamplerInfo.borderColor      = vk::BorderColor::eIntOpaqueBlack;// VK_BORDER_COLOR_INT_OPAQUE_BLACK ;
         SamplerInfo.unnormalizedCoordinates = VK_FALSE;
@@ -194,6 +194,7 @@ private:
         friend class command_buffer;
 };
 
+using Texture_p = std::shared_ptr<Texture>;
 
 
 /**
@@ -305,12 +306,12 @@ public:
         assert(m_size != 0);
 
         vk::ImageCreateInfo create_info = m_CreateInfo;
-        create_info.extent = extent;
-        create_info.arrayLayers = arrayLayers;
-        create_info.format = format;
-        create_info.mipLevels = mipLevels;
-        create_info.tiling = tiling;
-        create_info.sharingMode = sharingMode;
+        create_info.extent              = extent;
+        create_info.arrayLayers         = arrayLayers;
+        create_info.format              = format;
+        create_info.mipLevels           = mipLevels;
+        create_info.tiling              = tiling;
+        create_info.sharingMode         = sharingMode;
 
         auto image = device.createImage( create_info );
 
@@ -332,13 +333,22 @@ public:
                // the same as the one already created.
 
                 assert( m_MemoryRequirements.alignment == req.alignment );
-                assert( m_MemoryRequirements.memoryTypeBits== req.memoryTypeBits);
+                //assert( m_MemoryRequirements.memoryTypeBits== req.memoryTypeBits);
             }
             else
             {
                 // Memory hasn't been created yet.
-                m_MemoryRequirements = req;
+                m_size = std::max( m_size, req.size );
+
+                auto alignment = req.alignment;
+
+                // When we are allocating, make sure our total size is always a multiple
+                // of the alignment.
+                m_size = m_size%alignment==0 ? m_size : ((m_size/alignment + 1)*alignment);
+
+                m_MemoryRequirements      = req;
                 m_MemoryRequirements.size = m_size;
+
                 m_memory.Allocate(m_MemoryRequirements);
 
                 m_manager.reset( m_size );
@@ -423,8 +433,85 @@ public:
         return T;
     }
 
+    std::shared_ptr<Texture> AllocateColorAttachment( vk::Format format,
+                                                      vk::Extent2D extent)
+    {
+        auto T = AllocateTexture( format,
+                                  vk::Extent3D{extent.width,extent.height,1},
+                                  1,
+                                  1,
+                                  vk::ImageTiling::eOptimal,
+                                  vk::SharingMode::eExclusive);
+
+        T->CreateImageView( "default",
+                            vk::ImageViewType::e2D,
+                            vk::ImageAspectFlagBits::eColor,
+                            0, 1,
+                            0, 1);
+
+        auto SCI = T->GetDefaultSamplerCreateInfo();
+        SCI.magFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
+        SCI.minFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
+        SCI.addressModeU     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.addressModeV     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.addressModeW     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.anisotropyEnable = VK_FALSE;
+        SCI.maxAnisotropy    = 1;
+        SCI.borderColor      = vk::BorderColor::eFloatOpaqueWhite;// VK_BORDER_COLOR_INT_OPAQUE_BLACK ;
+        SCI.unnormalizedCoordinates = VK_FALSE;
+        SCI.compareEnable    = VK_FALSE;
+        SCI.compareOp        = vk::CompareOp::eAlways;// VK_COMPARE_OP_ALWAYS;
+        SCI.mipmapMode       = vk::SamplerMipmapMode::eLinear;// VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        SCI.mipLodBias       = 0.0f;
+        SCI.minLod           = 0.0f;
+        SCI.maxLod           = 1.0;
+        T->CreateSampler("default", SCI );
+
+        return T;
+    }
+
+    std::shared_ptr<Texture> AllocateDepthAttachment( vk::Extent2D extent,
+                                                      vk::Format format = vk::Format::eD32Sfloat)
+    {
+        assert(
+         ( format  == vk::Format::eD32Sfloat       ) ||
+         ( format  == vk::Format::eD32SfloatS8Uint ) ||
+         ( format  == vk::Format::eD24UnormS8Uint  ) );
 
 
+        auto T = AllocateTexture( format,
+                                  vk::Extent3D{extent.width,extent.height,1},
+                                  1,
+                                  1,
+                                  vk::ImageTiling::eOptimal,
+                                  vk::SharingMode::eExclusive);
+
+        T->CreateImageView( "default",
+                            vk::ImageViewType::e2D,
+                              vk::ImageAspectFlagBits::eDepth,
+                            0, 1,
+                            0, 1);
+
+        auto SCI = T->GetDefaultSamplerCreateInfo();
+        SCI.magFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
+        SCI.minFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
+        SCI.addressModeU     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.addressModeV     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.addressModeW     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        SCI.anisotropyEnable = VK_TRUE;
+        SCI.maxAnisotropy    = 1;
+        SCI.borderColor      = vk::BorderColor::eFloatOpaqueWhite;// VK_BORDER_COLOR_INT_OPAQUE_BLACK ;
+        SCI.unnormalizedCoordinates = VK_FALSE;
+        SCI.compareEnable    = VK_FALSE;
+        SCI.compareOp        = vk::CompareOp::eAlways;// VK_COMPARE_OP_ALWAYS;
+        SCI.mipmapMode       = vk::SamplerMipmapMode::eLinear;// VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        SCI.mipLodBias       = 0.0f;
+        SCI.minLod           = 0.0f;
+        SCI.maxLod           = 1.0;
+        T->CreateSampler("default", SCI );
+
+        return T;
+    }
 protected:
     vka::Memory                m_memory;
     vka::buffer_memory_manager m_manager;

@@ -111,7 +111,7 @@ int main(int argc, char ** argv)
     // and framebuffers.
     // in VKA we present images to the screen object.
     // This a simple initialization of creating a screen with depth testing
-    auto * screen = C.new_screen("screen");
+    vka::screen * screen = C.new_screen("screen");
     screen->set_extent( vk::Extent2D(WIDTH,HEIGHT) );
     screen->set_surface( surface );
     screen->create();
@@ -199,11 +199,12 @@ int main(int argc, char ** argv)
             vertex[2] = {glm::vec3(-1.0,  0.0, -1.0 ) , glm::vec2(1   , 1) };
 
 #if defined USE_REFACTORED
-            void * m = StagingBuffer->GetMappedMemory();
+            vka::MappedMemory m = StagingBuffer->GetMappedMemory();
+            m.memcpy( &vertex[0], sizeof(vertex));
 #else
             void * m = staging_buffer->map_memory();
-#endif
             memcpy(m , &vertex[0], sizeof(vertex));
+#endif
 
         }
         // Do the same for the index buffer. but we want to specific an
@@ -219,11 +220,12 @@ int main(int argc, char ** argv)
             index[2] = 2;
 
 #if defined USE_REFACTORED
-            void * m = (uint8_t*)StagingBuffer->GetMappedMemory() + 3*sizeof(Vertex);
+            vka::MappedMemory m  = StagingBuffer->GetMappedMemory() + 3*sizeof(Vertex);
+            m.memcpy(&index[0], sizeof(index));
 #else
             void * m = (uint8_t*)staging_buffer->map_memory() + 3*sizeof(Vertex);
-#endif
             memcpy(m , &index[0], sizeof(index));
+#endif
 
             LOG << "Index size: " << index.size() << ENDL;
         }
