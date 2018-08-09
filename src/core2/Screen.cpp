@@ -1,4 +1,6 @@
 #include <vka/core2/Screen.h>
+
+#include <vka/core/semaphore.h>
 #include <vka/core/context.h>
 #include <vka/core/texture.h>
 
@@ -7,10 +9,6 @@
 namespace vka
 {
 
-void Screen::set_extent( vk::Extent2D e)
-{
-    m_extent = e;
-}
 
 
 Screen::Screen(context * parent) : context_child(parent),
@@ -420,5 +418,39 @@ std::vector<vk::Framebuffer> Screen::CreateFrameBuffers( vk::Device device,
 
     return framebuffers;
 }
+
+
+
+
+
+uint32_t Screen::GetNextFrameIndex(vka::semaphore *signal_semaphore)
+{
+    auto
+    m_next_frame_index  = get_device().acquireNextImageKHR( m_Swapchain.swapchain,
+                                          std::numeric_limits<uint64_t>::max(),
+                                          *signal_semaphore,
+                                          vk::Fence()).value;
+    return m_next_frame_index;
+}
+
+
+void Screen::PresentFrame(uint32_t frame_index, vka::semaphore * wait_semaphore)
+{
+    vk::PresentInfoKHR presentInfo;
+    if( wait_semaphore)
+    {
+        presentInfo.waitSemaphoreCount  = 1;
+        presentInfo.pWaitSemaphores     = &wait_semaphore->get();
+    }
+
+    vk::SwapchainKHR swapChains[] = { m_Swapchain.swapchain };
+    presentInfo.swapchainCount    = 1;
+    presentInfo.pSwapchains       = swapChains;
+    presentInfo.pImageIndices     = &frame_index;
+    presentInfo.pResults = nullptr;
+
+    get_parent_context()->present_image( presentInfo );
+}
+
 
 }

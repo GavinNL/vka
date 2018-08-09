@@ -5,11 +5,12 @@
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core/types.h>
 
+
 namespace vka
 {
 
 class command_buffer;
-
+class semaphore;
 
 
 
@@ -27,18 +28,10 @@ class Screen : public context_child
     protected:
         vk::Extent2D m_extent;
 
-        //vk::SurfaceKHR                    m_surface;
-
-        //vk::Format                        m_image_format;
         vk::RenderPass                    m_renderpass;
-
-        //vk::Format                        m_depth_format;
-        //std::vector<vk::Image>            m_images;
-        //std::vector<vk::ImageView>        m_image_views;
 
         std::array<vk::ClearValue, 2>     m_clear_values;
 
-        //std::vector<SwapChainBuffer>      m_buffers;
         SwapChainData                     m_Swapchain;
 
         TextureMemoryPool                 m_DepthPool;
@@ -60,15 +53,28 @@ class Screen : public context_child
             m_clear_values[1] = C;
         }
 
-
+       std::array<vk::ClearValue, 2> const & GetClearValues() const
+       {
+           return m_clear_values;
+       }
        // void set_surface(vk::SurfaceKHR surface);
-        void set_extent(vk::Extent2D e);
+       //void set_extent(vk::Extent2D e);
 
-        vk::Extent2D get_extent() const
+        vk::Extent2D GetExtent() const
         {
             return m_extent;
         }
 
+
+        vk::RenderPass GetRenderPass() const
+        {
+            return m_renderpass;
+        }
+
+        vk::Framebuffer GetFramebuffer(uint32_t index) const
+        {
+            return m_Swapchain.framebuffer.at(index);
+        }
 
         void Create(
                 vk::SurfaceKHR surface,
@@ -81,7 +87,7 @@ class Screen : public context_child
             auto device = get_device();
 
             //set_surface(surface);
-            set_extent(extent);
+            m_extent = extent;
 
             CreateSwapchain( physical_device, device, m_Swapchain, surface, extent,true);
             m_renderpass = CreateRenderPass(device, m_Swapchain.format.format, depth_format);
@@ -98,6 +104,10 @@ class Screen : public context_child
             //----------
             m_Swapchain.framebuffer = CreateFrameBuffers(device, extent, m_renderpass, m_Swapchain.view, m_DepthImage->GetImageView());
         }
+
+
+        uint32_t GetNextFrameIndex(vka::semaphore *signal_semaphore);
+        void PresentFrame(uint32_t frame_index, vka::semaphore * wait_semaphore);
 protected:
 
         static void                         CreateSwapchain(   vk::PhysicalDevice pd, vk::Device device, SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync = false);
