@@ -107,6 +107,10 @@ int main(int argc, char ** argv)
 
     C.create_device(surface); // find the appropriate device
 
+#if defined USE_REFACTORED
+    vka::Screen Screen(&C);
+    Screen.Create(surface, vk::Extent2D(WIDTH,HEIGHT));
+#else
     // The Screen is essentially a wrapper around the Swapchain, a default Renderpass
     // and framebuffers.
     // in VKA we present images to the screen object.
@@ -115,9 +119,8 @@ int main(int argc, char ** argv)
     screen->set_extent( vk::Extent2D(WIDTH,HEIGHT) );
     screen->set_surface( surface );
     screen->create();
+#endif
 
-    vka::Screen Screen(&C);
-    Screen.Create(surface, vk::Extent2D(WIDTH,HEIGHT));
     //==========================================================================
 
 
@@ -435,7 +438,11 @@ int main(int argc, char ** argv)
                   // in Set #0 binding #0
                   ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
                   //
+        #if defined USE_REFACTORED
+                  ->SetRenderPass( Screen.GetRenderPass()  )
+        #else
                   ->set_render_pass( screen->get_renderpass() )
+        #endif
                   ->create();
 
 
@@ -530,9 +537,17 @@ int main(int argc, char ** argv)
       cb.copyBuffer( *staging_buffer , *u_buffer , vk::BufferCopy{ 0,0,sizeof(uniform_buffer_t) } );
 #endif
 
-
+#if defined USE_REFACTORED
+      uint32_t frame_index = Screen.GetNextFrameIndex(image_available_semaphore);
+#else
       uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
+#endif
+
+#if defined USE_REFACTORED
+      cb.beginRender(Screen, frame_index);
+#else
       screen->beginRender(cb, frame_index);
+#endif
 
       // bind the pipeline that we want to use next
             cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
@@ -562,7 +577,11 @@ int main(int argc, char ** argv)
     // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
             cb.drawIndexed(3, 1, 0 , 0, 0);
 
-      screen->endRender(cb);
+#if defined USE_REFACTORED
+            cb.endRenderPass();
+#else
+            screen->endRender(cb);
+#endif
       cb.end();
 
       // Submit the command buffers, but wait until the image_available_semaphore
@@ -571,8 +590,11 @@ int main(int argc, char ** argv)
 
       // present the image to the surface, but wait for the render_complete_semaphore
       // to be flagged by the submit_command_buffer
+#if defined USE_REFACTORED
+      Screen.PresentFrame(frame_index, render_complete_semaphore);
+#else
       screen->present_frame( frame_index, render_complete_semaphore);
-
+#endif
 
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );
     }
