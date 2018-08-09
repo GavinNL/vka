@@ -27,7 +27,7 @@ class Screen : public context_child
     protected:
         vk::Extent2D m_extent;
 
-        vk::SurfaceKHR                    m_surface;
+        //vk::SurfaceKHR                    m_surface;
 
         //vk::Format                        m_image_format;
         vk::RenderPass                    m_renderpass;
@@ -61,7 +61,7 @@ class Screen : public context_child
         }
 
 
-        void set_surface(vk::SurfaceKHR surface);
+       // void set_surface(vk::SurfaceKHR surface);
         void set_extent(vk::Extent2D e);
 
         vk::Extent2D get_extent() const
@@ -76,11 +76,15 @@ class Screen : public context_child
                 vk::Format depth_format = vk::Format::eD32Sfloat
                 )
         {
-            set_surface(surface);
+
+            auto physical_device = get_physical_device();
+            auto device = get_device();
+
+            //set_surface(surface);
             set_extent(extent);
 
-            CreateSwapchain( m_Swapchain, surface, extent,true);
-            m_renderpass = createRenderPass(m_Swapchain.format.format, depth_format);
+            CreateSwapchain( physical_device, device, m_Swapchain, surface, extent,true);
+            m_renderpass = CreateRenderPass(device, m_Swapchain.format.format, depth_format);
 
             //--------
             auto size = format_size(depth_format) * extent.width * extent.height;
@@ -92,14 +96,16 @@ class Screen : public context_child
 
             depth_format = m_DepthImage->GetFormat();
             //----------
-            m_Swapchain.framebuffer = setupFrameBuffer(extent, m_renderpass, m_Swapchain.view, m_DepthImage->GetImageView());
+            m_Swapchain.framebuffer = CreateFrameBuffers(device, extent, m_renderpass, m_Swapchain.view, m_DepthImage->GetImageView());
         }
 protected:
 
-        void                         CreateSwapchain(SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync = false);
-        vk::SurfaceFormatKHR         GetSurfaceFormats(vk::SurfaceKHR surface);
-        vk::RenderPass               createRenderPass(vk::Format swapchain_format, vk::Format depth_format);
-        std::vector<vk::Framebuffer> setupFrameBuffer(const vk::Extent2D &extent, vk::RenderPass renderpass, const std::vector<vk::ImageView> &swapchain_views, vk::ImageView depth_view);
+        static void                         CreateSwapchain(   vk::PhysicalDevice pd, vk::Device device, SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync = false);
+        static vk::RenderPass               CreateRenderPass(  vk::Device device, vk::Format swapchain_format, vk::Format depth_format);
+        static std::vector<vk::Framebuffer> CreateFrameBuffers(vk::Device device, const vk::Extent2D &extent, vk::RenderPass renderpass, const std::vector<vk::ImageView> &swapchain_views, vk::ImageView depth_view);
+
+
+        static vk::SurfaceFormatKHR         GetSurfaceFormats(vk::PhysicalDevice physical_device, vk::Device device, vk::SurfaceKHR surface);
 };
 
 }

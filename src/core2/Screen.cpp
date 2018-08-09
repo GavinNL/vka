@@ -13,12 +13,6 @@ void Screen::set_extent( vk::Extent2D e)
 }
 
 
-void Screen::set_surface(vk::SurfaceKHR surface)
-{
-    m_surface = surface;
-
-}
-
 Screen::Screen(context * parent) : context_child(parent),
                                    m_DepthPool(parent)
 {
@@ -43,7 +37,7 @@ Screen::~Screen()
 }
 
 
-vk::RenderPass Screen::createRenderPass(vk::Format swapchain_format, vk::Format depth_format)
+vk::RenderPass Screen::CreateRenderPass(vk::Device device, vk::Format swapchain_format, vk::Format depth_format)
 {
     // This example will use a single render pass with one subpass
 
@@ -140,7 +134,6 @@ vk::RenderPass Screen::createRenderPass(vk::Format swapchain_format, vk::Format 
     renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());	// Number of subpass dependencies
     renderPassInfo.pDependencies = dependencies.data();								// Subpass dependencies used by the render pass
 
-    auto device = get_device();
 
     auto Render_Pass = device.createRenderPass(renderPassInfo);
     assert( Render_Pass );
@@ -148,13 +141,11 @@ vk::RenderPass Screen::createRenderPass(vk::Format swapchain_format, vk::Format 
     return Render_Pass;
 }
 
-void Screen::CreateSwapchain(SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync)
+void Screen::CreateSwapchain(vk::PhysicalDevice physicalDevice, vk::Device device, SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync)
 {
-    auto physicalDevice = get_physical_device();
-
     vk::SwapchainKHR oldSwapchain = SC.swapchain;
 
-    SC.format = GetSurfaceFormats(m_surface);
+    SC.format = GetSurfaceFormats(physicalDevice, device, surface);
 
     // Get physical device surface properties and formats
     //VkSurfaceCapabilitiesKHR surfCaps;
@@ -255,7 +246,7 @@ void Screen::CreateSwapchain(SwapChainData & SC, vk::SurfaceKHR surface, const v
 
     //VkSwapchainCreateInfoKHR swapchainCI = {};
     vk::SwapchainCreateInfoKHR swapchainCI;
-    swapchainCI.surface         = m_surface;
+    swapchainCI.surface         = surface;
     swapchainCI.minImageCount   = desiredNumberOfSwapchainImages;
     swapchainCI.imageFormat     = SC.format.format;
     swapchainCI.imageColorSpace = SC.format.colorSpace;
@@ -281,8 +272,6 @@ void Screen::CreateSwapchain(SwapChainData & SC, vk::SurfaceKHR surface, const v
     if (surfCaps.supportedUsageFlags & vk::ImageUsageFlagBits::eTransferDst/* VK_IMAGE_USAGE_TRANSFER_DST_BIT*/) {
         swapchainCI.imageUsage |= vk::ImageUsageFlagBits::eTransferDst;
     }
-
-    auto device = get_device();
 
     SC.swapchain = device.createSwapchainKHR(swapchainCI);
     if( !SC.swapchain )
@@ -345,15 +334,15 @@ void Screen::CreateSwapchain(SwapChainData & SC, vk::SurfaceKHR surface, const v
     }
 }
 
-vk::SurfaceFormatKHR Screen::GetSurfaceFormats(vk::SurfaceKHR surface)
+vk::SurfaceFormatKHR Screen::GetSurfaceFormats(vk::PhysicalDevice physical_device, vk::Device device, vk::SurfaceKHR surface)
 {
     vk::SurfaceFormatKHR srfFormat;
 
     vk::Format        & colorFormat = srfFormat.format;
     vk::ColorSpaceKHR & colorSpace  = srfFormat.colorSpace;
 
-    auto device = get_device();
-    auto physical_device = get_physical_device();
+    //auto device = get_device();
+    //auto physical_device = get_physical_device();
 
     auto surfaceFormats = physical_device.getSurfaceFormatsKHR(surface);
     //std::vector<vk::SurfaceFormatKHR> surfaceFormats(formatCount);
@@ -397,7 +386,7 @@ vk::SurfaceFormatKHR Screen::GetSurfaceFormats(vk::SurfaceKHR surface)
 
 // Create a frame buffer for each swap chain image
 // Note: Override of virtual function in the base class and called from within VulkanExampleBase::prepare
-std::vector<vk::Framebuffer> Screen::setupFrameBuffer(
+std::vector<vk::Framebuffer> Screen::CreateFrameBuffers( vk::Device device,
                                                       vk::Extent2D const & extent,
                                                       vk::RenderPass renderpass,
                                                       std::vector<vk::ImageView> const & swapchain_views,
@@ -406,7 +395,6 @@ std::vector<vk::Framebuffer> Screen::setupFrameBuffer(
     std::vector<vk::Framebuffer> framebuffers;
     // Create a frame buffer for every image in the swapchain
     //frameBuffers.resize(swapChain.imageCount);
-    auto device = get_device();
 
     for (size_t i = 0; i < swapchain_views.size(); i++)
     {
