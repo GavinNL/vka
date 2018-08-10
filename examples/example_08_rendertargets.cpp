@@ -32,8 +32,6 @@
 #include <chrono>
 #include <thread>
 #include <vka/core/image.h>
-#include <vka/core/screen_target.h>
-#include <vka/core/offscreen_target.h>
 #include <vka/vka.h>
 
 #include <vka/core/primatives.h>
@@ -42,7 +40,7 @@
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
 
-//#include <vka/core2/RenderTarget.h>
+#include <vka/core2/Screen.h>
 #include <vka/core2/RenderTarget2.h>
 #include <vka/linalg.h>
 
@@ -225,11 +223,8 @@ int main(int argc, char ** argv)
     // and framebuffers.
     // in VKA we present images to the screen object.
     // This a simple initialization of creating a screen with depth testing
-    vka::screen * screen = C.new_screen("screen");
-    screen->set_extent( vk::Extent2D(WIDTH,HEIGHT) );
-    screen->set_surface( surface );
-    screen->create();
-
+    vka::Screen Screen(&C);
+    Screen.Create(surface, vk::Extent2D(WIDTH,HEIGHT));
     //==========================================================================
 
 
@@ -455,7 +450,7 @@ int main(int argc, char ** argv)
                 ->add_push_constant( sizeof(compose_pipeline_push_consts), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
                 // Since we are drawing this to the screen, we need the screen's
                 // renderpass.
-                ->set_render_pass( screen->get_renderpass() )
+                ->SetRenderPass( Screen.GetRenderPass() )
                 ->create();
         //======================================================================
 
@@ -628,13 +623,13 @@ int main(int argc, char ** argv)
       // that we will be drawing to.
       //    - The semaphore we pass into it will be signaled when the frame is
       //      ready
-      uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
+      uint32_t frame_index = Screen.GetNextFrameIndex(image_available_semaphore);
 
       compose_cmd_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
       compose_cmd_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
       {
           // start the actual rendering
-          screen->beginRender(compose_cmd_buffer, frame_index);
+          compose_cmd_buffer.beginRender(Screen, frame_index);
           {
               compose_cmd_buffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *compose_pipeline );
 
@@ -664,7 +659,7 @@ int main(int argc, char ** argv)
                   compose_cmd_buffer.draw(6,1,0,0);
               }
           }
-          screen->endRender(compose_cmd_buffer);
+          compose_cmd_buffer.endRenderPass();
       }
       compose_cmd_buffer.end();
 
@@ -684,7 +679,7 @@ int main(int argc, char ** argv)
 
       // present the image to the surface, but wait for the render_complete_semaphore
       // to be flagged by the submit_command_buffer
-      screen->present_frame(frame_index, render_complete_semaphore);
+      Screen.PresentFrame(frame_index, render_complete_semaphore);
 
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );
     }
