@@ -30,7 +30,6 @@
 #include <chrono>
 #include <thread>
 #include <vka/core/image.h>
-#include <vka/core/screen_target.h>
 #include <vka/vka.h>
 
 

@@ -32,19 +32,18 @@
 #include <chrono>
 #include <thread>
 #include <vka/core/image.h>
-#include <vka/core/screen_target.h>
 #include <vka/vka.h>
 
 
 #include <vka/core2/BufferMemoryPool.h>
 #include <vka/core2/TextureMemoryPool.h>
-
+#include <vka/core2/Screen.h>
 
 #include <vka/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
-#define APP_TITLE "Example_04 - Texture Arrays and Push Constants"
+#define APP_TITLE "Example_05 - Mip Maps"
 
 // This is the vertex structure we are going to use
 // it contains a position and a UV coordates field
@@ -154,10 +153,8 @@ int main(int argc, char ** argv)
     // and framebuffers.
     // in VKA we present images to the screen object.
     // This a simple initialization of creating a screen with depth testing
-    auto * screen = C.new_screen("screen");
-    screen->set_extent( vk::Extent2D(WIDTH,HEIGHT) );
-    screen->set_surface( surface );
-    screen->create();
+    vka::Screen  Screen(&C);
+    Screen.Create(surface,vk::Extent2D(WIDTH,HEIGHT) );
 
     //==========================================================================
 
@@ -446,7 +443,7 @@ int main(int argc, char ** argv)
                   // stage only.
                   ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
                   //
-                  ->set_render_pass( screen->get_renderpass() )
+                  ->SetRenderPass( Screen.GetRenderPass() )
                   ->create();
 
 
@@ -573,8 +570,8 @@ int main(int argc, char ** argv)
           cb.copySubBuffer( DynamicUniformStagingBuffer , DU_buffer , vk::BufferCopy{ srcOffset, dstOffset, size } );
       }
 
-      uint32_t frame_index = screen->prepare_next_frame(image_available_semaphore);
-      screen->beginRender(cb, frame_index);
+      uint32_t frame_index = Screen.GetNextFrameIndex(image_available_semaphore);
+      cb.beginRender(Screen, frame_index);
 
 
       // bind the pipeline that we want to use next
@@ -630,7 +627,7 @@ int main(int argc, char ** argv)
 
 
 
-      screen->endRender(cb);
+      cb.endRenderPass();
       cb.end();
 
       // Submit the command buffers, but wait until the image_available_semaphore
@@ -639,7 +636,7 @@ int main(int argc, char ** argv)
 
       // present the image to the surface, but wait for the render_complete_semaphore
       // to be flagged by the submit_command_buffer
-      screen->present_frame(frame_index, render_complete_semaphore);
+      Screen.PresentFrame(frame_index, render_complete_semaphore);
 
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );
     }
