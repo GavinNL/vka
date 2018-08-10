@@ -44,69 +44,49 @@ class Screen : public context_child
         Screen(context * parent);
         ~Screen();
 
-        void set_clear_color_value( vk::ClearColorValue C)
-        {
-            m_clear_values[0] = C;
-        }
-        void set_clear_depth_value( vk::ClearDepthStencilValue C)
-        {
-            m_clear_values[1] = C;
-        }
+        void set_clear_color_value( vk::ClearColorValue C);
+        void set_clear_depth_value( vk::ClearDepthStencilValue C);
 
-       std::array<vk::ClearValue, 2> const & GetClearValues() const
-       {
-           return m_clear_values;
-       }
-       // void set_surface(vk::SurfaceKHR surface);
-       //void set_extent(vk::Extent2D e);
+       std::array<vk::ClearValue, 2> const & GetClearValues() const;
 
-        vk::Extent2D GetExtent() const
-        {
-            return m_extent;
-        }
+        vk::Extent2D GetExtent() const;
 
 
-        vk::RenderPass GetRenderPass() const
-        {
-            return m_renderpass;
-        }
+        vk::RenderPass GetRenderPass() const;
 
-        vk::Framebuffer GetFramebuffer(uint32_t index) const
-        {
-            return m_Swapchain.framebuffer.at(index);
-        }
+        vk::Framebuffer GetFramebuffer(uint32_t index) const;
 
-        void Create(
-                vk::SurfaceKHR surface,
-                vk::Extent2D const & extent,
-                vk::Format depth_format = vk::Format::eD32Sfloat
-                )
-        {
-
-            auto physical_device = get_physical_device();
-            auto device = get_device();
-
-            //set_surface(surface);
-            m_extent = extent;
-
-            CreateSwapchain( physical_device, device, m_Swapchain, surface, extent,true);
-            m_renderpass = CreateRenderPass(device, m_Swapchain.format.format, depth_format);
-
-            //--------
-            auto size = format_size(depth_format) * extent.width * extent.height;
-
-            m_DepthPool.SetUsage( vk::ImageUsageFlagBits::eDepthStencilAttachment  |
-                                  vk::ImageUsageFlagBits::eSampled);
-            m_DepthPool.SetSize( size + 1024 );
-            m_DepthImage = m_DepthPool.AllocateDepthAttachment( m_extent , depth_format);
-
-            depth_format = m_DepthImage->GetFormat();
-            //----------
-            m_Swapchain.framebuffer = CreateFrameBuffers(device, extent, m_renderpass, m_Swapchain.view, m_DepthImage->GetImageView());
-        }
+        /**
+         * @brief Create
+         * @param surface
+         * @param extent
+         * @param depth_format
+         *
+         * Creates the Screen object.
+         */
+        void Create( vk::SurfaceKHR surface,
+                     vk::Extent2D const & extent,
+                     vk::Format depth_format = vk::Format::eD32Sfloat );
 
 
+        /**
+         * @brief GetNextFrameIndex
+         * @param signal_semaphore - a semaphore that must be signaled when the image is actually ready
+         * @return
+         *
+         * Returns the next available frame index which can be
+         * drawn on.
+         *
+         * The signal semaphore
+         */
         uint32_t GetNextFrameIndex(vka::semaphore *signal_semaphore);
+
+        /**
+         * @brief PresentFrame
+         * @param frame_index - the frame index to present to the screen
+         * @param wait_semaphore - the semaphore that must be waited on before
+         *                         the frame is presented to the screen
+         */
         void PresentFrame(uint32_t frame_index, vka::semaphore * wait_semaphore);
 protected:
 

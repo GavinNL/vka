@@ -34,6 +34,61 @@ Screen::~Screen()
     if( m_Swapchain.swapchain) device.destroySwapchainKHR(m_Swapchain.swapchain);
 }
 
+void Screen::set_clear_color_value(vk::ClearColorValue C)
+{
+    m_clear_values[0] = C;
+}
+
+void Screen::set_clear_depth_value(vk::ClearDepthStencilValue C)
+{
+    m_clear_values[1] = C;
+}
+
+vk::Extent2D Screen::GetExtent() const
+{
+    return m_extent;
+}
+
+vk::RenderPass Screen::GetRenderPass() const
+{
+    return m_renderpass;
+}
+
+vk::Framebuffer Screen::GetFramebuffer(uint32_t index) const
+{
+    return m_Swapchain.framebuffer.at(index);
+}
+
+const std::array<vk::ClearValue, 2> &Screen::GetClearValues() const
+{
+    return m_clear_values;
+}
+
+void Screen::Create(vk::SurfaceKHR surface, const vk::Extent2D &extent, vk::Format depth_format)
+{
+
+    auto physical_device = get_physical_device();
+    auto device = get_device();
+
+    //set_surface(surface);
+    m_extent = extent;
+
+    CreateSwapchain( physical_device, device, m_Swapchain, surface, extent,true);
+    m_renderpass = CreateRenderPass(device, m_Swapchain.format.format, depth_format);
+
+    //--------
+    auto size = format_size(depth_format) * extent.width * extent.height;
+
+    m_DepthPool.SetUsage( vk::ImageUsageFlagBits::eDepthStencilAttachment  |
+                          vk::ImageUsageFlagBits::eSampled);
+    m_DepthPool.SetSize( size + 1024 );
+    m_DepthImage = m_DepthPool.AllocateDepthAttachment( m_extent , depth_format);
+
+    depth_format = m_DepthImage->GetFormat();
+    //----------
+    m_Swapchain.framebuffer = CreateFrameBuffers(device, extent, m_renderpass, m_Swapchain.view, m_DepthImage->GetImageView());
+}
+
 
 vk::RenderPass Screen::CreateRenderPass(vk::Device device, vk::Format swapchain_format, vk::Format depth_format)
 {
