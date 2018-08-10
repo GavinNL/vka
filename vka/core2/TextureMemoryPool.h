@@ -195,6 +195,7 @@ private:
 };
 
 using Texture_p = std::shared_ptr<Texture>;
+using Texture_w = std::weak_ptr<Texture>;
 
 
 /**
@@ -267,13 +268,15 @@ public:
 
     void Destroy()
     {
-      //  auto device = get_device();
-      //  if(m_buffer)
-      //  {
-      //      device.destroyBuffer(m_buffer);
-      //      m_buffer = vk::Buffer();
-      //      LOG << "TextureMemoryPool destroyed" << ENDL;
-      //  }
+        for(auto & w : m_textures)
+        {
+            auto p = w.lock();
+            if(p)
+            {
+                p->Destroy();
+            }
+
+        }
     }
 
 
@@ -294,7 +297,7 @@ public:
      * An ImageView and a Sampler are NOT created using these functions.
      *
      */
-    std::shared_ptr<Texture> AllocateTexture( vk::Format   format,
+    Texture_p AllocateTexture( vk::Format   format,
                                               vk::Extent3D extent,
                                               uint32_t     arrayLayers,
                                               uint32_t     mipLevels,
@@ -404,7 +407,7 @@ public:
      * Allocate a 2D texture or a 2D Array. A "default" ImageView is created
      * with is a view into the entire texture as well as a "default" sampler.
      */
-    std::shared_ptr<Texture> AllocateTexture2D( vk::Format format,
+    Texture_p AllocateTexture2D( vk::Format format,
                                                 vk::Extent2D extent,
                                                 uint32_t     arrayLayers=1,
                                                 uint32_t     mipLevels=std::numeric_limits<uint32_t>::max(),
@@ -430,10 +433,11 @@ public:
 
         T->CreateSampler("default", T->GetDefaultSamplerCreateInfo() );
 
+        m_textures.push_back(T);
         return T;
     }
 
-    std::shared_ptr<Texture> AllocateColorAttachment( vk::Format format,
+    Texture_p AllocateColorAttachment( vk::Format format,
                                                       vk::Extent2D extent)
     {
         auto T = AllocateTexture( format,
@@ -467,10 +471,11 @@ public:
         SCI.maxLod           = 1.0;
         T->CreateSampler("default", SCI );
 
+        m_textures.push_back(T);
         return T;
     }
 
-    std::shared_ptr<Texture> AllocateDepthAttachment( vk::Extent2D extent,
+    Texture_p AllocateDepthAttachment( vk::Extent2D extent,
                                                       vk::Format format = vk::Format::eD32Sfloat)
     {
         assert(
@@ -510,6 +515,7 @@ public:
         SCI.maxLod           = 1.0;
         T->CreateSampler("default", SCI );
 
+        m_textures.push_back(T);
         return T;
     }
 protected:
@@ -518,7 +524,7 @@ protected:
     vk::DeviceSize             m_size = 0;
     vk::MemoryRequirements     m_MemoryRequirements;
     vk::ImageCreateInfo        m_CreateInfo;
-
+    std::vector< Texture_w >   m_textures;
 
 };
 
