@@ -76,6 +76,7 @@ public:
     {
         m_index_buffer = index_buffer;
         m_index_type   = index_type;
+        m_index_count  = index_buffer->GetSize() / ( index_type==vk::IndexType::eUint16 ? 2 : 4);
     }
 
     void AddAttributeBuffer( uint32_t index, SubBuffer_p attr)
@@ -108,6 +109,10 @@ public:
         return m_index_type;
     }
 
+    uint32_t GetIndexCount() const
+    {
+        return m_index_count;
+    }
     std::map<uint32_t, SubBuffer_p > const & GetAttributeBuffers() const
     {
         return m_attributes;
@@ -117,6 +122,8 @@ public:
     SubBuffer_p                      m_index_buffer;
     vk::IndexType                    m_index_type;
     std::vector< SubObject_t >       m_subObjects;
+
+    uint32_t                         m_index_count = 0;
 };
 
 }

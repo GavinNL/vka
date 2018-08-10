@@ -101,6 +101,16 @@ class command_buffer : public vk::CommandBuffer
      */
     void bindMeshObject( const MeshObject & obj);
 
+    /**
+     * @brief drawMeshObject
+     * @param obj
+     * @param instanceCount
+     * @param firstInstance
+     *
+     * Draws a MeshObject. The Object must be bound using bindMeshObject first
+     */
+    void drawMeshObject(const MeshObject & obj , uint32_t instanceCount=1, uint32_t firstInstance=0);
+
     // this function will be deprecated
     void copySubBufferToImage( const std::shared_ptr<SubBuffer> & buffer,
                                vka::texture * tex,

@@ -163,6 +163,11 @@ void command_buffer::bindMeshObject(const MeshObject &obj)
     }
 }
 
+void command_buffer::drawMeshObject(const MeshObject & obj , uint32_t instanceCount ,uint32_t firstInstance)
+{
+    drawIndexed( obj.GetIndexCount(), instanceCount, 0, 0 ,firstInstance);
+}
+
 void command_buffer::copySubBufferToImage( const std::shared_ptr<SubBuffer> & buffer,
                                            vka::texture * tex,
                                            vk::ImageLayout imageLayout,
