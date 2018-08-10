@@ -44,6 +44,10 @@ class Screen : public context_child
         Screen(context * parent);
         ~Screen();
 
+        void SetClearColorValue( float r, float g, float b, float a )
+        {
+            set_clear_color_value( vk::ClearColorValue( std::array<float,4>({r,g,b,a}) ));
+        }
         void set_clear_color_value( vk::ClearColorValue C);
         void set_clear_depth_value( vk::ClearDepthStencilValue C);
 
