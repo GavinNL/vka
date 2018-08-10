@@ -18,6 +18,7 @@ class Texture;
 class MeshObject;
 class RenderTarget;
 class RenderTarget2;
+class Screen;
 
 class PushDescriptorInfo
 {
@@ -202,6 +203,9 @@ class command_buffer : public vk::CommandBuffer
 
 
     void beginRender(RenderTarget2 &cb);
+
+
+    void beginRender(Screen & target, uint32_t frame_buffer_index);
 };
 
 }
