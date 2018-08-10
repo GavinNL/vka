@@ -79,10 +79,12 @@ private:
 };
 
 using SubBuffer_p = std::shared_ptr<SubBuffer>;
+using SubBuffer_w = std::weak_ptr<SubBuffer>;
 
 class BufferMemoryPool : public context_child
 {
 public:
+
 
     BufferMemoryPool(context * parent) : context_child(parent) ,
                                          m_memory(parent)
@@ -116,6 +118,19 @@ public:
 
     void Destroy()
     {
+        for(auto & w : m_subbuffers)
+        {
+            auto P = w.lock();
+            if(P)
+            {
+                std::cout << "Clearing sub buffer" << std::endl;
+                P->m_offset = 0;
+                P->m_size = 0;
+                P->m_parent = nullptr;
+            }
+        }
+        m_subbuffers.clear();
+
         auto device = get_device();
         if(m_buffer)
         {
@@ -170,6 +185,8 @@ public:
         S->m_parent = this;
         S->m_offset = offset;
         S->m_size   = size;
+
+        m_subbuffers.push_back(S);
         return S;
     }
 
@@ -196,6 +213,7 @@ protected:
     vka::Memory                m_memory;
     vka::buffer_memory_manager m_manager;
     vk::BufferCreateInfo    m_create_info;
+    std::vector< SubBuffer_w > m_subbuffers;
 
 };
 
