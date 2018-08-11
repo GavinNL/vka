@@ -44,8 +44,8 @@
 #include <vka/core2/RenderTarget2.h>
 #include <vka/linalg.h>
 
-#define WIDTH 1024
-#define HEIGHT 768
+#define WIDTH 1920
+#define HEIGHT 1200
 #define APP_TITLE "Example_07 - Mesh Objects"
 
 
@@ -277,7 +277,7 @@ int main(int argc, char ** argv)
 
 
     vka::RenderTarget2 myRenderTarget(&C);
-    myRenderTarget.SetExtent( vk::Extent2D(1024,768));
+    myRenderTarget.SetExtent( vk::Extent2D(WIDTH,HEIGHT));
     myRenderTarget.Create( { vk::Format::eR32G32B32A32Sfloat,
                              vk::Format::eR32G32B32A32Sfloat,
                              vk::Format::eR8G8B8A8Unorm },  vk::Format::eD32Sfloat);
@@ -307,7 +307,8 @@ int main(int argc, char ** argv)
                  | vk::ImageUsageFlagBits::eTransferSrc);
 
 
-    vka::host_mesh CubeMesh = vka::box_mesh(1,1,1);
+   // vka::host_mesh CubeMesh = vka::box_mesh(1,1,1);
+    vka::host_mesh CubeMesh = vka::sphere_mesh(0.5,10,10);
     auto CubeObj = HostToGPU( CubeMesh, BufferPool,StagingBufferPool, cp,C);
 
     vka::host_mesh PlaneMesh = vka::plane_mesh(10,10,1);
@@ -599,15 +600,17 @@ int main(int argc, char ** argv)
     L_uniform.num_lights.x  = 4;
     L_uniform.num_lights2.x = 4;
 
-     L_uniform.lights[0].color = glm::vec4(25.0,0.0,0.0,1.0);
-     L_uniform.lights[1].color = glm::vec4(0.0,25.0,0.0,1.0);
-     L_uniform.lights[2].color = glm::vec4(0.0,0.0,25.0,1.0);
-     L_uniform.lights[3].color = glm::vec4(0.0,25.0,25.0,1.0);
+
+     L_uniform.lights[0].color    = glm::vec4(10.0 , 10.0, 10.0,1.0);
+     L_uniform.lights[1].color    = glm::vec4(10.0, 0.0 , 0.0 ,1.0);
+     L_uniform.lights[2].color    = glm::vec4(0.0 , 10.0, 0.0 ,1.0);
+     L_uniform.lights[3].color    = glm::vec4(0.0 , 0.0 , 10.0,1.0);
      L_uniform.lights[0].position = glm::vec4(0.f,3.5f,0.0f,1.0f);
-     L_uniform.lights[0].attenuation.w = 5.0f;
-     L_uniform.lights[1].attenuation.w = 5.0f;
-     L_uniform.lights[2].attenuation.w = 5.0f;
-     L_uniform.lights[3].attenuation.w = 5.0f;
+
+     L_uniform.lights[0].attenuation  = glm::vec4(0,0.1, 1.0 ,10.0);
+     L_uniform.lights[1].attenuation  = glm::vec4(0,0,1.2,10.0);
+     L_uniform.lights[2].attenuation  = glm::vec4(0,0,1.2,10.0);
+     L_uniform.lights[3].attenuation  = glm::vec4(0,0,1.2,10.0);
 
     while (!glfwWindowShouldClose(window) )
     {
@@ -615,10 +618,10 @@ int main(int argc, char ** argv)
           // Get the next available image in the swapchain
            //float T = t * 2*3.14159;
            #define T(A) ( 2*3.14159*(A+t*0.2) )
-           L_uniform.lights[0].position = glm::vec4(4.0f*cos( T(0.0)  ),3.5f,4.0f*sin(  T(0.0)   ),1.0f);
-           L_uniform.lights[1].position = glm::vec4(4.0f*cos( T(0.25) ),3.5f,4.0f*sin(  T(0.25)  ),1.0f);
-           L_uniform.lights[2].position = glm::vec4(4.0f*cos( T(0.5)  ),3.5f,4.0f*sin(  T(0.5)   ),1.0f);
-           L_uniform.lights[3].position = glm::vec4(4.0f*cos( T(0.75) ),3.5f,4.0f*sin(  T(0.75)  ),1.0f);
+           L_uniform.lights[0].position = glm::vec4(4.0f*cos( T(0.0)  ),1.5f,4.0f*sin(  T(0.0)   ),1.0f);
+           L_uniform.lights[1].position = glm::vec4(4.0f*cos( T(0.25) ),1.5f,4.0f*sin(  T(0.25)  ),1.0f);
+           L_uniform.lights[2].position = glm::vec4(4.0f*cos( T(0.5)  ),1.5f,4.0f*sin(  T(0.5)   ),1.0f);
+           L_uniform.lights[3].position = glm::vec4(4.0f*cos( T(0.75) ),1.5f,4.0f*sin(  T(0.75)  ),1.0f);
           //L_uniform.lights[0].position = glm::vec4(4.0f*cos(t),4.0f*sin(t),0,1.0f);
 
           glfwPollEvents();
