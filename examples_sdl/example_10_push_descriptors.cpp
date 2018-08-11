@@ -456,8 +456,8 @@ int main(int argc, char ** argv)
         g_buffer_pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                 ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                ->set_vertex_shader(   "resources/shaders/gbuffer/gbuffer.vert", "main" )   // the shaders we want to use
-                ->set_fragment_shader( "resources/shaders/gbuffer/gbuffer.frag", "main" ) // the shaders we want to use
+                ->set_vertex_shader(   "resources/shaders/gbuffer_push_descriptors/gbuffer_push_descriptors.vert", "main" )   // the shaders we want to use
+                ->set_fragment_shader( "resources/shaders/gbuffer_push_descriptors/gbuffer_push_descriptors.frag", "main" ) // the shaders we want to use
 
                 // tell the pipeline that attribute 0 contains 3 floats
                 // and the data starts at offset 0
@@ -483,13 +483,20 @@ int main(int argc, char ** argv)
                 // Cull all back facing triangles.
                 ->set_cull_mode(vk::CullModeFlagBits::eBack)
 
+                //====================================================================================================
+                // When using Push Descriptors, we can only have one DescriptorSet enabled as a push descriptor
+                //====================================================================================================
                 // Tell the shader that we are going to use a texture
                 // in Set #0 binding #0
                 ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
 
                 // Tell teh shader that we are going to use a uniform buffer
                 // in Set #0 binding #0
-                ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
+                ->add_uniform_layout_binding(0, 1, vk::ShaderStageFlagBits::eVertex)
+
+                // Enable Set #0 as the push descriptor.
+                ->enable_push_descriptor(0)
+                //====================================================================================================
 
                 // Add a push constant to the layout. It is accessable in the vertex shader
                 // stage only.
@@ -573,16 +580,16 @@ int main(int argc, char ** argv)
 //   The pipline object can generate a descriptor set for you.
 //==============================================================================
     // we want a descriptor set for set #0 in the pipeline.
-    vka::descriptor_set * texture_descriptor = g_buffer_pipeline->create_new_descriptor_set(0, descriptor_pool);
-    //  attach our texture to binding 0 in the set.
-    texture_descriptor->AttachSampler(0, Tex);
-    texture_descriptor->update();
+ //   vka::descriptor_set * texture_descriptor = g_buffer_pipeline->create_new_descriptor_set(0, descriptor_pool);
+ //   //  attach our texture to binding 0 in the set.
+ //   texture_descriptor->AttachSampler(0, Tex);
+ //   texture_descriptor->update();
+ //
+ //   vka::descriptor_set * ubuffer_descriptor = g_buffer_pipeline->create_new_descriptor_set(1, descriptor_pool);
+ //   ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
+ //   ubuffer_descriptor->update();
 
-    vka::descriptor_set * ubuffer_descriptor = g_buffer_pipeline->create_new_descriptor_set(1, descriptor_pool);
-    ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
-    ubuffer_descriptor->update();
-
-    vka::descriptor_set * lights_buffer_descriptor = g_buffer_pipeline->create_new_descriptor_set(1, descriptor_pool);
+    vka::descriptor_set * lights_buffer_descriptor = compose_pipeline->create_new_descriptor_set(1, descriptor_pool);
     lights_buffer_descriptor->AttachUniformBuffer(0,L_buffer, 10);
     lights_buffer_descriptor->update();
     // We will allocate two Staging buffers to copy uniform data as well as dynamic uniform data
@@ -742,17 +749,17 @@ int main(int argc, char ** argv)
           {
               offscreen_cmd_buffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *g_buffer_pipeline);
 
-              offscreen_cmd_buffer.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                     g_buffer_pipeline->get_layout(),
-                                     0,
-                                     vk::ArrayProxy<const vk::DescriptorSet>( texture_descriptor->get()),
-                                     nullptr );
-
-              offscreen_cmd_buffer.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                     g_buffer_pipeline->get_layout(),
-                                     1,
-                                     vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
-                                     nullptr );
+              //offscreen_cmd_buffer.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
+              //                       g_buffer_pipeline->get_layout(),
+              //                       0,
+              //                       vk::ArrayProxy<const vk::DescriptorSet>( texture_descriptor->get()),
+              //                       nullptr );
+              //
+              //offscreen_cmd_buffer.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
+              //                       g_buffer_pipeline->get_layout(),
+              //                       1,
+              //                       vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
+              //                       nullptr );
 
 
               vka::MeshObject * first = nullptr;
@@ -763,6 +770,13 @@ int main(int argc, char ** argv)
                       offscreen_cmd_buffer.bindMeshObject( *obj.mesh );
                       first = obj.mesh;
                   }
+
+                  offscreen_cmd_buffer.pushDescriptorSet( vk::PipelineBindPoint::eGraphics,
+                                                            g_buffer_pipeline,
+                                                            0,
+                                                            vka::PushDescriptorInfo().attach(0, 1, Tex)
+                                                                                     .attach(1, 1, U_buffer));
+
                   offscreen_cmd_buffer.pushConstants( g_buffer_pipeline->get_layout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(obj.push), &obj.push);
                   offscreen_cmd_buffer.drawMeshObject( *obj.mesh );
               }

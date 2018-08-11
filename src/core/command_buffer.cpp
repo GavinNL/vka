@@ -524,7 +524,7 @@ vka::PushDescriptorInfo &PushDescriptorInfo::attach(uint32_t binding, uint32_t c
     W.dstSet = vk::DescriptorSet();
     W.dstBinding = binding;
     W.descriptorCount = count;
-    W.descriptorType = vk::DescriptorType::eUniformBuffer;//VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    W.descriptorType = vk::DescriptorType::eCombinedImageSampler;//VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
 
     auto bi = std::make_shared<vk::DescriptorImageInfo>();
