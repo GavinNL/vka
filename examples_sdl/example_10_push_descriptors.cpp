@@ -261,9 +261,17 @@ int main(int argc, char ** argv)
     vka::context C;
 
     for(uint i=0;i<count;i++)  C.enable_extension( names[i] );
-    C.enable_extension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 
+    C.enable_extension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     C.enable_device_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+    //===========================================================================
+    // Push Descriptors require the following extensions!
+    //===========================================================================
+    C.enable_extension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+    C.enable_device_extension(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+    //===========================================================================
+
     C.init();
 
     vk::SurfaceKHR surface;
