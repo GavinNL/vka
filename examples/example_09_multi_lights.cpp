@@ -40,6 +40,9 @@
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
 
+#include <vka/utils/glfw_window_handler.h>
+#include <vka/core/camera.h>
+
 #include <vka/core2/Screen.h>
 #include <vka/core2/RenderTarget2.h>
 #include <vka/linalg.h>
@@ -217,7 +220,8 @@ int main(int argc, char ** argv)
     //==========================================================================
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE); GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
+    glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
 
     unsigned int glfwExtensionCount = 0;
     const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -259,7 +263,7 @@ int main(int argc, char ** argv)
 
 
 
-
+    vka::GLFW_Window_Handler Window(window);
 
     //==========================================================================
     // Initialize the Command and Descriptor Pools
@@ -308,7 +312,7 @@ int main(int argc, char ** argv)
 
 
    // vka::host_mesh CubeMesh = vka::box_mesh(1,1,1);
-    vka::host_mesh CubeMesh = vka::sphere_mesh(0.5,10,10);
+    vka::host_mesh CubeMesh = vka::sphere_mesh(0.5,20,20);
     auto CubeObj = HostToGPU( CubeMesh, BufferPool,StagingBufferPool, cp,C);
 
     vka::host_mesh PlaneMesh = vka::plane_mesh(10,10,1);
@@ -612,9 +616,58 @@ int main(int argc, char ** argv)
      L_uniform.lights[2].attenuation  = glm::vec4(0,0,1.2,10.0);
      L_uniform.lights[3].attenuation  = glm::vec4(0,0,1.2,10.0);
 
-    while (!glfwWindowShouldClose(window) )
+
+     vka::camera Camera;
+
+
+     float field_of_view = glm::radians(60.f);
+     float aspect_ratio  = WIDTH / (float)HEIGHT;
+     float near_plane    = 0.1f;
+     float far_plane     = 100.0f;
+     Camera.set_fov(  field_of_view );
+     Camera.set_aspect_ratio( aspect_ratio );
+     Camera.set_near_plane(near_plane); // default value
+     Camera.set_far_plane(far_plane);// default value
+     Camera.set_position(glm::vec3(3.0f, 3.0f, 3.0f));
+     Camera.lookat(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+     auto mouseslot =  Window.onMouseMove << [&] (vka::MouseMoveEvent E)
+     {
+       auto dx = E.dx;
+       auto dy = E.dy;
+
+       if( Window.is_pressed( vka::Button::RIGHT))
+       {
+           Window.show_cursor(false);
+           if( fabs(dx) < 10) Camera.yaw(   dx*0.001f);
+           if( fabs(dy) < 10) Camera.pitch( dy*0.001f);
+       }
+       else
+       {
+           Window.show_cursor(true);
+       }
+
+     };
+     auto keyslot = Window.onKey << [&] (vka::KeyEvent E)
+     {
+         float x=0;
+         float y=0;
+
+         float speed = Window.is_pressed(vka::Key::LEFT_SHIFT) ? 0.03 : 1;
+
+         if( Window.is_pressed(vka::Key::A    ) || Window.is_pressed(vka::Key::LEFT )) x += -speed;
+         if( Window.is_pressed(vka::Key::D    ) || Window.is_pressed(vka::Key::RIGHT)) x +=  speed;
+         if( Window.is_pressed(vka::Key::W    ) || Window.is_pressed(vka::Key::UP   )) y += -speed;
+         if( Window.is_pressed(vka::Key::S    ) || Window.is_pressed(vka::Key::DOWN )) y +=  speed;
+
+         Camera.set_acceleration( glm::vec3( x, 0, y ) );
+
+     };
+
+    while ( Window )
     {
            float t = get_elapsed_time();
+           Camera.calculate();
           // Get the next available image in the swapchain
            //float T = t * 2*3.14159;
            #define T(A) ( 2*3.14159*(A+t*0.2) )
@@ -624,7 +677,7 @@ int main(int argc, char ** argv)
            L_uniform.lights[3].position = glm::vec4(4.0f*cos( T(0.75) ),1.5f,4.0f*sin(  T(0.75)  ),1.0f);
           //L_uniform.lights[0].position = glm::vec4(4.0f*cos(t),4.0f*sin(t),0,1.0f);
 
-          glfwPollEvents();
+          Window.Poll();
 
       // reset the command buffer so that we can record from scratch again.
       offscreen_cmd_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
@@ -639,6 +692,10 @@ int main(int argc, char ** argv)
           const float AR = WIDTH / ( float )HEIGHT;
           UniformStagingStruct.view        = glm::lookAt( glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
           UniformStagingStruct.proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 30.0f);
+          UniformStagingStruct.proj[1][1] *= -1;
+
+          UniformStagingStruct.view = Camera.get_view_matrix();
+          UniformStagingStruct.proj = Camera.get_proj_matrix();
           UniformStagingStruct.proj[1][1] *= -1;
           //--------------------------------------------------------------------------------------
 
