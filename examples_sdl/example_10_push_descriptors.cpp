@@ -40,7 +40,7 @@
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
 
-#include <vka/utils/glfw_window_handler.h>
+#include <vka/utils/sdl_window_handler.h>
 #include <vka/core/camera.h>
 
 #include <vka/core2/Screen.h>
@@ -213,19 +213,46 @@ vka::MeshObject HostToGPU( vka::host_mesh & host_mesh ,
     return CubeObj;
 }
 
+SDL_Window* initWindow()
+{
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS );
+
+    if(SDL_Vulkan_LoadLibrary(NULL) == -1)
+    {
+        std::cout << "Error loading vulkan" << std::endl;
+        exit(1);
+    }
+    atexit(SDL_Quit);
+
+    auto window = SDL_CreateWindow("APPLICATION_NAME",
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        WIDTH,
+        HEIGHT,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+
+    if(window == NULL)
+    {
+        std::cout << "Couldn\'t set video mode: " << SDL_GetError() << std::endl;
+        exit(1);
+    }
+    return window;
+}
+
 int main(int argc, char ** argv)
 {
     //==========================================================================
-    // 1. Initlize the library and create a GLFW window
+    // 1. Initlize the library and create a window
     //==========================================================================
-    glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
+    auto * window  = initWindow();
 
-    unsigned int glfwExtensionCount = 0;
-    const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
+    unsigned int count = 0;
+    SDL_Vulkan_GetInstanceExtensions(window, &count, NULL);
+    const char **names = new const char *[count];
+    SDL_Vulkan_GetInstanceExtensions(window, &count, names);
+
+    vka::SDL_Window_Handler Window(window);
 
     // the context is the main class for the vka library. It is keeps track of
     // all the vulkan objects and releases them appropriately when it is destroyed
@@ -233,23 +260,18 @@ int main(int argc, char ** argv)
     // command pools, etc.
     vka::context C;
 
-    // Enable the required extensions for being able to draw
-    for(uint i=0;i<glfwExtensionCount;i++)  C.enable_extension( glfwExtensions[i] );
+    for(uint i=0;i<count;i++)  C.enable_extension( names[i] );
+    C.enable_extension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 
-    // Enable some extra extensions that we want.
-    C.enable_extension( VK_EXT_DEBUG_REPORT_EXTENSION_NAME );
-
-    // Enable the required device extension
     C.enable_device_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-
     C.init();
 
     vk::SurfaceKHR surface;
-    if (glfwCreateWindowSurface( C.get_instance(), window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surface) ) != VK_SUCCESS)
+    if( !SDL_Vulkan_CreateSurface( window, C.get_instance(), reinterpret_cast<VkSurfaceKHR*>(&surface)  ) )
     {
-        ERROR << "Failed to create window surface!" << ENDL;
-        throw std::runtime_error("failed to create window surface!");
+        ERROR << "Failed to create surface" << ENDL;
     }
+
 
     C.create_device(surface); // find the appropriate device
 
@@ -263,7 +285,7 @@ int main(int argc, char ** argv)
 
 
 
-    vka::GLFW_Window_Handler Window(window);
+
 
     //==========================================================================
     // Initialize the Command and Descriptor Pools
