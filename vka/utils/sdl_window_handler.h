@@ -260,7 +260,7 @@ public:
     bool m_cursor_hidden = false;
     operator bool()
     {
-        return m_quit;
+        return !m_quit;
     }
 
 
