@@ -116,6 +116,7 @@ vka::PushDescriptorInfo &vka::PushDescriptorInfo::attach(uint32_t binding, uint3
 
 
 
+
 //-----------------------------
 #include <vka/core2/BufferMemoryPool.h>
 
@@ -491,6 +492,54 @@ void command_buffer::beginRender(Screen & target, uint32_t frame_buffer_index)
 
     beginRenderPass(m_renderpass_info, vk::SubpassContents::eInline);
 }
+
+
+vka::PushDescriptorInfo &PushDescriptorInfo::attach(uint32_t binding, uint32_t count, std::shared_ptr<SubBuffer> & subBuffer)
+{
+    vk::WriteDescriptorSet W;
+
+    W.dstSet = vk::DescriptorSet();
+    W.dstBinding = binding;
+    W.descriptorCount = count;
+    W.descriptorType = vk::DescriptorType::eUniformBuffer;//VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+
+    auto bi = std::make_shared<vk::DescriptorBufferInfo>();
+    bi->buffer = subBuffer->GetParentBufferHandle();
+    bi->offset = subBuffer->GetOffset();
+    bi->range  = subBuffer->GetSize();
+
+    m_BufferInfo.push_back(bi);
+
+    W.pBufferInfo = bi.get();
+
+    m_writes.push_back(W);
+    return *this;
+}
+
+vka::PushDescriptorInfo &PushDescriptorInfo::attach(uint32_t binding, uint32_t count, Texture_p & texture)
+{
+    vk::WriteDescriptorSet W;
+
+    W.dstSet = vk::DescriptorSet();
+    W.dstBinding = binding;
+    W.descriptorCount = count;
+    W.descriptorType = vk::DescriptorType::eUniformBuffer;//VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+
+    auto bi = std::make_shared<vk::DescriptorImageInfo>();
+    bi->sampler = texture->GetSampler();
+    bi->imageView = texture->GetImageView();
+    bi->imageLayout =  texture->GetLayout();
+
+    m_TextureInfo.push_back(bi);
+
+    W.pImageInfo = bi.get();
+
+    m_writes.push_back(W);
+    return *this;
+}
+
 
 
 

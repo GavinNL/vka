@@ -30,6 +30,13 @@ public:
     PushDescriptorInfo & attach(uint32_t binding, uint32_t count, vka::texture * texArray);
     PushDescriptorInfo & attach(uint32_t binding, uint32_t count, vka::sub_buffer * sub_buffer);
 
+
+    PushDescriptorInfo & attach(uint32_t binding, uint32_t count, std::shared_ptr<SubBuffer> & subBuffer);
+    PushDescriptorInfo & attach(uint32_t binding, uint32_t count,  std::shared_ptr<Texture> & texture);
+
+    std::vector<std::shared_ptr<vk::DescriptorBufferInfo> > m_BufferInfo;
+    std::vector<std::shared_ptr<vk::DescriptorImageInfo> > m_TextureInfo;
+
     std::vector<vk::WriteDescriptorSet>   m_writes;
 };
 
