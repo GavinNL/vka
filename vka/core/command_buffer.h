@@ -19,6 +19,7 @@ class MeshObject;
 class RenderTarget;
 class RenderTarget2;
 class Screen;
+class Pipeline;
 
 class PushDescriptorInfo
 {

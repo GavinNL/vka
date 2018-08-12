@@ -1,5 +1,5 @@
-#ifndef VKA_SHADER_H
-#define VKA_SHADER_H
+#ifndef VKA_CORE2_SHADER_H
+#define VKA_CORE2_SHADER_H
 
 #include <vulkan/vulkan.hpp>
 
@@ -65,9 +65,8 @@ class Shader : public context_child
 
     std::string readFile(const std::string &filename);
 
-    friend class deleter<shader>;
     friend class context;
-    friend class pipeline;
+    friend class Pipeline;
 };
 
 using Shader_p = std::shared_ptr<Shader>;
