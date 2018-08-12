@@ -36,6 +36,7 @@
 
 #include <vka/core/primatives.h>
 
+#include <vka/core2/Pipeline.h>
 #include <vka/core2/BufferMemoryPool.h>
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
@@ -440,47 +441,47 @@ int main(int argc, char ** argv)
 // Create a Rendering pipeline
 //
 //==============================================================================
-        vka::pipeline* pipeline = C.new_pipeline("triangle");
+        vka::Pipeline pipeline(&C);
 
         // Create the graphics Pipeline
-          pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
-                  ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
+          pipeline.setViewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
+                  ->setScissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                  ->set_vertex_shader(   "resources/shaders/push_consts_default/push_consts_default.vert" , "main")   // the shaders we want to use
-                  ->set_fragment_shader( "resources/shaders/push_consts_default/push_consts_default.frag" , "main") // the shaders we want to use
+                  ->setVertexShader(   "resources/shaders/push_consts_default/push_consts_default.vert" , "main")   // the shaders we want to use
+                  ->setFragmentShader( "resources/shaders/push_consts_default/push_consts_default.frag" , "main") // the shaders we want to use
 
                   // tell the pipeline that attribute 0 contains 3 floats
                   // and the data starts at offset 0
-                  ->set_vertex_attribute(0, 0,  0 , vk::Format::eR32G32B32Sfloat, sizeof(glm::vec3) )
+                  ->setVertexAttribute(0, 0,  0 , vk::Format::eR32G32B32Sfloat, sizeof(glm::vec3) )
                   // tell the pipeline that attribute 1 contains 3 floats
                   // and the data starts at offset 12
-                  ->set_vertex_attribute(1, 1,  0 , vk::Format::eR32G32Sfloat , sizeof(glm::vec2) )
+                  ->setVertexAttribute(1, 1,  0 , vk::Format::eR32G32Sfloat , sizeof(glm::vec2) )
 
-                  ->set_vertex_attribute(2, 2,  0 , vk::Format::eR32G32B32Sfloat , sizeof(glm::vec3) )
+                  ->setVertexAttribute(2, 2,  0 , vk::Format::eR32G32B32Sfloat , sizeof(glm::vec3) )
 
 
                   // Triangle vertices are drawn in a counter clockwise manner
                   // using the right hand rule which indicates which face is the
                   // front
-                  ->set_front_face(vk::FrontFace::eCounterClockwise)
+                  ->setFrontFace(vk::FrontFace::eCounterClockwise)
 
                   // Cull all back facing triangles.
-                  ->set_cull_mode(vk::CullModeFlagBits::eBack)
+                  ->setCullMode(vk::CullModeFlagBits::eBack)
 
                   // Tell the shader that we are going to use a texture
                   // in Set #0 binding #0
-                  ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
+                  ->addTextureLayoutBinding(0, 0, vk::ShaderStageFlagBits::eFragment)
 
                   // Tell teh shader that we are going to use a uniform buffer
                   // in Set #0 binding #0
-                  ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
+                  ->addUniformLayoutBinding(1, 0, vk::ShaderStageFlagBits::eVertex)
 
 
                   // Add a push constant to the layout. It is accessable in the vertex shader
                   // stage only.
-                  ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
+                  ->addPushConstant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
                   //
-                  ->SetRenderPass( Screen.GetRenderPass() )
+                  ->setRenderPass( Screen.GetRenderPass() )
                   ->create();
 
 
@@ -493,12 +494,12 @@ int main(int argc, char ** argv)
 //   The pipline object can generate a descriptor set for you.
 //==============================================================================
     // we want a descriptor set for set #0 in the pipeline.
-    vka::descriptor_set * texture_descriptor = pipeline->create_new_descriptor_set(0, descriptor_pool);
+    vka::descriptor_set * texture_descriptor = pipeline.createNewDescriptorSet(0, descriptor_pool);
     //  attach our texture to binding 0 in the set.
     texture_descriptor->AttachSampler(0, Tex);
     texture_descriptor->update();
 
-    vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
+    vka::descriptor_set * ubuffer_descriptor = pipeline.createNewDescriptorSet(1, descriptor_pool);
     ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
     ubuffer_descriptor->update();
 
@@ -576,17 +577,17 @@ int main(int argc, char ** argv)
 
 
       // bind the pipeline that we want to use next
-        cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
+        cb.bindPipeline( vk::PipelineBindPoint::eGraphics, pipeline );
 
       // bind the two descriptor sets that we need to that pipeline
        cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                                    pipeline->get_layout(),
+                                                    pipeline.getLayout(),
                                                     0,
                                                     vk::ArrayProxy<const vk::DescriptorSet>( texture_descriptor->get()),
                                                     nullptr );
 
         cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                                pipeline->get_layout(),
+                                                pipeline.getLayout(),
                                                 1,
                                                 vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
                                                 nullptr );
@@ -614,7 +615,7 @@ int main(int argc, char ** argv)
 
             float x = j%2 ? -1 : 1;
             push.model = glm::rotate(glm::mat4(1.0), t * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f )) * glm::translate( glm::mat4(), glm::vec3(x,0,0) );
-            cb.pushConstants( pipeline->get_layout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(push_constants_t), &push);
+            cb.pushConstants( pipeline.getLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(push_constants_t), &push);
 
             // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
             cb.drawIndexed(36, 1, 0 , 0, 0);

@@ -37,6 +37,7 @@
 
 #include <vka/core2/BufferMemoryPool.h>
 #include <vka/core2/TextureMemoryPool.h>
+#include <vka/core2/Pipeline.h>
 #include <vka/core2/Screen.h>
 
 #include <vka/linalg.h>
@@ -401,49 +402,49 @@ int main(int argc, char ** argv)
         vka::shader* fragment_shader = C.new_shader_module("fs");
         fragment_shader->load_from_file("resources/shaders/mipmaps/mipmaps.frag");
 
-        vka::pipeline* pipeline = C.new_pipeline("triangle");
+        vka::Pipeline pipeline(&C);
 
         // Create the graphics Pipeline
-          pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
-                  ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
+          pipeline.setViewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
+                  ->setScissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                  ->set_vertex_shader(   vertex_shader )   // the shaders we want to use
-                  ->set_fragment_shader( fragment_shader ) // the shaders we want to use
+                  ->setVertexShader(   "resources/shaders/mipmaps/mipmaps.vert", "main") // the shaders we want to use
+                  ->setFragmentShader( "resources/shaders/mipmaps/mipmaps.frag", "main") // the shaders we want to use
 
                   // tell the pipeline that attribute 0 contains 3 floats
                   // and the data starts at offset 0
-                  ->set_vertex_attribute(0, 0 ,  offsetof(Vertex,p),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
+                  ->setVertexAttribute(0, 0 ,  offsetof(Vertex,p),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
                   // tell the pipeline that attribute 1 contains 3 floats
                   // and the data starts at offset 12
-                  ->set_vertex_attribute(0, 1 , offsetof(Vertex,u),  vk::Format::eR32G32Sfloat,  sizeof(Vertex) )
+                  ->setVertexAttribute(0, 1 , offsetof(Vertex,u),  vk::Format::eR32G32Sfloat,  sizeof(Vertex) )
 
-                  ->set_vertex_attribute(0, 2 , offsetof(Vertex,n),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
+                  ->setVertexAttribute(0, 2 , offsetof(Vertex,n),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
 
                   // Triangle vertices are drawn in a counter clockwise manner
                   // using the right hand rule which indicates which face is the
                   // front
-                  ->set_front_face(vk::FrontFace::eCounterClockwise)
+                  ->setFrontFace(vk::FrontFace::eCounterClockwise)
 
                   // Cull all back facing triangles.
-                  ->set_cull_mode(vk::CullModeFlagBits::eBack)
+                  ->setCullMode(vk::CullModeFlagBits::eBack)
 
                   // Tell the shader that we are going to use a texture
                   // in Set #0 binding #0
-                  ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
+                  ->addTextureLayoutBinding(0, 0, vk::ShaderStageFlagBits::eFragment)
 
                   // Tell teh shader that we are going to use a uniform buffer
                   // in Set #0 binding #0
-                  ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eVertex)
+                  ->addUniformLayoutBinding(1, 0, vk::ShaderStageFlagBits::eVertex)
 
                   // Tell teh shader that we are going to use a uniform buffer
                   // in Set #0 binding #0
-                  ->add_dynamic_uniform_layout_binding(2, 0, vk::ShaderStageFlagBits::eVertex)
+                  ->addDynamicUniformLayoutBinding(2, 0, vk::ShaderStageFlagBits::eVertex)
 
                   // Add a push constant to the layout. It is accessable in the vertex shader
                   // stage only.
-                  ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
+                  ->addPushConstant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
                   //
-                  ->SetRenderPass( Screen.GetRenderPass() )
+                  ->setRenderPass( Screen.GetRenderPass() )
                   ->create();
 
 
@@ -456,16 +457,16 @@ int main(int argc, char ** argv)
 //   The pipline object can generate a descriptor set for you.
 //==============================================================================
     // we want a descriptor set for set #0 in the pipeline.
-    vka::descriptor_set * texture_descriptor = pipeline->create_new_descriptor_set(0, descriptor_pool);
+    vka::descriptor_set * texture_descriptor = pipeline.createNewDescriptorSet(0, descriptor_pool);
     //  attach our texture to binding 0 in the set.
     texture_descriptor->AttachSampler(0, Tex);
     texture_descriptor->update();
 
-    vka::descriptor_set * ubuffer_descriptor = pipeline->create_new_descriptor_set(1, descriptor_pool);
+    vka::descriptor_set * ubuffer_descriptor = pipeline.createNewDescriptorSet(1, descriptor_pool);
     ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
     ubuffer_descriptor->update();
 
-    vka::descriptor_set * dubuffer_descriptor = pipeline->create_new_descriptor_set(2, descriptor_pool);
+    vka::descriptor_set * dubuffer_descriptor = pipeline.createNewDescriptorSet(2, descriptor_pool);
     dubuffer_descriptor->AttachDynamicUniformBuffer(0,DU_buffer, DU_buffer->GetSize() );
     dubuffer_descriptor->update();
 
@@ -575,17 +576,17 @@ int main(int argc, char ** argv)
 
 
       // bind the pipeline that we want to use next
-        cb.bindPipeline( vk::PipelineBindPoint::eGraphics, *pipeline );
+        cb.bindPipeline( vk::PipelineBindPoint::eGraphics, pipeline );
 
       // bind the two descriptor sets that we need to that pipeline
        cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                                    pipeline->get_layout(),
+                                                    pipeline.getLayout(),
                                                     0,
                                                     vk::ArrayProxy<const vk::DescriptorSet>( texture_descriptor->get()),
                                                     nullptr );
 
         cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                                pipeline->get_layout(),
+                                                pipeline.getLayout(),
                                                 1,
                                                 vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
                                                 nullptr );
@@ -611,10 +612,10 @@ int main(int argc, char ** argv)
               push.miplevel = (int)fmod( t ,Tex->GetMipLevels() );
             }
 
-            cb.pushConstants( pipeline->get_layout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(push_constants_t), &push);
+            cb.pushConstants( pipeline.getLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(push_constants_t), &push);
 
             cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                                    pipeline->get_layout(),
+                                                    pipeline.getLayout(),
                                                     2,
                                                     vk::ArrayProxy<const vk::DescriptorSet>( dubuffer_descriptor->get()),
                                                     vk::ArrayProxy<const uint32_t>(j*alignment) );
