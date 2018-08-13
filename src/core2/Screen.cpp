@@ -2,7 +2,6 @@
 
 #include <vka/core/semaphore.h>
 #include <vka/core/context.h>
-#include <vka/core/texture.h>
 
 #include <vka/core/types.h>
 

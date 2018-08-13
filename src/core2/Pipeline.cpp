@@ -1,6 +1,5 @@
 #include <vka/core/log.h>
 #include <vka/core/context.h>
-#include <vka/core/renderpass.h>
 #include <vka/core/descriptor_pool.h>
 #include <vka/core/descriptor_set_layout.h>
 #include <vka/core/descriptor_set.h>

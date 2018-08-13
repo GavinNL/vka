@@ -1,15 +1,7 @@
-#include <vka/utils/buffer_pool.h>
-#include <vka/core/buffer.h>
 #include <vka/core/command_buffer.h>
-#include <vka/core/pipeline.h>
 #include <vka/core/descriptor_set.h>
 
-#include <vka/core/texture.h>
-#include <vka/core/texture2darray.h>
-#include <vka/core/buffer.h>
-
 #include <vka/core/extensions.h>
-
 
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
@@ -17,33 +9,6 @@
 #include <vka/core2/Screen.h>
 #include <vka/core2/Pipeline.h>
 
-void vka::command_buffer::bindVertexSubBuffer(uint32_t firstBinding,
-                              vka::sub_buffer const * buffer , vk::DeviceSize offset) const
-{
-
-    bindVertexBuffers(firstBinding, buffer->get(), {buffer->offset()+offset} );
-
-}
-
-void vka::command_buffer::bindIndexSubBuffer(  vka::sub_buffer const * buffer ,
-                                                vk::IndexType index_type, vk::DeviceSize offset) const
-{
-
-    bindIndexBuffer( buffer->get(), buffer->offset()+offset, index_type);
-
-}
-
-void vka::command_buffer::copySubBuffer( vk::Buffer srcBuffer, sub_buffer const * dstBuffer, const vk::BufferCopy & region ) const
-{
-    const vk::BufferCopy C{ region.srcOffset, region.dstOffset+dstBuffer->offset(), region.size};
-    copyBuffer( srcBuffer , *dstBuffer , C );
-}
-
-void vka::command_buffer::copySubBuffer( sub_buffer const * srcBuffer, sub_buffer const * dstBuffer, const vk::BufferCopy & region ) const
-{
-    const vk::BufferCopy C{ region.srcOffset + srcBuffer->offset(), region.dstOffset+dstBuffer->offset(), region.size};
-    copyBuffer( *srcBuffer , *dstBuffer , C );
-}
 
 #if defined OLD_PIPELINE
 void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
@@ -121,37 +86,6 @@ void vka::command_buffer::pushDescriptorSet( vk::PipelineBindPoint bind_point, v
                          Info.m_writes, vka::ExtDispatcher);
 }
 
-vka::PushDescriptorInfo &vka::PushDescriptorInfo::attach(uint32_t binding, uint32_t count, vka::texture *texArray)
-{
-    vk::WriteDescriptorSet W;
-    // Descriptor set 0 binding 0  is the texture array
-    W.dstSet = vk::DescriptorSet();
-    W.dstBinding = binding;
-    W.descriptorCount = count;
-    W.descriptorType = vk::DescriptorType::eCombinedImageSampler;//VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-
-    W.pImageInfo = &texArray->get_descriptor_info();
-
-    m_writes.push_back(W);
-    return *this;
-}
-
-vka::PushDescriptorInfo &vka::PushDescriptorInfo::attach(uint32_t binding, uint32_t count, vka::sub_buffer *buffer)
-{
-    vk::WriteDescriptorSet W;
-
-    W.dstSet = vk::DescriptorSet();
-    W.dstBinding = binding;
-    W.descriptorCount = count;
-    W.descriptorType = vk::DescriptorType::eUniformBuffer;//VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-
-    W.pBufferInfo = &buffer->get_descriptor_info();
-
-    m_writes.push_back(W);
-    return *this;
-}
-
-
 
 
 //-----------------------------
@@ -206,20 +140,6 @@ void command_buffer::drawMeshObject(const MeshObject & obj , uint32_t instanceCo
     drawIndexed( obj.GetIndexCount(), instanceCount, 0, 0 ,firstInstance);
 }
 
-void command_buffer::copySubBufferToImage( const std::shared_ptr<SubBuffer> & buffer,
-                                           vka::texture * tex,
-                                           vk::ImageLayout imageLayout,
-                                           vk::BufferImageCopy const & C) const
-{
-    vk::BufferImageCopy lC = C;
-    lC.setBufferOffset( buffer->GetOffset() + C.bufferOffset );
-    vk::CommandBuffer::copyBufferToImage(
-                buffer->GetParentBufferHandle(),
-                tex->get_image(),
-                imageLayout,
-                lC
-                );
-}
 
 void command_buffer::copySubBufferToTexture( const std::shared_ptr<SubBuffer> & buffer,
                                            std::shared_ptr<vka::Texture> & tex,

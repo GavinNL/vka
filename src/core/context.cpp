@@ -1,21 +1,9 @@
 #include <vka/core/context.h>
-#include <vka/core/renderpass.h>
 #include <vka/core/command_pool.h>
-#include <vka/core/buffer.h>
-#include <vka/core/managed_buffer.h>
-#include <vka/utils/buffer_pool.h>
-#include <vka/core/framebuffer.h>
-#include <vka/core/shader.h>
-#include <vka/core/pipeline.h>
 #include <vka/core/semaphore.h>
-#include <vka/core/texture.h>
-#include <vka/core/texture2d.h>
-#include <vka/core/texture2darray.h>
 #include <vka/core/descriptor_pool.h>
 #include <vka/core/descriptor_set_layout.h>
 #include <vka/core/descriptor_set.h>
-#include <vka/core/offscreen_target.h>
-#include <vka/core/screen_target.h>
 #include <vulkan/vulkan.hpp>
 #include <vka/core/context_child.h>
 #include <vka/core/extensions.h>
@@ -164,7 +152,7 @@ void vka::context::create_device( vk::SurfaceKHR surface_to_use)
                         throw std::runtime_error("Error creating fence");
                     }
                     m_command_pool   = new_command_pool("context_command_pool");
-                    m_staging_buffer = new_staging_buffer("context_staging_buffer",1024*1024*10);
+
                     return;
                 }
             }
@@ -275,118 +263,11 @@ void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device,
 }
 
 
-vka::buffer_pool* vka::context::new_buffer_pool(const std::string & name)
-{
-    return _new<vka::buffer_pool>(name);
-}
-
-
-vka::framebuffer* vka::context::new_framebuffer(const std::string & name)
-{
-    return _new<vka::framebuffer>(name);
-}
-
-
-vka::managed_buffer*   vka::context::new_managed_buffer(const std::string & name,
-                          size_t size,
-                          vk::MemoryPropertyFlags memory_properties,
-                          vk::BufferUsageFlags usage)
-{
-
-    auto * b = new_managed_buffer(name);
-    if( b )
-    {
-        b->set_memory_properties(memory_properties);
-        b->set_size(size);
-        b->set_usage(usage);
-        b->create();
-        return b;
-    }
-    return nullptr;
-}
-
-vka::buffer*   vka::context::new_buffer(const std::string & name,
-                          size_t size,
-                          vk::MemoryPropertyFlags memory_properties,
-                          vk::BufferUsageFlags usage)
-{
-
-    auto * b = new_buffer(name);
-    if( b )
-    {
-        b->set_memory_properties(memory_properties);
-        b->set_size(size);
-        b->set_usage(usage);
-        b->create();
-        return b;
-    }
-    return nullptr;
-}
-
-vka::buffer* vka::context::new_buffer(const std::string & name)
-{
-        return _new<vka::buffer>(name);
-}
-
-vka::managed_buffer* vka::context::new_managed_buffer(const std::string & name)
-{
-        return _new<vka::managed_buffer>(name);
-}
-
-#if defined OLD_PIPELINE
-
-vka::shader* vka::context::new_shader_module(const std::string &name)
-{
-    return _new<vka::shader>(name);
-}
-
-
-vka::pipeline* vka::context::new_pipeline(const std::string &name)
-{
-    auto * R =  _new<vka::pipeline>(name);
-    if( R )
-    {
-        R->set_scissor( vk::Rect2D({0,0}, m_extent) );
-        R->set_viewport( vk::Viewport(0,0, m_extent.width,m_extent.height,0,1));
-    }
-
-    return R;
-}
-#endif
 vka::semaphore *vka::context::new_semaphore(const std::string &name)
 {
     return _new<vka::semaphore>(name);
 }
 
-vka::texture *vka::context::new_texture(const std::string &name)
-{
-    return _new<vka::texture>(name);
-}
-
-vka::texture2d *vka::context::new_texture2d(const std::string &name)
-{
-    return _new<vka::texture2d>(name);
-}
-
-
-vka::texture2darray *vka::context::new_texture2darray(const std::string &name)
-{
-    return _new<vka::texture2darray>(name);
-}
-
-vka::texture * vka::context::new_depth_texture(const std::string & name, vk::ImageUsageFlags flags)
-{
-    auto * t = new_texture(name);
-
-    auto format = find_depth_format();
-
-    t->set_format( format );
-    t->set_usage( flags | vk::ImageUsageFlagBits::eDepthStencilAttachment );
-    t->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal);
-    t->set_tiling( vk::ImageTiling::eOptimal);
-    t->set_view_type(vk::ImageViewType::e2D);
-    return t;
-}
 
 vk::Format vka::context::find_depth_format()
 {
@@ -426,21 +307,6 @@ vk::Format vka::context::find_supported_format(const std::vector<vk::Format> &ca
 }
 
 
-
-vka::texture2d *vka::context::new_texture2d_host_visible(const std::string &name)
-{
-    auto * staging_texture = new_texture2d(name);
-    //staging_texture->set_size(512,512);
-    staging_texture->set_tiling(vk::ImageTiling::eLinear);
-    staging_texture->set_usage(  vk::ImageUsageFlagBits::eSampled  | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc );
-    staging_texture->set_memory_properties( vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-    staging_texture->set_format(vk::Format::eR8G8B8A8Unorm);
-    staging_texture->set_view_type(vk::ImageViewType::e2D);
-    staging_texture->set_mipmap_levels(1);
-    //staging_texture->create();
-    //staging_texture->create_image_view(vk::ImageAspectFlagBits::eColor);
-    return staging_texture;
-}
 vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, vk::DescriptorSetLayoutCreateFlags flags)
 {
     auto it = m_DescriptorSetLayouts.find( bindings );
@@ -511,20 +377,6 @@ void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
     m_device.resetFences( m_render_fence );
 }
 
-vka::screen* vka::context::new_screen(const std::string & name)
-{
-    return _new<vka::screen>(name);
-}
-
-vka::offscreen_target* vka::context::new_offscreen_target(const std::string & name)
-{
-    return _new<vka::offscreen_target>(name);
-}
-
-vka::renderpass* vka::context::new_renderpass(const std::string & name)
-{
-    return _new<vka::renderpass>(name);
-}
 
 vka::descriptor_pool* vka::context::new_descriptor_pool(const std::string & name)
 {
@@ -565,36 +417,6 @@ vka::command_pool* vka::context::new_command_pool(const std::string & name)
     return nullptr;
 }
 
-//uint32_t vka::context::get_next_image_index(vka::semaphore *signal_semaphore)
-//{
-//    return  m_device.acquireNextImageKHR( m_swapchain,
-//                                          std::numeric_limits<uint64_t>::max(),
-//                                          *signal_semaphore,
-//                                          vk::Fence()).value;
-//}
-
-// void vka::context::present_image(uint32_t image_index,  vka::semaphore * wait_semaphore)
-// {
-//     ///vk::Semaphore signalSemaphores[] = { m_render_finished_smaphore};
-//
-//     // uint32_t nextIndex = GetNextImageIndex();
-//     //std::cout << "Next Image index: " << image_index << std::endl;
-//     //=== finally present the image ====
-//     vk::PresentInfoKHR presentInfo;
-//     if( wait_semaphore)
-//     {
-//         presentInfo.waitSemaphoreCount  = 1;
-//         presentInfo.pWaitSemaphores     = &wait_semaphore->get();
-//     }
-//
-//     vk::SwapchainKHR swapChains[] = { m_swapchain };
-//     presentInfo.swapchainCount    = 1;
-//     presentInfo.pSwapchains       = swapChains;
-//     presentInfo.pImageIndices     = &image_index;
-//     presentInfo.pResults = nullptr;
-//
-//     m_present_queue.presentKHR( presentInfo );
-// }
 
 void vka::context::present_image(const vk::PresentInfoKHR & info)
 {

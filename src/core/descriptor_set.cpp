@@ -1,12 +1,8 @@
 #include <vka/core/descriptor_set_layout.h>
 #include <vka/core/descriptor_set.h>
 #include <vka/core/descriptor_pool.h>
-#include <vka/core/texture.h>
-#include <vka/core/buffer.h>
 #include <vka/core/context.h>
 
-
-#include <vka/utils/buffer_pool.h>
 
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/BufferMemoryPool.h>
@@ -77,91 +73,6 @@ void vka::descriptor_set::update()
     get_device().updateDescriptorSets( descriptorWrite, nullptr);
 
 }
-
-
-vka::descriptor_set * vka::descriptor_set::attach_sampler( uint32_t index,  vka::texture * texture)
-{
-    vka::DescriptorInfo imageInfo;
-    imageInfo.type              = DescriptorInfo::Image;
-    imageInfo.image.imageLayout = texture->get_layout();// texture.get().m_CreateInfo.initialLayout;
-    imageInfo.image.imageView   = texture->get_image_view();// texture.get().m_View;
-    imageInfo.image.sampler     = texture->get_sampler();// texture.get().m_Sampler;
-
-    m_DescriptorInfos[index] = imageInfo;
-
-    return this;
-}
-
-vka::descriptor_set * vka::descriptor_set::attach_uniform_buffer(uint32_t index,
-                     const buffer * buff,
-                     vk::DeviceSize size,
-                     vk::DeviceSize offset)
-{
-
-    DescriptorInfo bufferInfo;
-    bufferInfo.type = DescriptorInfo::Buffer;
-    bufferInfo.buffer.buffer = *buff;
-    bufferInfo.buffer.offset = offset;
-    bufferInfo.buffer.range  = size;
-
-    m_DescriptorInfos[index] = bufferInfo;
-
-    return this;
-}
-
-vka::descriptor_set * vka::descriptor_set::attach_uniform_buffer(uint32_t index,
-                     const sub_buffer * buff,
-                     vk::DeviceSize size,
-                     vk::DeviceSize offset)
-{
-
-    DescriptorInfo bufferInfo;
-    bufferInfo.type = DescriptorInfo::Buffer;
-    bufferInfo.buffer.buffer = *buff;
-    bufferInfo.buffer.offset = offset;
-    bufferInfo.buffer.range  = size;
-
-    m_DescriptorInfos[index] = bufferInfo;
-
-    return this;
-}
-
-vka::descriptor_set * vka::descriptor_set::attach_dynamic_uniform_buffer(uint32_t index,
-                     const buffer * buff,
-                     vk::DeviceSize size,
-                     vk::DeviceSize offset)
-{
-
-    DescriptorInfo bufferInfo;
-    bufferInfo.type = DescriptorInfo::DynamicBuffer;
-    bufferInfo.buffer.buffer = *buff;
-    bufferInfo.buffer.offset = offset;
-    bufferInfo.buffer.range  = size;
-
-    m_DescriptorInfos[index] = bufferInfo;
-
-    return this;
-}
-
-vka::descriptor_set * vka::descriptor_set::attach_dynamic_uniform_buffer(uint32_t index,
-                     const sub_buffer * buff,
-                     vk::DeviceSize size,
-                     vk::DeviceSize offset)
-{
-
-    DescriptorInfo bufferInfo;
-    bufferInfo.type = DescriptorInfo::DynamicBuffer;
-    bufferInfo.buffer.buffer = *buff;
-    bufferInfo.buffer.offset = offset;
-    bufferInfo.buffer.range  = size;
-
-    m_DescriptorInfos[index] = bufferInfo;
-
-    return this;
-}
-
-
-
 
 
 //------------------
