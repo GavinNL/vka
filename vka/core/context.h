@@ -141,7 +141,6 @@ private:
     std::vector< std::string > m_validation_layers;
 
     vka::command_pool * m_command_pool   = nullptr;
-    vka::buffer       * m_staging_buffer = nullptr;
 
 public:
     vk::Instance get_instance() { return m_instance; }
@@ -222,24 +221,6 @@ public:
     std::vector<vk::ImageView> create_image_views(const std::vector<vk::Image> &images, vk::Format image_format);
 
 
-    //============================================================
-    // Get Methods
-    //============================================================
-    //std::vector<vk::ImageView> & get_swapchain_imageviews() {
-    //    return m_image_views;
-    //}
-    //============================================================
-    // Object creation
-    //   All objects created with teh following funtions are stored
-    //   in an internal registry and can be retrived using the
-    //   get< > method.
-    //   Objects in here are automatically destroyed when the
-    //   context is destroyed.
-    //============================================================
-    vka::renderpass* new_renderpass(const std::string &name);
-
-    vka::framebuffer* new_framebuffer(const std::string & name);
-
     vka::command_pool* new_command_pool(const std::string & name);
 
     vka::descriptor_pool* new_descriptor_pool(const std::string & name);
@@ -253,164 +234,10 @@ public:
 
     void present_image(uint32_t image_index, semaphore *wait_semaphore);
     void present_image(const vk::PresentInfoKHR & info);
-    /**
-     * @brief new_buffer
-     * @param name
-     * @return
-     *
-     * Create an unconfigured,unallocated buffer
-     */
-    vka::buffer*   new_buffer(const std::string & name);
-
-
-    vka::managed_buffer*   new_managed_buffer(const std::string & name);
-    /**
-     * @brief new_buffer
-     * @param name - name of the buffer
-     * @param size - size of the buffer in bytes
-     * @param memory_properties - memory property
-     * @param usage - buffer usage
-     * @return
-     *
-     * Create a configured and allocated buffer.
-     */
-    vka::buffer*   new_buffer(const std::string & name,
-                              size_t size,
-                              vk::MemoryPropertyFlags memory_properties,
-                              vk::BufferUsageFlags usage);
-
-
-    vka::managed_buffer*   new_managed_buffer(const std::string & name,
-                                      size_t size,
-                                      vk::MemoryPropertyFlags memory_properties,
-                                      vk::BufferUsageFlags usage);
-
-    vka::buffer_pool* new_buffer_pool(const std::string & name);
-    /**
-     * @brief new_vertex_buffer
-     * @param name
-     * @param size
-     * @return
-     *
-     * Create a device local buffer used for vertices
-     */
-    vka::buffer* new_vertex_buffer(const std::string & name, size_t size)
-    {
-        return new_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
-    }
-
-    vka::managed_buffer* new_managed_vertex_buffer(const std::string & name, size_t size)
-    {
-        return new_managed_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
-    }
-    /**
-     * @brief new_index_buffer
-     * @param name
-     * @param size
-     * @return
-     *
-     * Create a device local buffer used for index values
-     */
-    vka::buffer* new_index_buffer(const std::string & name, size_t size)
-    {
-        return new_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
-    }
-    vka::managed_buffer* new_managed_index_buffer(const std::string & name, size_t size)
-    {
-        return new_managed_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
-    }
-
-    /**
-     * @brief new_uniform_buffer
-     * @param name
-     * @param size
-     * @return
-     *
-     * Crete a device local buffer used for uniform values
-     */
-    vka::buffer* new_uniform_buffer(const std::string & name, size_t size)
-    {
-        return new_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer);
-    }
-
-    vka::managed_buffer* new_managed_uniform_buffer(const std::string & name, size_t size)
-    {
-        return new_managed_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer);
-    }
-    /**
-     * @brief new_multi_buffer
-     * @param name
-     * @param size
-     * @return
-     *
-     * Create a device local buffer used vertices,indices and uniform
-     */
-    vka::buffer* new_multi_buffer(const std::string & name, size_t size)
-    {
-        return new_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst
-                          | vk::BufferUsageFlagBits::eUniformBuffer
-                          | vk::BufferUsageFlagBits::eIndexBuffer
-                          | vk::BufferUsageFlagBits::eVertexBuffer);
-    }
-
-
-    /**
-     * @brief new_staging_buffer
-     * @param name
-     * @param size
-     * @return
-     *
-     * Create a staging buffer used for staging data and transfering to
-     * device local buffers
-     */
-    vka::buffer* new_staging_buffer(const std::string & name, size_t size, vk::MemoryPropertyFlags extraFlags = vk::MemoryPropertyFlagBits::eHostCoherent)
-    {
-        return new_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible | extraFlags,
-                          vk::BufferUsageFlagBits::eTransferSrc);
-    }
-
-
-    vka::shader* new_shader_module(const std::string &name);
-
-
-    vka::pipeline* new_pipeline(const std::string & name);
 
 
     vka::semaphore* new_semaphore(const std::string & name);
 
-    vka::texture* new_texture(const std::string &name);
-
-    vka::texture2d* new_texture2d(const std::string &name);
-
-    vka::texture2darray* new_texture2darray(const std::string &name);
-
-    /**
-     * @brief new_texture2d_host_visible
-     * @param name
-     * @return
-     *
-     * Sets up a host visible 2D texture. call ->create() to create
-     * the texture
-     */
-    vka::texture2d *new_texture2d_host_visible(const std::string &name);
-
-
-    vka::texture *new_depth_texture(const std::string &name, vk::ImageUsageFlags flags = vk::ImageUsageFlagBits::eDepthStencilAttachment);
     //============================================================
     /**
      * @brief new_descriptor_set_layout
@@ -425,9 +252,6 @@ public:
 
 
     //============================================================
-
-    vka::offscreen_target *new_offscreen_target(const std::string &name);
-    vka::screen           *new_screen(const std::string &name);
 
     vka::command_pool *get_command_pool();
 
@@ -463,11 +287,6 @@ public:
         return m_physical_device_properties.limits;
     }
 
-    vka::buffer * get_staging_buffer()
-    {
-        return m_staging_buffer;
-    }
-
     template<typename T>
     std::string get_name( T const * obj)
     {
@@ -493,8 +312,6 @@ private:
 
         return nullptr;
     }
-
-    std::map< std::string, std::shared_ptr<vka::renderpass> > m_renderpasses;
 
 
     bool m_enable_validation_layers = true;

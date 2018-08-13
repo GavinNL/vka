@@ -1,11 +1,6 @@
 #include <vka/core/descriptor_set_layout.h>
 #include <vka/core/descriptor_pool.h>
-#include <vka/core/texture.h>
-#include <vka/core/buffer.h>
 #include <vka/core/context.h>
-
-
-#include <vka/utils/buffer_pool.h>
 
 #include <vka/core/log.h>
 
