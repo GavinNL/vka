@@ -15,6 +15,7 @@
 #include <vka/core2/MeshObject.h>
 #include <vka/core2/RenderTarget2.h>
 #include <vka/core2/Screen.h>
+#include <vka/core2/Pipeline.h>
 
 void vka::command_buffer::bindVertexSubBuffer(uint32_t firstBinding,
                               vka::sub_buffer const * buffer , vk::DeviceSize offset) const
@@ -44,6 +45,7 @@ void vka::command_buffer::copySubBuffer( sub_buffer const * srcBuffer, sub_buffe
     copyBuffer( *srcBuffer , *dstBuffer , C );
 }
 
+#if defined OLD_PIPELINE
 void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
                         vka::pipeline const * pipeline,
                         uint32_t firstSet,
@@ -70,11 +72,6 @@ void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindP
 
 }
 
-
-
-
-//===================
-
 void vka::command_buffer::pushDescriptorSet( vk::PipelineBindPoint bind_point, vka::pipeline * pipeline, uint32_t set, vka::PushDescriptorInfo const & Info)
 {
     pushDescriptorSetKHR(bind_point,
@@ -82,7 +79,47 @@ void vka::command_buffer::pushDescriptorSet( vk::PipelineBindPoint bind_point, v
                          set,
                          Info.m_writes, vka::ExtDispatcher);
 }
+#endif
 
+
+
+
+
+//===================
+void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
+                        vka::Pipeline const & pipeline,
+                        uint32_t firstSet,
+                        vka::descriptor_set const * set) const
+{
+       bindDescriptorSets( pipelineBindPoint,
+                           pipeline.getLayout(),
+                           firstSet,
+                           vk::ArrayProxy<const vk::DescriptorSet>( set->get()),
+                           nullptr );
+
+}
+
+void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
+                        vka::Pipeline const & pipeline,
+                        uint32_t firstSet,
+                        vka::descriptor_set const * set,
+                        uint32_t dynamic_offset) const
+{
+       bindDescriptorSets( pipelineBindPoint,
+                           pipeline.getLayout(),
+                           firstSet,
+                           vk::ArrayProxy<const vk::DescriptorSet>( set->get()),
+                           vk::ArrayProxy<const uint32_t>(dynamic_offset) );
+
+}
+
+void vka::command_buffer::pushDescriptorSet( vk::PipelineBindPoint bind_point, vka::Pipeline const & pipeline, uint32_t set, vka::PushDescriptorInfo const & Info)
+{
+    pushDescriptorSetKHR(bind_point,
+                         pipeline.getLayout(),
+                         set,
+                         Info.m_writes, vka::ExtDispatcher);
+}
 
 vka::PushDescriptorInfo &vka::PushDescriptorInfo::attach(uint32_t binding, uint32_t count, vka::texture *texArray)
 {

@@ -1,10 +1,10 @@
-#if defined OLD_SHADER
-
 #include <vka/core/context.h>
-#include <vka/core/shader.h>
+#include <vka/core2/Shader.h>
 #include <fstream>
 
-vka::shader::~shader()
+namespace vka
+{
+Shader::~Shader()
 {
     if(m_shader)
     {
@@ -12,7 +12,7 @@ vka::shader::~shader()
     }
 }
 
-std::string readFile(const std::string &filename)
+std::string Shader::readFile(const std::string &filename)
 {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
@@ -33,7 +33,7 @@ std::string readFile(const std::string &filename)
     return buffer;
 }
 
-void vka::shader::load_from_file(const std::string & path)
+void Shader::loadFromFile(const std::string & path)
 {
     const size_t pos = path.rfind('.');
     auto ext = (pos == std::string::npos) ? "" : path.substr(path.rfind('.') + 1);
@@ -41,7 +41,7 @@ void vka::shader::load_from_file(const std::string & path)
     if( ext == "spv")
     {
         std::string source_code = readFile(path);
-        load_from_memory(source_code);
+        loadFromMemory(source_code);
 
     }
     else
@@ -53,7 +53,7 @@ void vka::shader::load_from_file(const std::string & path)
 
         if( std::system( cmd.c_str() ) == 0)
         {
-            load_from_file(opath);
+            loadFromFile(opath);
         } else {
             throw std::runtime_error("Failed to compile");
         }
@@ -66,7 +66,7 @@ void vka::shader::load_from_file(const std::string & path)
 }
 
 
-void vka::shader::load_from_memory(const std::string  &SPIRV_code)
+void Shader::loadFromMemory(const std::string  &SPIRV_code)
 {
 
     // std::string code( SPIRV_code.begin(), SPIRV_code.end());
@@ -97,4 +97,4 @@ void vka::shader::load_from_memory(const std::string  &SPIRV_code)
 
 //    ScreenData.m_Shaders[code] = get_shared();
 }
-#endif
+}

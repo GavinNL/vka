@@ -39,6 +39,7 @@
 #include <vka/core2/BufferMemoryPool.h>
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
+#include <vka/core2/Pipeline.h>
 
 #include <vka/utils/sdl_window_handler.h>
 #include <vka/core/camera.h>
@@ -217,7 +218,7 @@ SDL_Window* initWindow()
 {
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS );
 
-    if(SDL_Vulkan_LoadLibrary(NULL) == -1)
+    if(SDL_Vulkan_LoadLibrary(nullptr) == -1)
     {
         std::cout << "Error loading vulkan" << std::endl;
         exit(1);
@@ -231,7 +232,7 @@ SDL_Window* initWindow()
         HEIGHT,
         SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
-    if(window == NULL)
+    if(window == nullptr)
     {
         std::cout << "Couldn\'t set video mode: " << SDL_GetError() << std::endl;
         exit(1);
@@ -248,7 +249,7 @@ int main(int argc, char ** argv)
 
 
     unsigned int count = 0;
-    SDL_Vulkan_GetInstanceExtensions(window, &count, NULL);
+    SDL_Vulkan_GetInstanceExtensions(window, &count, nullptr);
     const char **names = new const char *[count];
     SDL_Vulkan_GetInstanceExtensions(window, &count, names);
 
@@ -452,65 +453,66 @@ int main(int argc, char ** argv)
 //
 //==============================================================================
 
-        vka::pipeline * g_buffer_pipeline = C.new_pipeline("gbuffer_pipeline");
-        g_buffer_pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
-                ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                ->set_vertex_shader(   "resources/shaders/gbuffer_push_descriptors/gbuffer_push_descriptors.vert", "main" )   // the shaders we want to use
-                ->set_fragment_shader( "resources/shaders/gbuffer_push_descriptors/gbuffer_push_descriptors.frag", "main" ) // the shaders we want to use
+        vka::Pipeline g_buffer_pipeline(&C);
+        g_buffer_pipeline.setViewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
+                ->setScissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
+
+                ->setVertexShader(   "resources/shaders/gbuffer_push_descriptors/gbuffer_push_descriptors.vert", "main" )   // the shaders we want to use
+                ->setFragmentShader( "resources/shaders/gbuffer_push_descriptors/gbuffer_push_descriptors.frag", "main" ) // the shaders we want to use
 
                 // tell the pipeline that attribute 0 contains 3 floats
                 // and the data starts at offset 0
-                ->set_vertex_attribute(0, 0 ,  0 , vk::Format::eR32G32B32Sfloat , sizeof(glm::vec3) )
+                ->setVertexAttribute(0, 0 ,  0 , vk::Format::eR32G32B32Sfloat , sizeof(glm::vec3) )
                 // tell the pipeline that attribute 1 contains 3 floats
                 // and the data starts at offset 12
-                ->set_vertex_attribute(1, 1 ,  0 , vk::Format::eR32G32Sfloat , sizeof(glm::vec2) )
+                ->setVertexAttribute(1, 1 ,  0 , vk::Format::eR32G32Sfloat , sizeof(glm::vec2) )
 
-                ->set_vertex_attribute(2, 2 ,  0 , vk::Format::eR32G32B32Sfloat , sizeof(glm::vec3) )
+                ->setVertexAttribute(2, 2 ,  0 , vk::Format::eR32G32B32Sfloat , sizeof(glm::vec3) )
 
                 //===============================================================
                 // Here we are going to set the number of color attachments.
                 // We created 3 color attachments for our render target.
                 //===============================================================
-                ->set_color_attachments( 3 )
+                ->setColorAttachments( 3 )
                 //===============================================================
 
                 // Triangle vertices are drawn in a counter clockwise manner
                 // using the right hand rule which indicates which face is the
                 // front
-                ->set_front_face(vk::FrontFace::eCounterClockwise)
+                ->setFrontFace(vk::FrontFace::eCounterClockwise)
 
                 // Cull all back facing triangles.
-                ->set_cull_mode(vk::CullModeFlagBits::eBack)
+                ->setCullMode(vk::CullModeFlagBits::eBack)
 
                 //====================================================================================================
                 // When using Push Descriptors, we can only have one DescriptorSet enabled as a push descriptor
                 //====================================================================================================
                 // Tell the shader that we are going to use a texture
                 // in Set #0 binding #0
-                ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
+                ->addTextureLayoutBinding(0, 0, vk::ShaderStageFlagBits::eFragment)
 
                 // Tell teh shader that we are going to use a uniform buffer
                 // in Set #0 binding #0
-                ->add_uniform_layout_binding(0, 1, vk::ShaderStageFlagBits::eVertex)
+                ->addUniformLayoutBinding(0, 1, vk::ShaderStageFlagBits::eVertex)
 
                 // Enable Set #0 as the push descriptor.
-                ->enable_push_descriptor(0)
+                ->enablePushDescriptor(0)
                 //====================================================================================================
 
                 // Add a push constant to the layout. It is accessable in the vertex shader
                 // stage only.
-                ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
+                ->addPushConstant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eVertex)
                 //
                 //===============================================================
                 // Since we are no longer drawing to the main screen. we need
                 // to set the render pass to the OffscreenTarget
-                ->SetRenderPass(  myRenderTarget.GetRenderPass());
+                ->setRenderPass(  myRenderTarget.GetRenderPass());
                 //===============================================================
-        g_buffer_pipeline->get_color_blend_attachment_state(0).blendEnable=VK_FALSE;
-        g_buffer_pipeline->get_color_blend_attachment_state(1).blendEnable=VK_FALSE;
-        g_buffer_pipeline->get_color_blend_attachment_state(2).blendEnable=VK_FALSE;
-        g_buffer_pipeline->create();
+        g_buffer_pipeline.getColorBlendAttachmentState(0).blendEnable=VK_FALSE;
+        g_buffer_pipeline.getColorBlendAttachmentState(1).blendEnable=VK_FALSE;
+        g_buffer_pipeline.getColorBlendAttachmentState(2).blendEnable=VK_FALSE;
+        g_buffer_pipeline.create();
 
 
         //======================================================================
@@ -519,39 +521,39 @@ int main(int argc, char ** argv)
         // created in the rendertarget and compose them into a single image
         // which can be displayed to the screen
         //======================================================================
-        vka::pipeline * compose_pipeline = C.new_pipeline("compose_pipeline");
-        compose_pipeline->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
-                ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
+        vka::Pipeline compose_pipeline(&C);
+        compose_pipeline.setViewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
+                ->setScissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                ->set_vertex_shader(   "resources/shaders/compose_multilights/compose_multilights.vert", "main" )   // the shaders we want to use
-                ->set_fragment_shader( "resources/shaders/compose_multilights/compose_multilights.frag", "main" ) // the shaders we want to use
+                ->setVertexShader(   "resources/shaders/compose_multilights/compose_multilights.vert", "main" )   // the shaders we want to use
+                ->setFragmentShader( "resources/shaders/compose_multilights/compose_multilights.frag", "main" ) // the shaders we want to use
 
-                ->set_toplogy(vk::PrimitiveTopology::eTriangleList)
-                ->set_line_width(1.0f)
+                ->setTopology(vk::PrimitiveTopology::eTriangleList)
+                ->setLineWidth(1.0f)
                 // Triangle vertices are drawn in a counter clockwise manner
                 // using the right hand rule which indicates which face is the
                 // front
-                ->set_front_face(vk::FrontFace::eCounterClockwise)
+                ->setFrontFace(vk::FrontFace::eCounterClockwise)
 
                 // Here are the 4 textures we are going to need
                 // See the fragment shader code for more information.
-                ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
-                ->add_texture_layout_binding(0, 1, vk::ShaderStageFlagBits::eFragment)
-                ->add_texture_layout_binding(0, 2, vk::ShaderStageFlagBits::eFragment)
-                ->add_texture_layout_binding(0, 3, vk::ShaderStageFlagBits::eFragment)
+                ->addTextureLayoutBinding(0, 0, vk::ShaderStageFlagBits::eFragment)
+                ->addTextureLayoutBinding(0, 1, vk::ShaderStageFlagBits::eFragment)
+                ->addTextureLayoutBinding(0, 2, vk::ShaderStageFlagBits::eFragment)
+                ->addTextureLayoutBinding(0, 3, vk::ShaderStageFlagBits::eFragment)
 
                 // Cull all back facing triangles.
-                ->set_cull_mode(vk::CullModeFlagBits::eNone)
+                ->setCullMode(vk::CullModeFlagBits::eNone)
                 // Add a push constant to the layout. It is accessable in the vertex shader
                 // stage only.
-                ->add_push_constant( sizeof(compose_pipeline_push_consts), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+                ->addPushConstant( sizeof(compose_pipeline_push_consts), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
 
                 // Add a uniform for the fragment shader
-                ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eFragment)
+                ->addUniformLayoutBinding(1, 0, vk::ShaderStageFlagBits::eFragment)
 
                 // Since we are drawing this to the screen, we need the screen's
                 // renderpass.
-                ->SetRenderPass( Screen.GetRenderPass() )
+                ->setRenderPass( Screen.GetRenderPass() )
                 ->create();
         //======================================================================
 
@@ -563,7 +565,7 @@ int main(int argc, char ** argv)
 
         // Create a new descriptor set based on the descriptor information we
         // gave to the Compose pipeline
-        vka::descriptor_set * renderTargets = compose_pipeline->create_new_descriptor_set(0, descriptor_pool);
+        vka::descriptor_set * renderTargets = compose_pipeline.createNewDescriptorSet(0, descriptor_pool);
         renderTargets->AttachSampler(0, myRenderTarget.GetColorImage(0) );
         renderTargets->AttachSampler(1, myRenderTarget.GetColorImage(1) );
         renderTargets->AttachSampler(2, myRenderTarget.GetColorImage(2) );
@@ -580,16 +582,16 @@ int main(int argc, char ** argv)
 //   The pipline object can generate a descriptor set for you.
 //==============================================================================
     // we want a descriptor set for set #0 in the pipeline.
- //   vka::descriptor_set * texture_descriptor = g_buffer_pipeline->create_new_descriptor_set(0, descriptor_pool);
+ //   vka::descriptor_set * texture_descriptor = g_buffer_pipeline.createNewDescriptorSet(0, descriptor_pool);
  //   //  attach our texture to binding 0 in the set.
  //   texture_descriptor->AttachSampler(0, Tex);
  //   texture_descriptor->update();
  //
- //   vka::descriptor_set * ubuffer_descriptor = g_buffer_pipeline->create_new_descriptor_set(1, descriptor_pool);
+ //   vka::descriptor_set * ubuffer_descriptor = g_buffer_pipeline.createNewDescriptorSet(1, descriptor_pool);
  //   ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
  //   ubuffer_descriptor->update();
 
-    vka::descriptor_set * lights_buffer_descriptor = compose_pipeline->create_new_descriptor_set(1, descriptor_pool);
+    vka::descriptor_set * lights_buffer_descriptor = compose_pipeline.createNewDescriptorSet(1, descriptor_pool);
     lights_buffer_descriptor->AttachUniformBuffer(0,L_buffer, 10);
     lights_buffer_descriptor->update();
     // We will allocate two Staging buffers to copy uniform data as well as dynamic uniform data
@@ -747,19 +749,7 @@ int main(int argc, char ** argv)
           //--------------------------------------------------------------------------------------
           offscreen_cmd_buffer.beginRender( myRenderTarget );
           {
-              offscreen_cmd_buffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *g_buffer_pipeline);
-
-              //offscreen_cmd_buffer.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-              //                       g_buffer_pipeline->get_layout(),
-              //                       0,
-              //                       vk::ArrayProxy<const vk::DescriptorSet>( texture_descriptor->get()),
-              //                       nullptr );
-              //
-              //offscreen_cmd_buffer.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-              //                       g_buffer_pipeline->get_layout(),
-              //                       1,
-              //                       vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
-              //                       nullptr );
+              offscreen_cmd_buffer.bindPipeline( vk::PipelineBindPoint::eGraphics, g_buffer_pipeline);
 
 
               vka::MeshObject * first = nullptr;
@@ -777,7 +767,7 @@ int main(int argc, char ** argv)
                                                             vka::PushDescriptorInfo().attach(0, 1, Tex)
                                                                                      .attach(1, 1, U_buffer));
 
-                  offscreen_cmd_buffer.pushConstants( g_buffer_pipeline->get_layout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(obj.push), &obj.push);
+                  offscreen_cmd_buffer.pushConstants( g_buffer_pipeline.getLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(obj.push), &obj.push);
                   offscreen_cmd_buffer.drawMeshObject( *obj.mesh );
               }
 
@@ -811,7 +801,7 @@ int main(int argc, char ** argv)
           // start the actual rendering
           compose_cmd_buffer.beginRender(Screen, frame_index);
           {
-              compose_cmd_buffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *compose_pipeline );
+              compose_cmd_buffer.bindPipeline( vk::PipelineBindPoint::eGraphics, compose_pipeline );
 
               compose_cmd_buffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
                                    compose_pipeline,
@@ -836,7 +826,7 @@ int main(int argc, char ** argv)
               for(auto & pc : Push_Consts)
               {
 
-                  compose_cmd_buffer.pushConstants( compose_pipeline->get_layout(),
+                  compose_cmd_buffer.pushConstants( compose_pipeline.getLayout(),
                                                  vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
                                                  0,
                                                  sizeof(compose_pipeline_push_consts),

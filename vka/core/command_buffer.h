@@ -19,6 +19,7 @@ class MeshObject;
 class RenderTarget;
 class RenderTarget2;
 class Screen;
+class Pipeline;
 
 class PushDescriptorInfo
 {
@@ -223,6 +224,9 @@ class command_buffer : public vk::CommandBuffer
 
 
     void beginRender(Screen & target, uint32_t frame_buffer_index);
+    void bindDescriptorSet(vk::PipelineBindPoint pipelineBindPoint, const vka::Pipeline &pipeline, uint32_t firstSet, const vka::descriptor_set *set, uint32_t dynamic_offset) const;
+    void bindDescriptorSet(vk::PipelineBindPoint pipelineBindPoint, const vka::Pipeline &pipeline, uint32_t firstSet, const vka::descriptor_set *set) const;
+    void pushDescriptorSet(vk::PipelineBindPoint bind_point, const vka::Pipeline &pipeline, uint32_t set, const vka::PushDescriptorInfo &Info);
 };
 
 }

@@ -1,16 +1,18 @@
-#if defined OLD_PIPELINE
-
 #include <vka/core/log.h>
-#include <vka/core/pipeline.h>
 #include <vka/core/context.h>
-#include <vka/core/shader.h>
 #include <vka/core/renderpass.h>
 #include <vka/core/descriptor_pool.h>
 #include <vka/core/descriptor_set_layout.h>
 #include <vka/core/descriptor_set.h>
 
 
-vka::pipeline::~pipeline()
+#include <vka/core2/Pipeline.h>
+#include <vka/core2/Shader.h>
+
+namespace vka
+{
+
+Pipeline::~Pipeline()
 {
     if(m_PipelineLayout)
         get_device().destroyPipelineLayout( m_PipelineLayout);
@@ -21,7 +23,7 @@ vka::pipeline::~pipeline()
     }
 }
 
-vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t binding, uint32_t location, uint32_t offset, vk::Format format , uint32_t stride)
+vka::Pipeline* Pipeline::setVertexAttribute(uint32_t binding, uint32_t location, uint32_t offset, vk::Format format , uint32_t stride)
 {
     auto & ad = m_VertexAttributeDescription;
     vk::VertexInputAttributeDescription AD;
@@ -67,7 +69,7 @@ vka::pipeline* vka::pipeline::set_vertex_attribute(uint32_t binding, uint32_t lo
 }
 
 
-vka::pipeline *vka::pipeline::add_texture_layout_binding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages)
+vka::Pipeline *Pipeline::addTextureLayoutBinding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages)
 {
     vk::DescriptorSetLayoutBinding samplerLayoutBinding;
     samplerLayoutBinding.binding            = binding;
@@ -81,7 +83,7 @@ vka::pipeline *vka::pipeline::add_texture_layout_binding(uint32_t set, uint32_t 
     return this;
 }
 
-vka::pipeline *vka::pipeline::add_uniform_layout_binding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages)
+vka::Pipeline *Pipeline::addUniformLayoutBinding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages)
 {
     vk::DescriptorSetLayoutBinding uboLayoutBinding;
     uboLayoutBinding.binding            = binding;
@@ -95,7 +97,7 @@ vka::pipeline *vka::pipeline::add_uniform_layout_binding(uint32_t set, uint32_t 
     return this;
 }
 
-vka::pipeline *vka::pipeline::add_dynamic_uniform_layout_binding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages)
+vka::Pipeline *Pipeline::addDynamicUniformLayoutBinding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages)
 {
     vk::DescriptorSetLayoutBinding duboLayoutBinding;
 
@@ -110,76 +112,77 @@ vka::pipeline *vka::pipeline::add_dynamic_uniform_layout_binding(uint32_t set, u
     return this;
 }
 
-vka::pipeline * vka::pipeline::add_push_constant(uint32_t size, uint32_t offset, vk::ShaderStageFlags stages)
+vka::Pipeline * Pipeline::addPushConstant(uint32_t size, uint32_t offset, vk::ShaderStageFlags stages)
 {
     m_PushConstantRange.push_back( vk::PushConstantRange(stages, offset, size) );
     return this;
 }
 
-vka::descriptor_set* vka::pipeline::create_new_descriptor_set(uint32_t set, descriptor_pool * pool)
+vka::descriptor_set* Pipeline::createNewDescriptorSet(uint32_t set, descriptor_pool * pool)
 {
     descriptor_set * S = pool->allocate_descriptor_set();
     S->create( m_DescriptorSetLayoutBindings.at(set).bindings );
     return S;
 }
 
-vka::pipeline* vka::pipeline::set_render_pass( vka::renderpass * p)
-{
-    m_RenderPass = p;
-    return this;
-}
-
-vka::pipeline* vka::pipeline::SetRenderPass(vk::RenderPass P)
+vka::Pipeline* Pipeline::setRenderPass(vk::RenderPass P)
 {
     m_RenderPass_raw = P;
     return this;
 }
-vka::pipeline * vka::pipeline::set_vertex_shader( const std::string & path  , std::string const & entry_point)
+
+vka::Pipeline * Pipeline::setVertexShader( const std::string & path  , std::string const & entry_point)
 {
     static int i=0;
-    auto * p = get_parent_context()->new_shader_module( std::string("vertex_shader_module_" + std::to_string(i++) ) );
-    p->load_from_file(path);
-    set_vertex_shader(p, entry_point);
+
+    auto p = std::make_shared<Shader>(get_parent_context());
+
+    p->loadFromFile(path);
+    setVertexShader(p, entry_point);
     return this;
 }
 
-vka::pipeline * vka::pipeline::set_fragment_shader( const std::string & path  , std::string const & entry_point)
+vka::Pipeline * Pipeline::setFragmentShader( const std::string & path  , std::string const & entry_point)
 {
     static int i=0;
-    auto * p = get_parent_context()->new_shader_module( std::string("fragment_shader_module_" + std::to_string(i++) ) );
-    p->load_from_file(path);
-    set_fragment_shader(p, entry_point);
+    auto p = std::make_shared<Shader>(get_parent_context());
+
+    p->loadFromFile(path);
+    setFragmentShader(p, entry_point);
     return this;
 }
 
-vka::pipeline * vka::pipeline::set_geometry_shader( const std::string & path  , std::string const & entry_point)
+vka::Pipeline * Pipeline::setGeometryShader( const std::string & path  , std::string const & entry_point)
 {
     static int i=0;
-    auto * p = get_parent_context()->new_shader_module( std::string("geometry_shader_module_" + std::to_string(i++) ) );
-    p->load_from_file(path);
-    set_geometry_shader(p, entry_point);
+    auto p = std::make_shared<Shader>(get_parent_context());
+
+    p->loadFromFile(path);
+    setGeometryShader(p, entry_point);
     return this;
 }
 
-vka::pipeline * vka::pipeline::set_tesselation_control_shader( const std::string & path  , std::string const & entry_point)
+vka::Pipeline * Pipeline::setTesselationControlShader( const std::string & path  , std::string const & entry_point)
 {
     static int i=0;
-    auto * p = get_parent_context()->new_shader_module( std::string("tess_control_shader_module_" + std::to_string(i++) ) );
-    p->load_from_file(path);
-    set_tesselation_control_shader(p, entry_point);
+    auto p = std::make_shared<Shader>(get_parent_context());
+
+    p->loadFromFile(path);
+    setTesselationControlShader(p, entry_point);
     return this;
 }
 
-vka::pipeline * vka::pipeline::set_tesselation_evaluation_shader( const std::string & path  , std::string const & entry_point)
+vka::Pipeline * Pipeline::setTesselationEvaluationShader( const std::string & path  , std::string const & entry_point)
 {
     static int i=0;
-    auto * p = get_parent_context()->new_shader_module( std::string("tess_eval_shader_module_" + std::to_string(i++) ) );
-    p->load_from_file(path);
-    set_tesselation_evaluation_shader(p, entry_point);
+    auto p = std::make_shared<Shader>(get_parent_context());
+
+    p->loadFromFile(path);
+    setTesselationEvaluationShader(p, entry_point);
     return this;
 }
 
-void vka::pipeline::create()
+void Pipeline::create()
 {
     auto device = get_device(); //Device::GetGlobal().m_Device;
 
@@ -194,7 +197,7 @@ void vka::pipeline::create()
         C.dstAlphaBlendFactor = vk::BlendFactor::eOneMinusDstAlpha;
         C.dstColorBlendFactor = vk::BlendFactor::eOneMinusDstAlpha;
 
-        add_color_blend_attachment_state(C);
+        addColorBlendAttachmentState(C);
     }
     m_ColorBlending.attachmentCount   = m_ColorBlendAttachments.size();
     m_ColorBlending.pAttachments      = m_ColorBlendAttachments.data();
@@ -296,10 +299,8 @@ void vka::pipeline::create()
         pipelineInfo.pTessellationState  = &m_TesselationState;
     }
 
-    if( m_RenderPass_raw)
-        pipelineInfo.renderPass          = m_RenderPass_raw;
-    else
-        pipelineInfo.renderPass          = m_RenderPass->m_RenderPass;
+    pipelineInfo.renderPass          = m_RenderPass_raw;
+
     pipelineInfo.subpass = 0;
 
 
@@ -313,5 +314,4 @@ void vka::pipeline::create()
     LOG << "Pipeline created" << ENDL;
 }
 
-#endif
-
+}

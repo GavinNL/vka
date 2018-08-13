@@ -1,23 +1,22 @@
-#if defined OLD_PIPELINE
-
-#ifndef VKA_PIPELINE_H
-#define VKA_PIPELINE_H
-
+#ifndef VKA_CORE2_PIPELINE_H
+#define VKA_CORE2_PIPELINE_H
 
 #include <vulkan/vulkan.hpp>
-#include "deleter.h"
-#include "context_child.h"
-#include "classes.h"
+#include <vka/core/context_child.h>
+
+#include <vka/core2/Shader.h>
+
 #include <map>
 
 namespace vka
 {
 
+class descriptor_set;
+class descriptor_pool;
 
-
-class pipeline : public context_child
+class  Pipeline : public context_child
 {
-private:
+public:
     vk::PipelineLayout      m_PipelineLayout;
 
     vk::Pipeline            m_pipeline;
@@ -58,25 +57,25 @@ private:
     std::map<uint32_t , DescriptorSetLayoutBindingInfo >
                                                      m_DescriptorSetLayoutBindings;
 
-    vka::shader * m_VertexShader   = nullptr;
+    Shader_p        m_VertexShader;
     std::string   m_VertexShaderEntry;
 
-    vka::shader * m_FragmentShader = nullptr;
+    Shader_p        m_FragmentShader;
     std::string   m_FragmentShaderEntry;
 
-    vka::shader * m_GeometryShader = nullptr;
+    Shader_p        m_GeometryShader;
     std::string   m_GeometryShaderEntry;
 
-    vka::shader * m_TesselationEvalShader = nullptr;
+    Shader_p        m_TesselationEvalShader;
     std::string   m_TesselationEvalShaderEntry;
 
-    vka::shader * m_TesselationControlShader = nullptr;
+    Shader_p        m_TesselationControlShader;
     std::string   m_TesselationControlShaderEntry;
 
-    vka::renderpass  * m_RenderPass = nullptr;
     vk::RenderPass     m_RenderPass_raw;
 
-    pipeline(context * parent) : context_child(parent)
+    Pipeline(context * parent) :
+        context_child(parent)
     {
      //   #warning We need to change this
         m_viewport = vk::Viewport{0.0f,0.0f, 640.0f, 480.0f, 0.0f, 1.0f};
@@ -151,7 +150,7 @@ private:
 
     }
 
-    ~pipeline();
+    ~Pipeline();
 
 public:
 
@@ -160,128 +159,127 @@ public:
         return m_pipeline;
     }
 
-    pipeline* set_scissor( vk::Rect2D const & sc)
+    Pipeline* setScissor( vk::Rect2D const & sc)
     {
         m_scissor = sc;
         return this;
     }
-    pipeline* set_viewport( vk::Viewport const & vp)
+    Pipeline* setViewport( vk::Viewport const & vp)
     {
         m_viewport = vp;
         return this;
     }
 
-    pipeline* set_cull_mode(vk::CullModeFlags flags)
+    Pipeline* setCullMode(vk::CullModeFlags flags)
     {
         m_Rasterizer.cullMode = flags;
         return this;
     }
 
-    pipeline* set_polygon_mode( vk::PolygonMode mode )
+    Pipeline* setPolygonMode( vk::PolygonMode mode )
     {
         m_Rasterizer.polygonMode = mode;
         return this;
     }
 
-    pipeline* set_front_face( vk::FrontFace face )
+    Pipeline* setFrontFace( vk::FrontFace face )
     {
         m_Rasterizer.frontFace = face;
         return this;
     }
 
-    pipeline * set_vertex_shader  ( const std::string & path  , std::string const & entry_point);
-    pipeline * set_fragment_shader( const std::string & path, std::string const & entry_point);
-    pipeline * set_geometry_shader( const std::string & path, std::string const & entry_point);
-    pipeline * set_tesselation_control_shader( const std::string & path, std::string const & entry_point);
-    pipeline * set_tesselation_evaluation_shader( const std::string & path, std::string const & entry_point);
+    Pipeline * setVertexShader  ( const std::string & path  , std::string const & entry_point);
+    Pipeline * setFragmentShader( const std::string & path, std::string const & entry_point);
+    Pipeline * setGeometryShader( const std::string & path, std::string const & entry_point);
+    Pipeline * setTesselationControlShader( const std::string & path, std::string const & entry_point);
+    Pipeline * setTesselationEvaluationShader( const std::string & path, std::string const & entry_point);
 
-    pipeline* set_vertex_shader( vka::shader * shader, std::string entry_point="main")
+    Pipeline* setVertexShader( Shader_p shader, std::string entry_point="main")
     {
         m_VertexShader = shader;
         m_VertexShaderEntry = entry_point;
         return this;
     }
 
-    pipeline* set_fragment_shader( vka::shader * shader, std::string entry_point="main")
+    Pipeline* setFragmentShader( Shader_p shader, std::string entry_point="main")
     {
         m_FragmentShader = shader;
         m_FragmentShaderEntry = entry_point;
         return this;
     }
 
-    pipeline* set_geometry_shader( vka::shader * shader, std::string entry_point="main")
+    Pipeline* setGeometryShader( Shader_p shader, std::string entry_point="main")
     {
         m_GeometryShader = shader;
         m_GeometryShaderEntry = entry_point;
         return this;
     }
 
-    pipeline* set_tesselation_control_shader( vka::shader * shader, std::string entry_point="main")
+    Pipeline* setTesselationControlShader( Shader_p shader, std::string entry_point="main")
     {
         m_TesselationControlShader = shader;
         m_TesselationControlShaderEntry = entry_point;
         return this;
     }
 
-    pipeline* set_tesselation_evaluation_shader( vka::shader * shader, std::string entry_point="main")
+    Pipeline* setTesselationEvaluationShader( Shader_p shader, std::string entry_point="main")
     {
         m_TesselationEvalShader = shader;
         m_TesselationEvalShaderEntry = entry_point;
         return this;
     }
 
-    pipeline* set_toplogy( vk::PrimitiveTopology r )
+    Pipeline* setTopology( vk::PrimitiveTopology r )
     {
         m_InputAssembly.topology = r;
         return this;
     }
 
-    pipeline* set_tesselation_patch_control_points(uint32_t num_points)
+    Pipeline* setTesselationPatchControlPoints(uint32_t num_points)
     {
         m_TesselationState.patchControlPoints = num_points;
         return this;
     }
 
-    pipeline* set_line_width(float f)
+    Pipeline* setLineWidth(float f)
     {
         m_Rasterizer.lineWidth = f;
         return this;
     }
 
-    pipeline* set_render_pass( vka::renderpass * p);
-    pipeline* SetRenderPass( vk::RenderPass P);
+    Pipeline* setRenderPass( vk::RenderPass P);
 
-    pipeline* set_vertex_attribute(uint32_t binding, uint32_t location, uint32_t offset, vk::Format format , uint32_t size);
+    Pipeline* setVertexAttribute(uint32_t binding, uint32_t location, uint32_t offset, vk::Format format , uint32_t size);
 
 
-    vk::PipelineLayout  get_layout() const {
+    vk::PipelineLayout  getLayout() const {
         return m_PipelineLayout;
     }
 
-    pipeline* add_texture_layout_binding(        uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
-    pipeline* add_uniform_layout_binding(        uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
-    pipeline* add_dynamic_uniform_layout_binding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
-    pipeline* add_push_constant(uint32_t size, uint32_t offset, vk::ShaderStageFlags stages);
+    Pipeline* addTextureLayoutBinding(        uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
+    Pipeline* addUniformLayoutBinding(        uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
+    Pipeline* addDynamicUniformLayoutBinding(uint32_t set, uint32_t binding, vk::ShaderStageFlags stages);
+    Pipeline* addPushConstant(uint32_t size, uint32_t offset, vk::ShaderStageFlags stages);
 
-    pipeline* enable_push_descriptor(uint32_t set_number)
+    Pipeline* enablePushDescriptor(uint32_t set_number)
     {
         m_DescriptorSetLayoutBindings[set_number].flags |= vk::DescriptorSetLayoutCreateFlagBits::ePushDescriptorKHR;
         return this;
     }
 
 
-    pipeline* add_color_blend_attachment_state( const vk::PipelineColorBlendAttachmentState & C)
+    Pipeline* addColorBlendAttachmentState( const vk::PipelineColorBlendAttachmentState & C)
     {
         m_ColorBlendAttachments.push_back(C);
         return this;
     }
 
-    vk::PipelineColorBlendAttachmentState& get_color_blend_attachment_state(uint32_t i)
+    vk::PipelineColorBlendAttachmentState& getColorBlendAttachmentState(uint32_t i)
     {
         return m_ColorBlendAttachments[i];
     }
 
-    pipeline* set_color_attachments(uint32_t num)
+    Pipeline* setColorAttachments(uint32_t num)
     {
         vk::PipelineColorBlendAttachmentState C;
         C.colorWriteMask      = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
@@ -293,7 +291,7 @@ public:
         C.dstColorBlendFactor = vk::BlendFactor::eOneMinusDstAlpha;
 
         for(uint32_t i =0;i<num;++i)
-            add_color_blend_attachment_state(C);
+            addColorBlendAttachmentState(C);
 
         return this;
     }
@@ -304,19 +302,17 @@ public:
      * @param pool - the pool to allocate the descriptor set from
      * @return
      *
-     * Create a new descriptor set based on the layout created in this pipeline.
+     * Create a new descriptor set based on the layout created in this Pipeline.
      */
-    descriptor_set* create_new_descriptor_set(uint32_t set, descriptor_pool * pool);
+    descriptor_set* createNewDescriptorSet(uint32_t set, descriptor_pool * pool);
 
     void create();
 
     friend class context;
-    friend class deleter<pipeline>;
+    friend class deleter<Pipeline>;
 
 };
 
 }
-
-#endif
 
 #endif
