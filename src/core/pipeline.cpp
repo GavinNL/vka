@@ -1,3 +1,5 @@
+#if defined OLD_PIPELINE
+
 #include <vka/core/log.h>
 #include <vka/core/pipeline.h>
 #include <vka/core/context.h>
@@ -6,6 +8,7 @@
 #include <vka/core/descriptor_pool.h>
 #include <vka/core/descriptor_set_layout.h>
 #include <vka/core/descriptor_set.h>
+
 
 vka::pipeline::~pipeline()
 {
@@ -309,3 +312,6 @@ void vka::pipeline::create()
     }
     LOG << "Pipeline created" << ENDL;
 }
+
+#endif
+

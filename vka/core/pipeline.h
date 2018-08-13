@@ -1,5 +1,8 @@
+#if defined OLD_PIPELINE
+
 #ifndef VKA_PIPELINE_H
 #define VKA_PIPELINE_H
+
 
 #include <vulkan/vulkan.hpp>
 #include "deleter.h"
@@ -313,5 +316,7 @@ public:
 };
 
 }
+
+#endif
 
 #endif

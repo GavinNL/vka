@@ -333,6 +333,8 @@ vka::managed_buffer* vka::context::new_managed_buffer(const std::string & name)
         return _new<vka::managed_buffer>(name);
 }
 
+#if defined OLD_PIPELINE
+
 vka::shader* vka::context::new_shader_module(const std::string &name)
 {
     return _new<vka::shader>(name);
@@ -350,7 +352,7 @@ vka::pipeline* vka::context::new_pipeline(const std::string &name)
 
     return R;
 }
-
+#endif
 vka::semaphore *vka::context::new_semaphore(const std::string &name)
 {
     return _new<vka::semaphore>(name);

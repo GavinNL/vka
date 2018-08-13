@@ -1,3 +1,5 @@
+#if defined OLD_SHADER
+
 #ifndef VKA_SHADER_H
 #define VKA_SHADER_H
 
@@ -59,4 +61,5 @@ class shader : public context_child
 
 }
 
+#endif
 #endif

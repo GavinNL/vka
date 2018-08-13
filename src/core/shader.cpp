@@ -1,3 +1,5 @@
+#if defined OLD_SHADER
+
 #include <vka/core/context.h>
 #include <vka/core/shader.h>
 #include <fstream>
@@ -95,3 +97,4 @@ void vka::shader::load_from_memory(const std::string  &SPIRV_code)
 
 //    ScreenData.m_Shaders[code] = get_shared();
 }
+#endif
