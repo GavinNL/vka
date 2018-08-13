@@ -218,7 +218,7 @@ SDL_Window* initWindow()
 {
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS );
 
-    if(SDL_Vulkan_LoadLibrary(NULL) == -1)
+    if(SDL_Vulkan_LoadLibrary(nullptr) == -1)
     {
         std::cout << "Error loading vulkan" << std::endl;
         exit(1);
@@ -232,7 +232,7 @@ SDL_Window* initWindow()
         HEIGHT,
         SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
-    if(window == NULL)
+    if(window == nullptr)
     {
         std::cout << "Couldn\'t set video mode: " << SDL_GetError() << std::endl;
         exit(1);
@@ -249,7 +249,7 @@ int main(int argc, char ** argv)
 
 
     unsigned int count = 0;
-    SDL_Vulkan_GetInstanceExtensions(window, &count, NULL);
+    SDL_Vulkan_GetInstanceExtensions(window, &count, nullptr);
     const char **names = new const char *[count];
     SDL_Vulkan_GetInstanceExtensions(window, &count, names);
 

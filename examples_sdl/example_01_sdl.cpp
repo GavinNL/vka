@@ -61,7 +61,7 @@
  *
  * Gets the number of seconds since the application started.
  */
-float get_elapsed_time()
+double get_elapsed_time()
 {
     static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -76,7 +76,7 @@ SDL_Window* initWindow()
 {
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS );
 
-    if(SDL_Vulkan_LoadLibrary(NULL) == -1)
+    if(SDL_Vulkan_LoadLibrary(nullptr) == -1)
     {
         std::cout << "Error loading vulkan" << std::endl;
         exit(1);
@@ -90,7 +90,7 @@ SDL_Window* initWindow()
         HEIGHT,
         SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
-    if(window == NULL)
+    if(window == nullptr)
     {
         std::cout << "Couldn\'t set video mode: " << SDL_GetError() << std::endl;
         exit(1);
@@ -108,7 +108,7 @@ int main(int argc, char ** argv)
 
 
     unsigned int count = 0;
-    SDL_Vulkan_GetInstanceExtensions(window, &count, NULL);
+    SDL_Vulkan_GetInstanceExtensions(window, &count, nullptr);
     const char **names = new const char *[count];
     SDL_Vulkan_GetInstanceExtensions(window, &count, names);
 
@@ -472,7 +472,8 @@ int main(int argc, char ** argv)
 
       // Create a Reference to the staging buffer map so that we can
       // write data into the buffer
-      uniform_buffer_t & UniformBufferRef = *( (uniform_buffer_t*)(StagingBufferMap) );
+      //uniform_buffer_t & UniformBufferRef = *( (uniform_buffer_t*)(StagingBufferMap) );
+      uniform_buffer_t & UniformBufferRef = *static_cast<uniform_buffer_t*>(StagingBufferMap);
       UniformBufferRef.model = glm::rotate( glm::mat4(), t * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
       UniformBufferRef.view  = glm::lookAt( glm::vec3(5.0f, 5.0f, 5.0f),
                                               glm::vec3(0.0f, 0.0f, 0.0f),
