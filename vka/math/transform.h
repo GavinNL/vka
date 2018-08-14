@@ -30,7 +30,7 @@
 #ifndef VKA_TRANSFORM_H
 #define VKA_TRANSFORM_H
 
-#include <vka/utils/linalg.h>
+#include <vka/math/linalg.h>
 
 namespace vka
 {

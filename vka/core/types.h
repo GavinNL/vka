@@ -7,7 +7,7 @@
 #include <vulkan/vulkan.hpp>
 #include <exception>
 
-#include <vka/utils/linalg.h>
+#include <vka/math/linalg.h>
 
 namespace vka
 {

@@ -40,7 +40,7 @@
 #include <vka/core2/Pipeline.h>
 #include <vka/core2/Screen.h>
 
-#include <vka/utils/linalg.h>
+#include <vka/math/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768

@@ -42,11 +42,11 @@
 #include <vka/core2/MeshObject.h>
 
 #include <vka/utils/glfw_window_handler.h>
-#include <vka/core/camera.h>
+#include <vka/utils/camera.h>
 
 #include <vka/core2/Screen.h>
 #include <vka/core2/RenderTarget2.h>
-#include <vka/utils/linalg.h>
+#include <vka/math/linalg.h>
 
 #define WIDTH 1920
 #define HEIGHT 1200

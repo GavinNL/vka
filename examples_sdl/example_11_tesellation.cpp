@@ -38,13 +38,13 @@
 #include <vka/core/image.h>
 #include <vka/vka.h>
 
-#include <vka/utils/linalg.h>
+#include <vka/math/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
 #define APP_TITLE "Tesellation"
 
-#include <vka/core/camera.h>
+#include <vka/utils/camera.h>
 #include <vka/core/transform.h>
 #include <vka/core/primatives.h>
 
