@@ -26,7 +26,7 @@
 #define VKA_CAMERA_H
 
 
-#include <vka/utils/linalg.h>
+#include <vka/math/linalg.h>
 #include <chrono>
 #include "transform.h"
 #include <functional>
