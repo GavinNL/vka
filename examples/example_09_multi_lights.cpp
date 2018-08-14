@@ -46,7 +46,7 @@
 
 #include <vka/core2/Screen.h>
 #include <vka/core2/RenderTarget2.h>
-#include <vka/linalg.h>
+#include <vka/utils/linalg.h>
 
 #define WIDTH 1920
 #define HEIGHT 1200

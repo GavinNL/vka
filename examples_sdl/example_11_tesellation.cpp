@@ -38,7 +38,7 @@
 #include <vka/core/image.h>
 #include <vka/vka.h>
 
-#include <vka/linalg.h>
+#include <vka/utils/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768

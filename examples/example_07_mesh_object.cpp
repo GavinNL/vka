@@ -42,7 +42,7 @@
 #include <vka/core2/MeshObject.h>
 #include <vka/core2/Screen.h>
 
-#include <vka/linalg.h>
+#include <vka/utils/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768

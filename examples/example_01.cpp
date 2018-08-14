@@ -35,7 +35,7 @@
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/Pipeline.h>
 
-#include <vka/linalg.h>
+#include <vka/utils/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
