@@ -386,12 +386,25 @@ public:
     void FreeTexture( Texture & S )
     {
         m_manager.free( S.m_offset);
+
+        get_device().destroyImage(S.m_Image);
+
+        for(auto & x : S.m_Views)
+        {
+            get_device().destroyImageView( x.second );
+        }
+        for(auto & x : S.m_Samplers)
+        {
+            get_device().destroySampler( x.second );
+        }
+
+        S.m_Views.clear();
+        S.m_Samplers.clear();
+        S.m_Image = vk::Image();
+
         S.m_offset = 0;
         S.m_size = 0;
         S.m_parent = nullptr;
-
-        get_device().destroyImage(S.m_Image);
-        S.m_Image = vk::Image();
     }
 
 
@@ -594,16 +607,6 @@ inline void Texture::Destroy()
 {
     if(m_Image)
     {
-        for(auto & v : m_Views)
-        {
-            m_parent->get_device().destroyImageView( v.second );
-        }
-        for(auto & v : m_Samplers)
-        {
-            m_parent->get_device().destroySampler( v.second );
-        }
-        m_Samplers.clear();
-        m_Views.clear();
         m_parent->FreeTexture(*this);
     }
 }
