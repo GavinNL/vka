@@ -377,12 +377,6 @@ void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
     m_device.resetFences( m_render_fence );
 }
 
-
-vka::descriptor_pool* vka::context::new_descriptor_pool(const std::string & name)
-{
-    return _new<vka::descriptor_pool>(name);
-}
-
 vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::string &name)
 {
     return _new<vka::descriptor_set_layout>(name);

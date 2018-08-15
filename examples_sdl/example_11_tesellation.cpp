@@ -169,8 +169,8 @@ public:
 
     FullScreenQuadRenderer_t(vka::command_buffer & cb ,
                              vka::pipeline * pipeline,
-                             vka::descriptor_set * texture_set,
-                             vka::descriptor_set * uniform_set) : m_pipeline(pipeline) , m_commandbuffer(cb)
+                             vka::DescriptorSet_p  texture_set,
+                             vka::DescriptorSet_p  uniform_set) : m_pipeline(pipeline) , m_commandbuffer(cb)
     {
         m_commandbuffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
 
@@ -229,10 +229,10 @@ struct App : public VulkanApp
       // Initialize the Command and Descriptor Pools
       //==========================================================================
       m_descriptor_pool = m_Context.new_descriptor_pool("main_desc_pool");
-      m_descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 25);
-      m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 5);
-      m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
-      m_descriptor_pool->create();
+      m_descriptor_pool.set_pool_size(vk::DescriptorType::eCombinedImageSampler, 25);
+      m_descriptor_pool.set_pool_size(vk::DescriptorType::eUniformBuffer, 5);
+      m_descriptor_pool.set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
+      m_descriptor_pool.create();
 
       m_command_pool = m_Context.new_command_pool("main_command_pool");
       //==========================================================================
@@ -989,11 +989,11 @@ struct App : public VulkanApp
 
   struct
   {
-    //vka::descriptor_set * texture_array;
-    //vka::descriptor_set * uniform_buffer;
-    vka::descriptor_set * light_uniform_buffer;
+    //vka::DescriptorSet_p  texture_array;
+    //vka::DescriptorSet_p  uniform_buffer;
+    vka::DescriptorSet_p  light_uniform_buffer;
 
-    vka::descriptor_set * renderTargets;
+    vka::DescriptorSet_p  renderTargets;
   } m_dsets;
 
   struct

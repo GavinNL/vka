@@ -223,7 +223,6 @@ public:
 
     vka::command_pool* new_command_pool(const std::string & name);
 
-    vka::descriptor_pool* new_descriptor_pool(const std::string & name);
 
     // this one should be private
     vka::descriptor_set_layout* new_descriptor_set_layout(const std::string & name);

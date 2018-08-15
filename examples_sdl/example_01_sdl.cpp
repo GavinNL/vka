@@ -149,10 +149,10 @@ int main(int argc, char ** argv)
     //==========================================================================
     // Initialize the Command and Descriptor Pools
     //==========================================================================
-    vka::descriptor_pool* descriptor_pool = C.new_descriptor_pool("main_desc_pool");
-    descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 2);
-    descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
-    descriptor_pool->create();
+    vka::DescriptorPool descriptor_pool(&C);
+    descriptor_pool.set_pool_size(vk::DescriptorType::eCombinedImageSampler, 2);
+    descriptor_pool.set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
+    descriptor_pool.create();
 
     vka::command_pool* cp = C.new_command_pool("main_command_pool");
     //==========================================================================
@@ -405,14 +405,14 @@ int main(int argc, char ** argv)
 //   The pipline object can generate a descriptor set for you.
 //==============================================================================
     // we want a descriptor set for set #0 in the pipeline.
-    vka::descriptor_set * texture_descriptor = pipeline.createNewDescriptorSet(0, descriptor_pool);
+    vka::DescriptorSet_p  texture_descriptor = pipeline.createNewDescriptorSet(0, &descriptor_pool);
     //  attach our texture to binding 0 in the set.
 
     texture_descriptor->AttachSampler(0, Tex);
 
     texture_descriptor->update();
 
-    vka::descriptor_set * ubuffer_descriptor = pipeline.createNewDescriptorSet(1, descriptor_pool);
+    vka::DescriptorSet_p  ubuffer_descriptor = pipeline.createNewDescriptorSet(1, &descriptor_pool);
 
     ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
 

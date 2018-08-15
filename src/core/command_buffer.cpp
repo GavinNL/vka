@@ -54,7 +54,7 @@ void vka::command_buffer::pushDescriptorSet( vk::PipelineBindPoint bind_point, v
 void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
                         vka::Pipeline const & pipeline,
                         uint32_t firstSet,
-                        vka::descriptor_set const * set) const
+                        vka::DescriptorSet_p const & set) const
 {
        bindDescriptorSets( pipelineBindPoint,
                            pipeline.getLayout(),
@@ -67,7 +67,7 @@ void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindP
 void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
                         vka::Pipeline const & pipeline,
                         uint32_t firstSet,
-                        vka::descriptor_set const * set,
+                        vka::DescriptorSet_p const & set,
                         uint32_t dynamic_offset) const
 {
        bindDescriptorSets( pipelineBindPoint,

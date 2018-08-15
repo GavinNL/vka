@@ -12,6 +12,7 @@ namespace vka
 
 class SubBuffer;
 class Texture;
+class DescriptorPool;
 
 struct DescriptorInfo
 {
@@ -24,7 +25,10 @@ struct DescriptorInfo
 class descriptor_set : public context_child
 {
 public:
-    CONTEXT_CHILD_DEFAULT_CONSTRUCTOR(descriptor_set)
+
+    descriptor_set(context * parent) : context_child(parent)
+    {
+    }
 
     ~descriptor_set();
 
@@ -73,15 +77,19 @@ public:
 
 private:
     vk::DescriptorSet     m_descriptor_set;
-    vka::descriptor_pool *m_parent_pool = nullptr;
+    vka::DescriptorPool *m_parent_pool = nullptr;
     std::vector< vk::DescriptorSetLayoutBinding > m_bindings;
     std::map<uint32_t, DescriptorInfo>    m_DescriptorInfos;
 
 
     friend class context;
     friend class deleter<descriptor_set>;
-    friend class descriptor_pool;
+    friend class DescriptorPool;
 };
+
+
+using DescriptorSet_p = std::shared_ptr<descriptor_set>;
+using DescriptorSet_w = std::shared_ptr<descriptor_set>;
 
 }
 

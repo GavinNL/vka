@@ -2,15 +2,16 @@
 #include <vka/core/descriptor_set.h>
 #include <vka/core/log.h>
 
-vka::descriptor_pool::~descriptor_pool()
+vka::DescriptorPool::~DescriptorPool()
 {
     if(m_descriptor_pool)
     {
         get_device().destroyDescriptorPool( m_descriptor_pool );
+
     }
 }
 
-void vka::descriptor_pool::create()
+void vka::DescriptorPool::create()
 {
     if( m_pools.size() ==0 )
     {
@@ -41,11 +42,11 @@ void vka::descriptor_pool::create()
     LOG << "Descriptor Pool created" << ENDL;
 }
 
-vka::descriptor_set *vka::descriptor_pool::allocate_descriptor_set()
+vka::DescriptorSet_p vka::DescriptorPool::allocateDescriptorSet()
 {
-    auto * set = new vka::descriptor_set( get_parent_context() );
+    auto set = std::make_shared<vka::descriptor_set>(get_parent_context());
 
-    m_sets.insert(set);
+    m_Sets.insert(set);
     set->m_parent_pool = this;
 
     return set;

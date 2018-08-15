@@ -234,13 +234,13 @@ int main(int argc, char ** argv)
     //==========================================================================
     // Initialize the Command and Descriptor Pools
     //==========================================================================
-    vka::descriptor_pool* descriptor_pool = C.new_descriptor_pool("main_desc_pool");
-    descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 10);
-    descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
+    vka::DescriptorPool descriptor_pool(&C);
+    descriptor_pool.set_pool_size(vk::DescriptorType::eCombinedImageSampler, 10);
+    descriptor_pool.set_pool_size(vk::DescriptorType::eUniformBuffer, 1);
     // [NEW]
-    descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
+    descriptor_pool.set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
 
-    descriptor_pool->create();
+    descriptor_pool.create();
 
     vka::command_pool* cp = C.new_command_pool("main_command_pool");
     //==========================================================================
@@ -462,7 +462,7 @@ int main(int argc, char ** argv)
 
         // Create a new descriptor set based on the descriptor information we
         // gave to the Compose pipeline
-        vka::descriptor_set * renderTargets = compose_pipeline.createNewDescriptorSet(0, descriptor_pool);
+        vka::DescriptorSet_p  renderTargets = compose_pipeline.createNewDescriptorSet(0, &descriptor_pool);
         renderTargets->AttachSampler(0, myRenderTarget.GetColorImage(0) );
         renderTargets->AttachSampler(1, myRenderTarget.GetColorImage(1) );
         renderTargets->AttachSampler(2, myRenderTarget.GetColorImage(2) );
@@ -479,12 +479,12 @@ int main(int argc, char ** argv)
 //   The pipline object can generate a descriptor set for you.
 //==============================================================================
     // we want a descriptor set for set #0 in the pipeline.
-    vka::descriptor_set * texture_descriptor = g_buffer_pipeline.createNewDescriptorSet(0, descriptor_pool);
+    vka::DescriptorSet_p  texture_descriptor = g_buffer_pipeline.createNewDescriptorSet(0, &descriptor_pool);
     //  attach our texture to binding 0 in the set.
     texture_descriptor->AttachSampler(0, Tex);
     texture_descriptor->update();
 
-    vka::descriptor_set * ubuffer_descriptor = g_buffer_pipeline.createNewDescriptorSet(1, descriptor_pool);
+    vka::DescriptorSet_p  ubuffer_descriptor = g_buffer_pipeline.createNewDescriptorSet(1, &descriptor_pool);
     ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
     ubuffer_descriptor->update();
 

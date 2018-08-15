@@ -117,9 +117,9 @@ vka::Pipeline * Pipeline::addPushConstant(uint32_t size, uint32_t offset, vk::Sh
     return this;
 }
 
-vka::descriptor_set* Pipeline::createNewDescriptorSet(uint32_t set, descriptor_pool * pool)
+vka::DescriptorSet_p Pipeline::createNewDescriptorSet(uint32_t set, DescriptorPool * pool)
 {
-    descriptor_set * S = pool->allocate_descriptor_set();
+    auto S = pool->allocateDescriptorSet();
     S->create( m_DescriptorSetLayoutBindings.at(set).bindings );
     return S;
 }

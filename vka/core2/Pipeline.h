@@ -12,7 +12,7 @@ namespace vka
 {
 
 class descriptor_set;
-class descriptor_pool;
+class DescriptorPool;
 
 class  Pipeline : public context_child
 {
@@ -304,7 +304,7 @@ public:
      *
      * Create a new descriptor set based on the layout created in this Pipeline.
      */
-    descriptor_set* createNewDescriptorSet(uint32_t set, descriptor_pool * pool);
+    vka::DescriptorSet_p createNewDescriptorSet(uint32_t set, DescriptorPool * pool);
 
     void create();
 
