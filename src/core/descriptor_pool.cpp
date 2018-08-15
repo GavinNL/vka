@@ -44,7 +44,7 @@ void vka::DescriptorPool::create()
 
 vka::DescriptorSet_p vka::DescriptorPool::allocateDescriptorSet()
 {
-    auto set = std::make_shared<vka::descriptor_set>(get_parent_context());
+    auto set = std::make_shared<vka::DescriptorSet>(get_parent_context());
 
     m_Sets.insert(set);
     set->m_parent_pool = this;

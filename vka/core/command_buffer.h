@@ -9,7 +9,7 @@ namespace vka
 class buffer;
 class sub_buffer;
 class pipeline;
-class descriptor_set;
+class DescriptorSet;
 class texture;
 
 
@@ -21,7 +21,7 @@ class RenderTarget2;
 class Screen;
 class Pipeline;
 class DescriptorSet;
-using DescriptorSet_p = std::shared_ptr<descriptor_set>;
+using DescriptorSet_p = std::shared_ptr<DescriptorSet>;
 class PushDescriptorInfo
 {
 public:
@@ -77,12 +77,12 @@ class command_buffer : public vk::CommandBuffer
     void bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
                             vka::pipeline const * pipeline,
                             uint32_t firstSet,
-                            vka::descriptor_set const * set ) const;
+                            vka::DescriptorSet const * set ) const;
 
     void bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
                             vka::pipeline const * pipeline,
                             uint32_t firstSet,
-                            vka::descriptor_set const * set,
+                            vka::DescriptorSet const * set,
                             uint32_t dynamic_offset) const;
 
 

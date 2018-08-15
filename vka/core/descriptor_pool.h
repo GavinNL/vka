@@ -48,7 +48,7 @@ private:
 
     friend class context;
     friend class deleter<DescriptorPool>;
-    friend class descriptor_set;
+    friend class DescriptorSet;
 };
 
 }

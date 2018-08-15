@@ -11,7 +11,7 @@
 namespace vka
 {
 
-class descriptor_set;
+class DescriptorSet;
 class DescriptorPool;
 
 class  Pipeline : public context_child

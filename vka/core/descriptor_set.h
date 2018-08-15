@@ -22,15 +22,15 @@ struct DescriptorInfo
 };
 
 
-class descriptor_set : public context_child
+class DescriptorSet : public context_child
 {
 public:
 
-    descriptor_set(context * parent) : context_child(parent)
+    DescriptorSet(context * parent) : context_child(parent)
     {
     }
 
-    ~descriptor_set();
+    ~DescriptorSet();
 
 
     operator vk::DescriptorSet()
@@ -54,22 +54,22 @@ public:
     //==========================================
     void update();
 
-    vka::descriptor_set* AttachUniformBuffer(uint32_t index,
+    vka::DescriptorSet* AttachUniformBuffer(uint32_t index,
                                              std::shared_ptr<SubBuffer> & sub_buffer ,
                                              vk::DeviceSize size,
                                              vk::DeviceSize offset=0);
 
-    vka::descriptor_set *AttachDynamicUniformBuffer(uint32_t index,
+    vka::DescriptorSet *AttachDynamicUniformBuffer(uint32_t index,
                                                     std::shared_ptr<SubBuffer> &sub_buffer,
                                                     vk::DeviceSize size,
                                                     vk::DeviceSize offset=0);
 
-    vka::descriptor_set *AttachSampler(uint32_t index,
+    vka::DescriptorSet *AttachSampler(uint32_t index,
                                         std::shared_ptr<Texture> texture,
                                        vk::ImageView view,
                                        vk::Sampler sampler);
 
-    vka::descriptor_set *AttachSampler(uint32_t index,
+    vka::DescriptorSet *AttachSampler(uint32_t index,
                                        std::shared_ptr<vka::Texture> texture,
                                        std::string const & view_name = "default",
                                        std::string const & sampler_name = "default");
@@ -83,13 +83,13 @@ private:
 
 
     friend class context;
-    friend class deleter<descriptor_set>;
+    friend class deleter<DescriptorSet>;
     friend class DescriptorPool;
 };
 
 
-using DescriptorSet_p = std::shared_ptr<descriptor_set>;
-using DescriptorSet_w = std::shared_ptr<descriptor_set>;
+using DescriptorSet_p = std::shared_ptr<DescriptorSet>;
+using DescriptorSet_w = std::shared_ptr<DescriptorSet>;
 
 }
 

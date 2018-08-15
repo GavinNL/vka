@@ -9,12 +9,12 @@
 
 #include <vka/core/log.h>
 
-vka::descriptor_set::~descriptor_set()
+vka::DescriptorSet::~DescriptorSet()
 {
 
 }
 
-void vka::descriptor_set::create(std::vector< vk::DescriptorSetLayoutBinding > const & bindings)
+void vka::DescriptorSet::create(std::vector< vk::DescriptorSetLayoutBinding > const & bindings)
 {
     m_bindings = bindings;
     auto * dsl = get_parent_context()->new_descriptor_set_layout(m_bindings);
@@ -37,7 +37,7 @@ void vka::descriptor_set::create(std::vector< vk::DescriptorSetLayoutBinding > c
 
 
 
-void vka::descriptor_set::update()
+void vka::DescriptorSet::update()
 {
     std::vector<vk::WriteDescriptorSet> descriptorWrite;
 
@@ -77,7 +77,7 @@ void vka::descriptor_set::update()
 
 //------------------
 
-vka::descriptor_set * vka::descriptor_set::AttachUniformBuffer(uint32_t index,
+vka::DescriptorSet * vka::DescriptorSet::AttachUniformBuffer(uint32_t index,
                      std::shared_ptr<SubBuffer> & sub_buffer ,
                      vk::DeviceSize size,
                      vk::DeviceSize offset)
@@ -94,7 +94,7 @@ vka::descriptor_set * vka::descriptor_set::AttachUniformBuffer(uint32_t index,
     return this;
 }
 
-vka::descriptor_set * vka::descriptor_set::AttachDynamicUniformBuffer(uint32_t index,
+vka::DescriptorSet * vka::DescriptorSet::AttachDynamicUniformBuffer(uint32_t index,
                      std::shared_ptr<SubBuffer> & sub_buffer ,
                      vk::DeviceSize size,
                      vk::DeviceSize offset)
@@ -112,7 +112,7 @@ vka::descriptor_set * vka::descriptor_set::AttachDynamicUniformBuffer(uint32_t i
 }
 
 
-vka::descriptor_set * vka::descriptor_set::AttachSampler( uint32_t index,
+vka::DescriptorSet * vka::DescriptorSet::AttachSampler( uint32_t index,
                                                           std::shared_ptr<vka::Texture>  texture,
                                                           vk::ImageView view,
                                                           vk::Sampler sampler
@@ -130,7 +130,7 @@ vka::descriptor_set * vka::descriptor_set::AttachSampler( uint32_t index,
     return this;
 }
 
-vka::descriptor_set * vka::descriptor_set::AttachSampler(uint32_t index,
+vka::DescriptorSet * vka::DescriptorSet::AttachSampler(uint32_t index,
                                                          std::shared_ptr<Texture> texture,
                                                          std::string const & view_name,
                                                          std::string const & sampler_name)
