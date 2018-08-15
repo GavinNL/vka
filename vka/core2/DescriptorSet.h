@@ -2,8 +2,8 @@
 #define VKA_DESCRIPTOR_SET_H
 
 #include <vulkan/vulkan.hpp>
-#include "context_child.h"
-#include "classes.h"
+#include <vka/core/context_child.h>
+#include <vka/core/classes.h>
 #include <map>
 
 

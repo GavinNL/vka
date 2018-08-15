@@ -1,5 +1,5 @@
-#include <vka/core/descriptor_pool.h>
-#include <vka/core/descriptor_set.h>
+#include <vka/core2/DescriptorPool.h>
+#include <vka/core2/DescriptorSet.h>
 #include <vka/core/log.h>
 
 vka::DescriptorPool::~DescriptorPool()

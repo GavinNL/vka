@@ -1,9 +1,9 @@
 #include <vka/core/context.h>
 #include <vka/core/command_pool.h>
 #include <vka/core/semaphore.h>
-#include <vka/core/descriptor_pool.h>
+#include <vka/core2/DescriptorPool.h>
 #include <vka/core/descriptor_set_layout.h>
-#include <vka/core/descriptor_set.h>
+#include <vka/core2/DescriptorSet.h>
 #include <vulkan/vulkan.hpp>
 #include <vka/core/context_child.h>
 #include <vka/core/extensions.h>

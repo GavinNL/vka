@@ -2,8 +2,8 @@
 #define VKA_DESCRIPTOR_POOL_H
 
 #include <vulkan/vulkan.hpp>
-#include "context_child.h"
-#include <vka/core/descriptor_set.h>
+#include <vka/core/context_child.h>
+#include <vka/core2/DescriptorSet.h>
 #include <map>
 #include <set>
 
