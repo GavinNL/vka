@@ -17,9 +17,14 @@ class sub_buffer;
 class descriptor_set_layout : public context_child
 {
 public:
-    CONTEXT_CHILD_DEFAULT_CONSTRUCTOR(descriptor_set_layout)
+    descriptor_set_layout(context * C) : context_child(C)
+    {
+
+    }
 
     ~descriptor_set_layout();
+
+    void clear();
 
     operator vk::DescriptorSetLayout()
     {
@@ -63,9 +68,10 @@ private:
     vk::DescriptorSetLayoutCreateFlags          m_Flags;
 
     friend class context;
-    friend class deleter<descriptor_set_layout>;
+
 };
 
+using DescriptorSetLayout_p = std::shared_ptr<descriptor_set_layout>;
 
 
 }

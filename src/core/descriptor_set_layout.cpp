@@ -6,10 +6,16 @@
 
 vka::descriptor_set_layout::~descriptor_set_layout()
 {
+    clear();
+}
+
+void vka::descriptor_set_layout::clear()
+{
     if(m_descriptor_set_layout)
     {
         LOG << "Destroying descriptor set layout" << ENDL;
         get_device().destroyDescriptorSetLayout(m_descriptor_set_layout);
+        m_descriptor_set_layout = vk::DescriptorSetLayout();
     }
 }
 
