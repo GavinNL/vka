@@ -19,8 +19,24 @@ public:
     {
 
     }
-    ~RenderTarget2() {}
+    ~RenderTarget2()
+    {
+        clear();
+    }
 
+    void clear()
+    {
+        if(m_Framebuffer)
+        {
+            get_device().destroyFramebuffer(m_Framebuffer);
+            m_Framebuffer = vk::Framebuffer();
+        }
+        if(m_RenderPass)
+        {
+            get_device().destroyRenderPass(m_RenderPass);
+            m_RenderPass  = vk::RenderPass();
+        }
+    }
 
     RenderTarget2 & operator = ( RenderTarget2 && other)
     {
