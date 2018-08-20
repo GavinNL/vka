@@ -215,7 +215,7 @@ void Pipeline::create()
     std::vector<vk::DescriptorSetLayout> layouts;
     for(auto & bindings : m_DescriptorSetLayoutBindings)
     {
-        layouts.push_back(  get_parent_context()->new_descriptor_set_layout( bindings.second.bindings , bindings.second.flags)->get() );
+        layouts.push_back(  get_parent_context()->create_descriptor_set_layout( bindings.second.bindings , bindings.second.flags)->get() );
     }
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo;

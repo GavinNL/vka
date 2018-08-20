@@ -17,7 +17,7 @@ vka::DescriptorSet::~DescriptorSet()
 void vka::DescriptorSet::create(std::vector< vk::DescriptorSetLayoutBinding > const & bindings)
 {
     m_bindings = bindings;
-    auto * dsl = get_parent_context()->new_descriptor_set_layout(m_bindings);
+    auto dsl = get_parent_context()->create_descriptor_set_layout(m_bindings);
 
 
     vk::DescriptorSetAllocateInfo         info;
