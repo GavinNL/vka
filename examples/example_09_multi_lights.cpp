@@ -554,7 +554,7 @@ int main(int argc, char ** argv)
     ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
     ubuffer_descriptor->update();
 
-    vka::DescriptorSet_p  lights_buffer_descriptor = g_buffer_pipeline.createNewDescriptorSet(1, &descriptor_pool);
+    vka::DescriptorSet_p  lights_buffer_descriptor = compose_pipeline.createNewDescriptorSet(1, &descriptor_pool);
     lights_buffer_descriptor->AttachUniformBuffer(0,L_buffer, 10);
     lights_buffer_descriptor->update();
     // We will allocate two Staging buffers to copy uniform data as well as dynamic uniform data
