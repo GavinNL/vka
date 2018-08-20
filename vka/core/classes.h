@@ -3,8 +3,7 @@
 
 #define X_LIST \
 X_MACRO( command_pool          )\
-X_MACRO( semaphore             )\
-X_MACRO( descriptor_set_layout )\
+X_MACRO( semaphore             )
 
 
 namespace vka

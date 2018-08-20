@@ -307,7 +307,7 @@ vk::Format vka::context::find_supported_format(const std::vector<vk::Format> &ca
 }
 
 
-vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, vk::DescriptorSetLayoutCreateFlags flags)
+std::shared_ptr<vka::descriptor_set_layout> vka::context::create_descriptor_set_layout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, vk::DescriptorSetLayoutCreateFlags flags)
 {
     auto it = m_DescriptorSetLayouts.find( bindings );
 
@@ -316,7 +316,9 @@ vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::v
     {
         static int i=0;
         std::string name = "descriptor_set_" + std::to_string(i++);
-        auto * ds = new_descriptor_set_layout(name);
+
+        auto ds = std::make_shared<vka::descriptor_set_layout>(this);
+        //auto * ds = new_descriptor_set_layout(name);
 
         ds->set_flags(flags);
         ds->set_bindings( bindings );
@@ -375,11 +377,6 @@ void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
     } while(  r == vk::Result::eTimeout);
 
     m_device.resetFences( m_render_fence );
-}
-
-vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::string &name)
-{
-    return _new<vka::descriptor_set_layout>(name);
 }
 
 vka::command_pool* vka::context::new_command_pool(const std::string & name)
@@ -463,6 +460,11 @@ void vka::context::clean()
 #define X_MACRO(A) registry_t<A>::clear();
 X_LIST
 #undef X_MACRO
+
+    for(auto & l : m_DescriptorSetLayouts)
+    {
+        l.second->clear();
+    }
 
     if( m_render_fence )
     {

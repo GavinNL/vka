@@ -14,6 +14,8 @@ struct GLFWwindow;
 namespace vka
 {
 
+class descriptor_set_layout;
+
 template<typename T>
 class registry_t
 {
@@ -133,8 +135,9 @@ private:
 
 
     std::map< std::vector<vk::DescriptorSetLayoutBinding>,
-              vka::descriptor_set_layout*,
+              std::shared_ptr<vka::descriptor_set_layout>,
               DescriptorSetLayoutBindingCmp> m_DescriptorSetLayouts;
+
 
     std::vector< std::string > m_instance_extensions;
     std::vector< std::string > m_device_extensions;
@@ -224,10 +227,6 @@ public:
     vka::command_pool* new_command_pool(const std::string & name);
 
 
-    // this one should be private
-    vka::descriptor_set_layout* new_descriptor_set_layout(const std::string & name);
-
-
     uint32_t get_next_image_index( vka::semaphore * signal_semaphore);
 
 
@@ -246,7 +245,7 @@ public:
      * Creates a new descriptor set layout based on the binding information given.
      * or returns one that already exists which matches the binding
      */
-    vka::descriptor_set_layout* new_descriptor_set_layout( std::vector< vk::DescriptorSetLayoutBinding > const & bindings,
+    std::shared_ptr<vka::descriptor_set_layout> create_descriptor_set_layout( std::vector< vk::DescriptorSetLayoutBinding > const & bindings,
                                                            vk::DescriptorSetLayoutCreateFlags flags=vk::DescriptorSetLayoutCreateFlags());
 
 
