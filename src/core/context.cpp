@@ -330,11 +330,6 @@ std::shared_ptr<vka::descriptor_set_layout> vka::context::create_descriptor_set_
     return it->second;
 }
 
-vka::command_pool* vka::context::get_command_pool()
-{
-    return m_command_pool;
-}
-
 void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
                                          const vka::semaphore * wait_semaphore,
                                          const vka::semaphore * signal_semaphore,

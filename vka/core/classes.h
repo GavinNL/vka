@@ -1,9 +1,7 @@
 #ifndef VKA_CLASSES_H
 #define VKA_CLASSES_H
 
-#define X_LIST \
-X_MACRO( command_pool          )\
-X_MACRO( semaphore             )
+#define X_LIST  X_MACRO( semaphore             )
 
 
 namespace vka

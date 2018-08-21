@@ -143,8 +143,6 @@ private:
     std::vector< std::string > m_device_extensions;
     std::vector< std::string > m_validation_layers;
 
-    vka::command_pool * m_command_pool   = nullptr;
-
 public:
     vk::Instance get_instance() { return m_instance; }
     vk::Device get_device() { return m_device; }
@@ -246,8 +244,6 @@ public:
 
 
     //============================================================
-
-    vka::command_pool *get_command_pool();
 
     void submit_cmd_buffer(vk::CommandBuffer b)
     {
