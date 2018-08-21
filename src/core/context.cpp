@@ -1,5 +1,4 @@
 #include <vka/core/context.h>
-#include <vka/core/command_pool.h>
 #include <vka/core/semaphore.h>
 #include <vka/core2/DescriptorPool.h>
 #include <vka/core/descriptor_set_layout.h>
@@ -151,7 +150,6 @@ void vka::context::create_device( vk::SurfaceKHR surface_to_use)
                     {
                         throw std::runtime_error("Error creating fence");
                     }
-                    m_command_pool   = new_command_pool("context_command_pool");
 
                     return;
                 }
@@ -377,35 +375,6 @@ void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
     } while(  r == vk::Result::eTimeout);
 
     m_device.resetFences( m_render_fence );
-}
-
-vka::command_pool* vka::context::new_command_pool(const std::string & name)
-{
-    //vka::command_pool* new_command_pool(const std::string & name);
-    if( registry_t<command_pool>::get_object(name) == nullptr)
-    {
-        std::shared_ptr<vka::command_pool> R( new vka::command_pool(this), vka::deleter<vka::command_pool>() );
-
-        //====
-        vk::CommandPoolCreateInfo poolInfo;
-
-        poolInfo.queueFamilyIndex = m_queue_family.graphics;
-        poolInfo.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer; // Optional
-
-        R->m_command_pool = get_device().createCommandPool(poolInfo);
-
-        if( !R->m_command_pool )
-        {
-            throw std::runtime_error("Failed to create command pool!");
-        }
-        LOG << "Command Pool created" << ENDL;
-                //=====
-        registry_t<command_pool>::insert_object(name, R);
-
-        return R.get();
-    }
-
-    return nullptr;
 }
 
 

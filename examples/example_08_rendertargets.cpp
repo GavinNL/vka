@@ -36,12 +36,7 @@
 
 #include <vka/core/primatives.h>
 
-#include <vka/core2/CommandPool.h>
-#include <vka/core2/BufferMemoryPool.h>
-#include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
-#include <vka/core2/Pipeline.h>
-#include <vka/core2/Screen.h>
 #include <vka/core2/RenderTarget2.h>
 #include <vka/math/linalg.h>
 

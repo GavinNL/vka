@@ -223,10 +223,6 @@ public:
 
     std::vector<vk::ImageView> create_image_views(const std::vector<vk::Image> &images, vk::Format image_format);
 
-
-    vka::command_pool* new_command_pool(const std::string & name);
-
-
     uint32_t get_next_image_index( vka::semaphore * signal_semaphore);
 
 

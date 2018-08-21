@@ -36,11 +36,7 @@
 
 #include <vka/core/primatives.h>
 
-#include <vka/core2/CommandPool.h>
-#include <vka/core2/BufferMemoryPool.h>
-#include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
-#include <vka/core2/Pipeline.h>
 
 #include <vka/utils/sdl_window_handler.h>
 #include <vka/utils/camera.h>

@@ -5,6 +5,7 @@
 #include <vka/core/context_child.h>
 
 #include <vka/core2/Shader.h>
+#include <vka/core2/DescriptorSet.h>
 
 #include <map>
 

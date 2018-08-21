@@ -1,4 +1,10 @@
 #include "core/context.h"
-#include "core/command_pool.h"
-#include "core2/DescriptorPool.h"
-#include "core2/DescriptorSet.h"
+
+#include <vka/core2/Screen.h>
+#include <vka/core2/BufferMemoryPool.h>
+#include <vka/core2/TextureMemoryPool.h>
+#include <vka/core2/Pipeline.h>
+#include <vka/core2/CommandPool.h>
+#include <vka/core2/DescriptorPool.h>
+#include <vka/core2/DescriptorSet.h>
+

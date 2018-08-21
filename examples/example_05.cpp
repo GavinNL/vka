@@ -34,12 +34,6 @@
 #include <vka/core/image.h>
 #include <vka/vka.h>
 
-#include <vka/core2/CommandPool.h>
-#include <vka/core2/BufferMemoryPool.h>
-#include <vka/core2/TextureMemoryPool.h>
-#include <vka/core2/Pipeline.h>
-#include <vka/core2/Screen.h>
-
 #include <vka/math/linalg.h>
 
 #define WIDTH 1024
