@@ -36,6 +36,7 @@
 
 #include <vka/core/primatives.h>
 
+#include <vka/core2/CommandPool.h>
 #include <vka/core2/BufferMemoryPool.h>
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
@@ -129,7 +130,7 @@ struct RenderComponent_t
 vka::MeshObject HostToGPU( vka::host_mesh & host_mesh ,
                            vka::BufferMemoryPool & BufferPool,
                            vka::BufferMemoryPool & StagingBufferPool,
-                           vka::command_pool * cp,
+                           vka::CommandPool & CP,
                            vka::context & C)
 {
 
@@ -165,7 +166,7 @@ vka::MeshObject HostToGPU( vka::host_mesh & host_mesh ,
     std::vector<vka::SubBuffer_p>    staging_buffers;
 
 
-    vka::command_buffer copy_cmd = cp->AllocateCommandBuffer();
+    vka::command_buffer copy_cmd = CP.AllocateCommandBuffer();
     copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit ) );
 
     for(uint32_t i =0; i < 3 ; i++)
@@ -209,7 +210,7 @@ vka::MeshObject HostToGPU( vka::host_mesh & host_mesh ,
 
     copy_cmd.end();
     C.submit_cmd_buffer( copy_cmd );
-    cp->FreeCommandBuffer( copy_cmd );
+    CP.FreeCommandBuffer( copy_cmd );
 
     return CubeObj;
 }
@@ -307,7 +308,8 @@ int main(int argc, char ** argv)
 
     descriptor_pool.create();
 
-    vka::command_pool* cp = C.new_command_pool("main_command_pool");
+    vka::CommandPool CP(&C);
+    CP.create();
     //==========================================================================
 
 
@@ -344,10 +346,10 @@ int main(int argc, char ** argv)
 
    // vka::host_mesh CubeMesh = vka::box_mesh(1,1,1);
     vka::host_mesh CubeMesh = vka::sphere_mesh(0.5,20,20);
-    auto CubeObj = HostToGPU( CubeMesh, BufferPool,StagingBufferPool, cp,C);
+    auto CubeObj = HostToGPU( CubeMesh, BufferPool,StagingBufferPool, CP, C);
 
     vka::host_mesh PlaneMesh = vka::plane_mesh(10,10,1);
-    auto PlaneObj = HostToGPU( PlaneMesh, BufferPool,StagingBufferPool, cp,C);
+    auto PlaneObj = HostToGPU( PlaneMesh, BufferPool,StagingBufferPool, CP, C);
 
 
     std::vector< RenderComponent_t > m_Objects(3);
@@ -411,7 +413,7 @@ int main(int argc, char ** argv)
         //         c. convert the texture2d into a layout which is good for shader use
 
             // allocate the command buffer
-            vka::command_buffer cb1 = cp->AllocateCommandBuffer();
+            vka::command_buffer cb1 = CP.AllocateCommandBuffer();
             cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
             // a. convert the texture to eTransferDstOptimal
@@ -443,7 +445,7 @@ int main(int argc, char ** argv)
             cb1.end();
             C.submit_cmd_buffer(cb1);
             // free the command buffer
-            cp->FreeCommandBuffer(cb1);
+            CP.FreeCommandBuffer(cb1);
         }
 //==============================================================================
 
@@ -619,9 +621,9 @@ int main(int argc, char ** argv)
     // aliased data.
     uniform_buffer_t & UniformStagingStruct               = *( (uniform_buffer_t*)UniformStagingBufferMap );
 
-    //vka::command_buffer cb = cp->AllocateCommandBuffer();
-    vka::command_buffer offscreen_cmd_buffer = cp->AllocateCommandBuffer();
-    vka::command_buffer compose_cmd_buffer = cp->AllocateCommandBuffer();
+    //vka::command_buffer cb = CP.AllocateCommandBuffer();
+    vka::command_buffer offscreen_cmd_buffer = CP.AllocateCommandBuffer();
+    vka::command_buffer compose_cmd_buffer = CP.AllocateCommandBuffer();
 
     vka::semaphore * image_available_semaphore  = C.new_semaphore("image_available_semaphore");
     vka::semaphore * gbuffer_complete_semaphore = C.new_semaphore("gbuffer_complete_semaphore");

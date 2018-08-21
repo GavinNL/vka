@@ -34,7 +34,7 @@
 #include <vka/core/image.h>
 #include <vka/vka.h>
 
-
+#include <vka/core2/CommandPool.h>
 #include <vka/core2/BufferMemoryPool.h>
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/Pipeline.h>
@@ -174,7 +174,8 @@ int main(int argc, char ** argv)
 
     descriptor_pool.create();
 
-    vka::command_pool* cp = C.new_command_pool("main_command_pool");
+    vka::CommandPool CP(&C);
+    CP.create();
     //==========================================================================
 
 
@@ -248,7 +249,7 @@ int main(int argc, char ** argv)
 
         // 3. Copy the data from the host-visible buffer to the vertex/index buffers
         {
-            vka::command_buffer copy_cmd = cp->AllocateCommandBuffer();
+            vka::command_buffer copy_cmd = CP.AllocateCommandBuffer();
             copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
                 // write the commands to copy each of the buffer data
@@ -260,7 +261,7 @@ int main(int argc, char ** argv)
 
             copy_cmd.end();
             C.submit_cmd_buffer(copy_cmd);
-            cp->FreeCommandBuffer(copy_cmd);
+            CP.FreeCommandBuffer(copy_cmd);
         }
 
 //==============================================================================
@@ -299,7 +300,7 @@ int main(int argc, char ** argv)
         //         c. convert the texture2d into a layout which is good for shader use
 
             // allocate the command buffer
-            vka::command_buffer cb1 = cp->AllocateCommandBuffer();
+            vka::command_buffer cb1 = CP.AllocateCommandBuffer();
             cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
             // a. convert the texture to eTransferDstOptimal
@@ -385,7 +386,7 @@ int main(int argc, char ** argv)
             cb1.end();
             C.submit_cmd_buffer(cb1);
             // free the command buffer
-            cp->FreeCommandBuffer(cb1);
+            CP.FreeCommandBuffer(cb1);
         }
 //==============================================================================
 
@@ -492,7 +493,7 @@ int main(int argc, char ** argv)
     uniform_buffer_t & UniformStagingStruct               = *( (uniform_buffer_t*)UniformStagingBufferMap );
     dynamic_uniform_buffer_t * DynamicUniformStagingArray = (dynamic_uniform_buffer_t*)DynamicStagingBufferMap;
 
-    vka::command_buffer cb = cp->AllocateCommandBuffer();
+    vka::command_buffer cb = CP.AllocateCommandBuffer();
 
 
     vka::semaphore * image_available_semaphore = C.new_semaphore("image_available_semaphore");
