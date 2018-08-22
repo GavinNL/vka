@@ -11,7 +11,7 @@ namespace vka
 
 class command_buffer;
 class semaphore;
-
+using Semaphore_p = std::shared_ptr<semaphore>;
 
 
 struct SwapChainData
@@ -83,7 +83,7 @@ class Screen : public context_child
          *
          * The signal semaphore
          */
-        uint32_t GetNextFrameIndex(vka::semaphore *signal_semaphore);
+        uint32_t GetNextFrameIndex( vka::Semaphore_p & signal_semaphore);
 
         /**
          * @brief PresentFrame
@@ -91,7 +91,7 @@ class Screen : public context_child
          * @param wait_semaphore - the semaphore that must be waited on before
          *                         the frame is presented to the screen
          */
-        void PresentFrame(uint32_t frame_index, vka::semaphore * wait_semaphore);
+        void PresentFrame(uint32_t frame_index, vka::Semaphore_p &wait_semaphore);
 protected:
 
         static void                         CreateSwapchain(   vk::PhysicalDevice pd, vk::Device device, SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync = false);

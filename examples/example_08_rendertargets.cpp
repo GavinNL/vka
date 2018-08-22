@@ -514,9 +514,9 @@ int main(int argc, char ** argv)
     vka::command_buffer offscreen_cmd_buffer = CP.AllocateCommandBuffer();
     vka::command_buffer compose_cmd_buffer = CP.AllocateCommandBuffer();
 
-    vka::semaphore * image_available_semaphore  = C.new_semaphore("image_available_semaphore");
-    vka::semaphore * gbuffer_complete_semaphore = C.new_semaphore("gbuffer_complete_semaphore");
-    vka::semaphore * render_complete_semaphore  = C.new_semaphore("render_complete_semaphore");
+    vka::Semaphore_p  image_available_semaphore  = C.create_semaphore();
+    vka::Semaphore_p  gbuffer_complete_semaphore = C.create_semaphore();
+    vka::Semaphore_p  render_complete_semaphore  = C.create_semaphore();
 
 
 

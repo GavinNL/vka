@@ -23,16 +23,29 @@ class semaphore : public context_child
         return m_semaphore;
     }
 
+    void destroy()
+    {
+        if(m_semaphore)
+        {
+            get_device().destroySemaphore(m_semaphore);
+            m_semaphore = vk::Semaphore();
+        }
+
+    }
+
+    ~semaphore()
+    {
+        destroy();
+    }
     private:
-        semaphore(context * parent);
-        ~semaphore();
+    semaphore(context * parent);
 
-        vk::Semaphore m_semaphore;
+     vk::Semaphore m_semaphore;
 
-        friend class context;
-        friend class deleter<semaphore>;
+     friend class context;
 };
 
+using Semaphore_p = std::shared_ptr<vka::semaphore>;
 }
 
 #endif

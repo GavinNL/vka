@@ -16,6 +16,8 @@ namespace vka
 
 class descriptor_set_layout;
 
+class semaphore;
+
 template<typename T>
 class registry_t
 {
@@ -107,16 +109,9 @@ bool operator()(const std::vector<vk::DescriptorSetLayoutBinding> & lhs, const s
 
 };
 
-struct blank{};
-
-
-
-class context :
-                #define X_MACRO(A) public registry_t<A>,
-                X_LIST
-                public blank
+class context
 {
-#undef X_MACRO
+
 private:
     vk::Instance                 m_instance;
     vk::PhysicalDevice           m_physical_device;
@@ -228,8 +223,6 @@ public:
     void present_image(const vk::PresentInfoKHR & info);
 
 
-    vka::semaphore* new_semaphore(const std::string & name);
-
     //============================================================
     /**
      * @brief new_descriptor_set_layout
@@ -261,8 +254,8 @@ public:
     }
 
     void submit_command_buffer(vk::CommandBuffer const & p_CmdBuffer ,
-                                const vka::semaphore *wait_semaphore,
-                                const vka::semaphore *signal_semaphore,
+                                const std::shared_ptr<semaphore> &wait_semaphore,
+                                const std::shared_ptr<semaphore> &signal_semaphore,
                                 vk::PipelineStageFlags wait_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput );
 
 
@@ -283,26 +276,11 @@ public:
         return registry_t<T>::get_name(obj);
     }
 
+
+    std::shared_ptr<semaphore>   create_semaphore();
+    std::vector<std::weak_ptr<semaphore> > m_semaphores;
+
 private:
-
-
-
-    template<typename T>
-    T* _new(const std::string & name)
-    {
-        if( registry_t<T>::get_object(name) == nullptr)
-        {
-            std::shared_ptr<T> R( new T(this), vka::deleter<T>() );
-            registry_t<T>::insert_object(name, R);
-
-            return R.get();
-        }
-
-        throw std::runtime_error("An object of that name already exists");
-
-        return nullptr;
-    }
-
 
     bool m_enable_validation_layers = true;
 

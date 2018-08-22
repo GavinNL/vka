@@ -477,7 +477,7 @@ std::vector<vk::Framebuffer> Screen::CreateFrameBuffers( vk::Device device,
 
 
 
-uint32_t Screen::GetNextFrameIndex(vka::semaphore *signal_semaphore)
+uint32_t Screen::GetNextFrameIndex(vka::Semaphore_p &signal_semaphore)
 {
     auto
     m_next_frame_index  = get_device().acquireNextImageKHR( m_Swapchain.swapchain,
@@ -488,7 +488,7 @@ uint32_t Screen::GetNextFrameIndex(vka::semaphore *signal_semaphore)
 }
 
 
-void Screen::PresentFrame(uint32_t frame_index, vka::semaphore * wait_semaphore)
+void Screen::PresentFrame(uint32_t frame_index, vka::Semaphore_p & wait_semaphore)
 {
     vk::PresentInfoKHR presentInfo;
     if( wait_semaphore)

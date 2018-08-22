@@ -261,9 +261,11 @@ void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device,
 }
 
 
-vka::semaphore *vka::context::new_semaphore(const std::string &name)
+vka::Semaphore_p vka::context::create_semaphore()
 {
-    return _new<vka::semaphore>(name);
+    std::shared_ptr<vka::semaphore> s(new vka::semaphore(this));
+
+    return s;
 }
 
 
@@ -331,8 +333,8 @@ std::shared_ptr<vka::descriptor_set_layout> vka::context::create_descriptor_set_
 }
 
 void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
-                                         const vka::semaphore * wait_semaphore,
-                                         const vka::semaphore * signal_semaphore,
+                                         const std::shared_ptr<vka::semaphore> & wait_semaphore,
+                                         const std::shared_ptr<vka::semaphore> & signal_semaphore,
                                          vk::PipelineStageFlags wait_stage)
 {
     vk::SubmitInfo submitInfo;
@@ -421,9 +423,6 @@ std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Im
 
 void vka::context::clean()
 {
-#define X_MACRO(A) registry_t<A>::clear();
-X_LIST
-#undef X_MACRO
 
     for(auto & l : m_DescriptorSetLayouts)
     {

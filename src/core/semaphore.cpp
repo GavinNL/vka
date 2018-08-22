@@ -9,9 +9,3 @@ vka::semaphore::semaphore(vka::context * parent) : context_child(parent)
         throw std::runtime_error("Error creating semaphore");
     }
 }
-
-vka::semaphore::~semaphore()
-{
-    if(m_semaphore)
-        get_device().destroySemaphore(m_semaphore);
-}
