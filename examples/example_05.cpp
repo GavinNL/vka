@@ -31,7 +31,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
-#include <vka/core/HostImage.h>
+#include <vka/ext/HostImage.h>
 #include <vka/vka.h>
 
 #include <vka/math/linalg.h>

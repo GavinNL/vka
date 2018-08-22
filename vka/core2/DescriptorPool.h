@@ -47,7 +47,6 @@ private:
     std::set<DescriptorSet_p> m_Sets;
 
     friend class context;
-    friend class deleter<DescriptorPool>;
     friend class DescriptorSet;
 };
 

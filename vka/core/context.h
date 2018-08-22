@@ -4,7 +4,7 @@
 #include <vulkan/vulkan.hpp>
 #include <vka/core/log.h>
 #include "extensions.h"
-#include "deleter.h"
+
 #include "classes.h"
 #include <map>
 

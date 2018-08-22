@@ -3,8 +3,6 @@
 
 #include <vulkan/vulkan.hpp>
 
-#include "deleter.h"
-
 namespace vka
 {
 
@@ -24,6 +22,5 @@ class context_child
 
 };
 
-#define CONTEXT_CHILD_DEFAULT_CONSTRUCTOR(PARENT_CLASS) PARENT_CLASS(context * parent) : context_child(parent) {}
 }
 #endif

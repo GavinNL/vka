@@ -310,7 +310,6 @@ public:
     void create();
 
     friend class context;
-    friend class deleter<Pipeline>;
 
 };
 

@@ -83,7 +83,6 @@ private:
 
 
     friend class context;
-    friend class deleter<DescriptorSet>;
     friend class DescriptorPool;
 };
 

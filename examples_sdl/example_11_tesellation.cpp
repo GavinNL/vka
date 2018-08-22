@@ -35,7 +35,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
-#include <vka/core/HostImage.h>
+#include <vka/ext/HostImage.h>
 #include <vka/vka.h>
 
 #include <vka/math/linalg.h>
@@ -46,7 +46,7 @@
 
 #include <vka/utils/camera.h>
 #include <vka/core/transform.h>
-#include <vka/core/primatives.h>
+#include <vka/ext/Primatives.h>
 
 #include <vka/utils/buffer_memory_manager.h>
 #include <vka/core/managed_buffer.h>

@@ -31,10 +31,10 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
-#include <vka/core/HostImage.h>
+#include <vka/ext/HostImage.h>
 #include <vka/vka.h>
 
-#include <vka/core/primatives.h>
+#include <vka/ext/Primatives.h>
 #include <vka/core2/MeshObject.h>
 
 

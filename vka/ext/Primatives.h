@@ -1,7 +1,7 @@
 #ifndef VKA_PRIMATIVES_H
 #define VKA_PRIMATIVES_H
 
-#include <vka/core/mesh.h>
+#include <vka/ext/HostMesh.h>
 
 namespace vka
 {

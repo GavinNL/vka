@@ -1,5 +1,5 @@
-#include <vka/core/mesh.h>
-#include <vka/core/primatives.h>
+#include <vka/ext/HostMesh.h>
+#include <vka/ext/Primatives.h>
 #include <vka/math/linalg.h>
 #include <iostream>
 
