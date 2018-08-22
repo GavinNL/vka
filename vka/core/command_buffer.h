@@ -42,13 +42,13 @@ public:
     std::vector<vk::WriteDescriptorSet>   m_writes;
 };
 
-class command_buffer : public vk::CommandBuffer
+class CommandBuffer : public vk::CommandBuffer
 {
     public:
 
-    command_buffer(){}
+    CommandBuffer(){}
 
-    command_buffer(const vk::CommandBuffer & C) : vk::CommandBuffer(C)
+    CommandBuffer(const vk::CommandBuffer & C) : vk::CommandBuffer(C)
     {
 
     }

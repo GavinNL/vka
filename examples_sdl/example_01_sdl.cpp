@@ -238,7 +238,7 @@ int main(int argc, char ** argv)
         // 2. Copy the data from the host-visible buffer to the vertex/index buffers
 
         // allocate a comand buffer
-        vka::command_buffer copy_cmd = CP.allocateCommandBuffer();
+        vka::CommandBuffer copy_cmd = CP.allocateCommandBuffer();
         copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
         // write the commands to copy each of the buffer data
@@ -310,7 +310,7 @@ int main(int argc, char ** argv)
     //         c. convert the texture2d into a layout which is good for shader use
 
         // allocate the command buffer
-        vka::command_buffer cb1 = CP.allocateCommandBuffer();
+        vka::CommandBuffer cb1 = CP.allocateCommandBuffer();
         cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
             // a. convert the texture to eTransferDstOptimal
@@ -426,7 +426,7 @@ int main(int argc, char ** argv)
     vka::MappedMemory StagingBufferMap   = StagingBuffer->GetMappedMemory();
 
 
-    vka::command_buffer cb = CP.allocateCommandBuffer();
+    vka::CommandBuffer cb = CP.allocateCommandBuffer();
 
 
     vka::Semaphore_p  image_available_semaphore = C.createSemaphore();

@@ -20,7 +20,7 @@ void vka::CommandPool::create()
     LOG << "Command Pool created" << ENDL;
 }
 
-command_buffer CommandPool::allocateCommandBuffer(vk::CommandBufferLevel level)
+CommandBuffer CommandPool::allocateCommandBuffer(vk::CommandBufferLevel level)
 {
     vk::CommandBufferAllocateInfo allocInfo;
 
@@ -37,7 +37,7 @@ command_buffer CommandPool::allocateCommandBuffer(vk::CommandBufferLevel level)
     return commandBuffer_v[0];
 }
 
-void CommandPool::freeCommandBuffer(vka::command_buffer cmd)
+void CommandPool::freeCommandBuffer(vka::CommandBuffer cmd)
 {
      get_device().freeCommandBuffers( m_command_pool, 1, &cmd);
 }

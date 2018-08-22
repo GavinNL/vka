@@ -27,9 +27,9 @@ public:
 
     void create();
 
-    void freeCommandBuffer(vka::command_buffer cmd);
+    void freeCommandBuffer(vka::CommandBuffer cmd);
 
-    vka::command_buffer allocateCommandBuffer(vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary );
+    vka::CommandBuffer allocateCommandBuffer(vk::CommandBufferLevel level = vk::CommandBufferLevel::ePrimary );
 protected:
     vk::CommandPool m_command_pool;
 };

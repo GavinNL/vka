@@ -51,7 +51,7 @@ void vka::command_buffer::pushDescriptorSet( vk::PipelineBindPoint bind_point, v
 
 
 //===================
-void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
+void vka::CommandBuffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
                         vka::Pipeline const & pipeline,
                         uint32_t firstSet,
                         vka::DescriptorSet_p const & set) const
@@ -64,7 +64,7 @@ void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindP
 
 }
 
-void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
+void vka::CommandBuffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindPoint,
                         vka::Pipeline const & pipeline,
                         uint32_t firstSet,
                         vka::DescriptorSet_p const & set,
@@ -78,7 +78,7 @@ void vka::command_buffer::bindDescriptorSet( vk::PipelineBindPoint pipelineBindP
 
 }
 
-void vka::command_buffer::pushDescriptorSet( vk::PipelineBindPoint bind_point, vka::Pipeline const & pipeline, uint32_t set, vka::PushDescriptorInfo const & Info)
+void vka::CommandBuffer::pushDescriptorSet( vk::PipelineBindPoint bind_point, vka::Pipeline const & pipeline, uint32_t set, vka::PushDescriptorInfo const & Info)
 {
     pushDescriptorSetKHR(bind_point,
                          pipeline.getLayout(),
@@ -93,7 +93,7 @@ void vka::command_buffer::pushDescriptorSet( vk::PipelineBindPoint bind_point, v
 
 namespace vka
 {
-void command_buffer::copySubBuffer( std::shared_ptr<vka::SubBuffer> & src,
+void CommandBuffer::copySubBuffer( std::shared_ptr<vka::SubBuffer> & src,
                     std::shared_ptr<vka::SubBuffer> & dst,
                     vk::BufferCopy const & region)
 {
@@ -108,21 +108,21 @@ void command_buffer::copySubBuffer( std::shared_ptr<vka::SubBuffer> & src,
 }
 
 
-void command_buffer::bindVertexSubBuffer(uint32_t firstBinding,
+void CommandBuffer::bindVertexSubBuffer(uint32_t firstBinding,
                                          const std::shared_ptr<SubBuffer> & buffer,
                                          vk::DeviceSize offset) const
 {
     vk::CommandBuffer::bindVertexBuffers(firstBinding, buffer->GetParentBufferHandle(),offset+buffer->GetOffset());
 }
 
-void command_buffer::bindIndexSubBuffer( const std::shared_ptr<SubBuffer> & buffer,
+void CommandBuffer::bindIndexSubBuffer( const std::shared_ptr<SubBuffer> & buffer,
                                          vk::IndexType indexType,
                                          vk::DeviceSize offset) const
 {
     vk::CommandBuffer::bindIndexBuffer( buffer->GetParentBufferHandle(), buffer->GetOffset()+offset, indexType);
 }
 
-void command_buffer::bindMeshObject(const MeshObject &obj)
+void CommandBuffer::bindMeshObject(const MeshObject &obj)
 {
     if( obj.GetIndexBuffer() )
     {
@@ -135,13 +135,13 @@ void command_buffer::bindMeshObject(const MeshObject &obj)
     }
 }
 
-void command_buffer::drawMeshObject(const MeshObject & obj , uint32_t instanceCount ,uint32_t firstInstance)
+void CommandBuffer::drawMeshObject(const MeshObject & obj , uint32_t instanceCount ,uint32_t firstInstance)
 {
     drawIndexed( obj.GetIndexCount(), instanceCount, 0, 0 ,firstInstance);
 }
 
 
-void command_buffer::copySubBufferToTexture( const std::shared_ptr<SubBuffer> & buffer,
+void CommandBuffer::copySubBufferToTexture( const std::shared_ptr<SubBuffer> & buffer,
                                            std::shared_ptr<vka::Texture> & tex,
                                            vk::ImageLayout imageLayout,
                                            vk::BufferImageCopy const & C) const
@@ -160,7 +160,7 @@ void command_buffer::copySubBufferToTexture( const std::shared_ptr<SubBuffer> & 
 }
 
 
-void command_buffer::convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
+void CommandBuffer::convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
                                          uint32_t layer, uint32_t layer_count,
                                          vk::ImageLayout new_layout,
                                          vk::PipelineStageFlags srcStageMask,
@@ -181,7 +181,7 @@ void command_buffer::convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
                     );
 }
 
-void command_buffer::convertTextureLayerMips(std::shared_ptr<vka::Texture> & tex,
+void CommandBuffer::convertTextureLayerMips(std::shared_ptr<vka::Texture> & tex,
                                              uint32_t layer, uint32_t layer_count,
                                              uint32_t mipLevel, uint32_t mipLevelCount,
                                              vk::ImageLayout old_layout, vk::ImageLayout new_layout,
@@ -204,7 +204,7 @@ void command_buffer::convertTextureLayerMips(std::shared_ptr<vka::Texture> & tex
 }
 
 
-void command_buffer::convertTexture( std::shared_ptr<vka::Texture> & tex,
+void CommandBuffer::convertTexture( std::shared_ptr<vka::Texture> & tex,
                                      vk::ImageLayout old_layout ,
                                      vk::ImageLayout new_layout ,
                                      vk::ImageSubresourceRange const & range,
@@ -341,7 +341,7 @@ void command_buffer::convertTexture( std::shared_ptr<vka::Texture> & tex,
 
 
 
-void command_buffer::blitMipMap( std::shared_ptr<vka::Texture> & tex,
+void CommandBuffer::blitMipMap( std::shared_ptr<vka::Texture> & tex,
                                 uint32_t Layer, uint32_t LayerCount,
                                 uint32_t src_miplevel,
                                 uint32_t dst_miplevel)
@@ -379,7 +379,7 @@ void command_buffer::blitMipMap( std::shared_ptr<vka::Texture> & tex,
 
 
 
-void command_buffer::generateMipMaps( std::shared_ptr<vka::Texture> & Tex,
+void CommandBuffer::generateMipMaps( std::shared_ptr<vka::Texture> & Tex,
                                       uint32_t Layer, uint32_t LayerCount)
 {
     // Convert mip level 0 to SrcOptimal
@@ -424,7 +424,7 @@ void command_buffer::generateMipMaps( std::shared_ptr<vka::Texture> & Tex,
 }
 
 
-void command_buffer::beginRender(RenderTarget & target)
+void CommandBuffer::beginRender(RenderTarget & target)
 {
     vk::RenderPassBeginInfo m_renderpass_info;
 
@@ -437,7 +437,7 @@ void command_buffer::beginRender(RenderTarget & target)
     beginRenderPass(m_renderpass_info, vk::SubpassContents::eInline);
 }
 
-void command_buffer::beginRender(Screen & target, uint32_t frame_buffer_index)
+void CommandBuffer::beginRender(Screen & target, uint32_t frame_buffer_index)
 {
     vk::RenderPassBeginInfo m_renderpass_info;
 

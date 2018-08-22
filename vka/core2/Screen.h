@@ -9,7 +9,7 @@
 namespace vka
 {
 
-class command_buffer;
+class CommandBuffer;
 class Semaphore;
 using Semaphore_p = std::shared_ptr<Semaphore>;
 

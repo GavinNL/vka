@@ -121,7 +121,7 @@ vka::MeshObject HostToGPU( vka::host_mesh & host_mesh ,
     std::vector<vka::SubBuffer_p>    staging_buffers;
 
 
-    vka::command_buffer copy_cmd = CP.allocateCommandBuffer();
+    vka::CommandBuffer copy_cmd = CP.allocateCommandBuffer();
     copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit ) );
 
     for(uint32_t i =0; i < 3 ; i++)
@@ -397,7 +397,7 @@ int main(int argc, char ** argv)
         //         c. convert the texture2d into a layout which is good for shader use
 
             // allocate the command buffer
-            vka::command_buffer cb1 = CP.allocateCommandBuffer();
+            vka::CommandBuffer cb1 = CP.allocateCommandBuffer();
             cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
             // a. convert the texture to eTransferDstOptimal
@@ -525,7 +525,7 @@ int main(int argc, char ** argv)
     // aliased data.
     uniform_buffer_t & UniformStagingStruct               = *( (uniform_buffer_t*)UniformStagingBufferMap );
 
-    vka::command_buffer cb = CP.allocateCommandBuffer();
+    vka::CommandBuffer cb = CP.allocateCommandBuffer();
 
 
     vka::Semaphore_p  image_available_semaphore = C.createSemaphore();

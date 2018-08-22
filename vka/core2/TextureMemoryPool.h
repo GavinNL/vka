@@ -21,7 +21,7 @@ namespace vka
 {
 
 class TextureMemoryPool;
-class command_buffer;
+class CommandBuffer;
 
 /**
  * @brief The SubBuffer class
@@ -191,7 +191,7 @@ private:
         std::map<std::string, vk::Sampler>   m_Samplers;
 
         friend class TextureMemoryPool;
-        friend class command_buffer;
+        friend class CommandBuffer;
 };
 
 using Texture_p = std::shared_ptr<Texture>;
