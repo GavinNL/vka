@@ -14,15 +14,15 @@ namespace vka
 
 class sub_buffer;
 
-class descriptor_set_layout : public context_child
+class DescriptorLayoutSet : public context_child
 {
 public:
-    descriptor_set_layout(context * C) : context_child(C)
+    DescriptorLayoutSet(context * C) : context_child(C)
     {
 
     }
 
-    ~descriptor_set_layout();
+    ~DescriptorLayoutSet();
 
     void clear();
 
@@ -36,22 +36,22 @@ public:
     }
 
 
-    descriptor_set_layout* clearBindings() { m_DescriptorSetLayoutBindings.clear(); return this;}
+    DescriptorLayoutSet* clearBindings() { m_DescriptorSetLayoutBindings.clear(); return this;}
 
 
-    descriptor_set_layout* setBindings(std::vector<vk::DescriptorSetLayoutBinding> const & bindings)
+    DescriptorLayoutSet* setBindings(std::vector<vk::DescriptorSetLayoutBinding> const & bindings)
     {
         m_DescriptorSetLayoutBindings = bindings;
         return this;
     }
 
-    descriptor_set_layout*  addTextureLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages);
+    DescriptorLayoutSet*  addTextureLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages);
 
-    descriptor_set_layout*  addUniformLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages);
+    DescriptorLayoutSet*  addUniformLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages);
 
-    descriptor_set_layout*  addDynamicUniformLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages);
+    DescriptorLayoutSet*  addDynamicUniformLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages);
 
-    descriptor_set_layout*  setFlags(vk::DescriptorSetLayoutCreateFlags flags)
+    DescriptorLayoutSet*  setFlags(vk::DescriptorSetLayoutCreateFlags flags)
     {
         m_Flags = flags;
         return this;
@@ -71,7 +71,7 @@ private:
 
 };
 
-using DescriptorSetLayout_p = std::shared_ptr<descriptor_set_layout>;
+using DescriptorSetLayout_p = std::shared_ptr<DescriptorLayoutSet>;
 
 
 }

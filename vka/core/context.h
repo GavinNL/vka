@@ -14,7 +14,7 @@ struct GLFWwindow;
 namespace vka
 {
 
-class descriptor_set_layout;
+class DescriptorLayoutSet;
 class Semaphore;
 
 struct queue_family_index_t
@@ -71,7 +71,7 @@ private:
 
 
     std::map< std::vector<vk::DescriptorSetLayoutBinding>,
-              std::shared_ptr<vka::descriptor_set_layout>,
+              std::shared_ptr<vka::DescriptorLayoutSet>,
               DescriptorSetLayoutBindingCmp> m_DescriptorSetLayouts;
 
 
@@ -160,7 +160,7 @@ public:
      * Creates a new descriptor set layout based on the binding information given.
      * or returns one that already exists which matches the binding
      */
-    std::shared_ptr<vka::descriptor_set_layout> createDescriptorSetLayout( std::vector< vk::DescriptorSetLayoutBinding > const & bindings,
+    std::shared_ptr<vka::DescriptorLayoutSet> createDescriptorSetLayout( std::vector< vk::DescriptorSetLayoutBinding > const & bindings,
                                                            vk::DescriptorSetLayoutCreateFlags flags=vk::DescriptorSetLayoutCreateFlags());
 
 

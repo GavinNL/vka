@@ -1,4 +1,4 @@
-#include <vka/core/command_buffer.h>
+#include <vka/core2/CommandBuffer.h>
 #include <vka/core2/DescriptorSet.h>
 
 #include <vka/core/extensions.h>

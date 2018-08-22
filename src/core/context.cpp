@@ -307,7 +307,7 @@ vk::Format vka::context::findSupportedFormat(const std::vector<vk::Format> &cand
 }
 
 
-std::shared_ptr<vka::descriptor_set_layout> vka::context::createDescriptorSetLayout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, vk::DescriptorSetLayoutCreateFlags flags)
+std::shared_ptr<vka::DescriptorLayoutSet> vka::context::createDescriptorSetLayout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, vk::DescriptorSetLayoutCreateFlags flags)
 {
     auto it = m_DescriptorSetLayouts.find( bindings );
 
@@ -317,7 +317,7 @@ std::shared_ptr<vka::descriptor_set_layout> vka::context::createDescriptorSetLay
         static int i=0;
         std::string name = "descriptor_set_" + std::to_string(i++);
 
-        auto ds = std::make_shared<vka::descriptor_set_layout>(this);
+        auto ds = std::make_shared<vka::DescriptorLayoutSet>(this);
         //auto * ds = new_descriptor_set_layout(name);
 
         ds->setFlags(flags);

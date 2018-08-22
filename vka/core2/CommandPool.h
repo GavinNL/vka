@@ -3,7 +3,7 @@
 #define VKA_COMMANDPOOL2_H
 
 #include <vka/core/log.h>
-#include <vka/core/command_buffer.h>
+#include <vka/core2/CommandBuffer.h>
 #include <vka/core/context_child.h>
 
 namespace vka
