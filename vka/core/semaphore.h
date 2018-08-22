@@ -10,7 +10,7 @@ namespace vka
 
 class context;
 
-class semaphore : public context_child
+class Semaphore : public context_child
 {
     public:
     operator vk::Semaphore()
@@ -33,19 +33,19 @@ class semaphore : public context_child
 
     }
 
-    ~semaphore()
+    ~Semaphore()
     {
         destroy();
     }
     private:
-    semaphore(context * parent);
+    Semaphore(context * parent);
 
      vk::Semaphore m_semaphore;
 
      friend class context;
 };
 
-using Semaphore_p = std::shared_ptr<vka::semaphore>;
+using Semaphore_p = std::shared_ptr<vka::Semaphore>;
 }
 
 #endif

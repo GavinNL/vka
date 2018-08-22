@@ -15,66 +15,7 @@ namespace vka
 {
 
 class descriptor_set_layout;
-
-class semaphore;
-
-template<typename T>
-class registry_t
-{
-public:
-    virtual ~registry_t()
-    {
-        LOG << "Destroying registr"    <<ENDL;
-        clear();
-    }
-
-    void clear()
-    {
-        LOG << "Registry cleared" << ENDL;
-        m_registry.clear();
-    }
-
-    std::string get_name( T const * p)
-    {
-        for(auto & f : m_registry)
-        {
-            if( f.second.get() == p)
-            {
-                return f.first;
-            }
-        }
-        return "";
-    }
-
-protected:
-    bool insert_object(std::string const & name, std::shared_ptr<T> obj)
-    {
-        auto i = m_registry.find( name );
-
-        if(i == m_registry.end() )
-        {
-            m_registry[name] = obj;
-            LOG << "Object[" << name << "] registered" << ENDL;
-            return true;
-        }
-
-        return false;
-    }
-public:
-    T* get_object( std::string const & name)
-    {
-        auto i = m_registry.find( name );
-
-        if(i != m_registry.end() )
-        {
-            return i->second.get();
-        }
-
-        return nullptr;
-    }
-    std::map<std::string, std::shared_ptr<T> > m_registry;
-};
-
+class Semaphore;
 
 struct queue_family_index_t
 {
@@ -203,11 +144,7 @@ public:
         m_surface = surface;
     }
 
-    template<typename T>
-    T * get(std::string const & name)
-    {
-        return registry_t<T>::get_object(name);
-    }
+
     void create_device(vk::SurfaceKHR surface_to_use);
 
     void create_logical_device(vk::PhysicalDevice &p_physical_device, const vka::queue_family_index_t &p_Qfamily);
@@ -216,10 +153,10 @@ public:
 
     std::vector<vk::ImageView> create_image_views(const std::vector<vk::Image> &images, vk::Format image_format);
 
-    uint32_t get_next_image_index( vka::semaphore * signal_semaphore);
+    uint32_t get_next_image_index( vka::Semaphore * signal_semaphore);
 
 
-    void present_image(uint32_t image_index, semaphore *wait_semaphore);
+    void present_image(uint32_t image_index, Semaphore *wait_semaphore);
     void present_image(const vk::PresentInfoKHR & info);
 
 
@@ -254,8 +191,8 @@ public:
     }
 
     void submit_command_buffer(vk::CommandBuffer const & p_CmdBuffer ,
-                                const std::shared_ptr<semaphore> &wait_semaphore,
-                                const std::shared_ptr<semaphore> &signal_semaphore,
+                                const std::shared_ptr<Semaphore> &wait_semaphore,
+                                const std::shared_ptr<Semaphore> &signal_semaphore,
                                 vk::PipelineStageFlags wait_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput );
 
 
@@ -270,15 +207,9 @@ public:
         return m_physical_device_properties.limits;
     }
 
-    template<typename T>
-    std::string get_name( T const * obj)
-    {
-        return registry_t<T>::get_name(obj);
-    }
 
-
-    std::shared_ptr<semaphore>   create_semaphore();
-    std::vector<std::weak_ptr<semaphore> > m_semaphores;
+    std::shared_ptr<Semaphore>   createSemaphore();
+    std::vector<std::weak_ptr<Semaphore> > m_semaphores;
 
 private:
 

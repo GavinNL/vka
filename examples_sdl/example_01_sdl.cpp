@@ -429,8 +429,8 @@ int main(int argc, char ** argv)
     vka::command_buffer cb = CP.AllocateCommandBuffer();
 
 
-    vka::Semaphore_p  image_available_semaphore = C.create_semaphore();
-    vka::Semaphore_p  render_complete_semaphore = C.create_semaphore();
+    vka::Semaphore_p  image_available_semaphore = C.createSemaphore();
+    vka::Semaphore_p  render_complete_semaphore = C.createSemaphore();
 
     //==========================================================================
     // Perform the Rendering

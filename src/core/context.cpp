@@ -261,9 +261,9 @@ void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device,
 }
 
 
-vka::Semaphore_p vka::context::create_semaphore()
+vka::Semaphore_p vka::context::createSemaphore()
 {
-    std::shared_ptr<vka::semaphore> s(new vka::semaphore(this));
+    std::shared_ptr<vka::Semaphore> s(new vka::Semaphore(this));
 
     return s;
 }
@@ -333,8 +333,8 @@ std::shared_ptr<vka::descriptor_set_layout> vka::context::create_descriptor_set_
 }
 
 void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
-                                         const std::shared_ptr<vka::semaphore> & wait_semaphore,
-                                         const std::shared_ptr<vka::semaphore> & signal_semaphore,
+                                         const std::shared_ptr<vka::Semaphore> & wait_semaphore,
+                                         const std::shared_ptr<vka::Semaphore> & signal_semaphore,
                                          vk::PipelineStageFlags wait_stage)
 {
     vk::SubmitInfo submitInfo;

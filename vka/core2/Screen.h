@@ -10,8 +10,8 @@ namespace vka
 {
 
 class command_buffer;
-class semaphore;
-using Semaphore_p = std::shared_ptr<semaphore>;
+class Semaphore;
+using Semaphore_p = std::shared_ptr<Semaphore>;
 
 
 struct SwapChainData
