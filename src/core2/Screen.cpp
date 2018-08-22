@@ -1,6 +1,6 @@
 #include <vka/core2/Screen.h>
 
-#include <vka/core/semaphore.h>
+#include <vka/core/Semaphore.h>
 #include <vka/core/context.h>
 
 #include <vka/core/types.h>
