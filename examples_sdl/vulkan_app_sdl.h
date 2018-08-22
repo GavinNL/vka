@@ -9,7 +9,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
-#include <vka/core/image.h>
+#include <vka/ext/HostImage.h>
 #include <vka/vka.h>
 
 #include <vka/utils/buffer_memory_manager.h>

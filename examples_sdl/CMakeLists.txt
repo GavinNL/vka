@@ -35,7 +35,7 @@ add_definitions(
                 #-Werror=switch
                 )
 
-SET(LIBS vkacore SDL2 ${Vulkan_LIBRARIES})
+SET(LIBS vkacore SDL2 ${Vulkan_LIBRARIES} pthread)
 
 file(GLOB files "*.cpp")
 foreach(file ${files})

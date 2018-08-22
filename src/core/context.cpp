@@ -1,21 +1,8 @@
 #include <vka/core/context.h>
-#include <vka/core/renderpass.h>
-#include <vka/core/command_pool.h>
-#include <vka/core/buffer.h>
-#include <vka/core/managed_buffer.h>
-#include <vka/utils/buffer_pool.h>
-#include <vka/core/framebuffer.h>
-#include <vka/core/shader.h>
-#include <vka/core/pipeline.h>
-#include <vka/core/semaphore.h>
-#include <vka/core/texture.h>
-#include <vka/core/texture2d.h>
-#include <vka/core/texture2darray.h>
-#include <vka/core/descriptor_pool.h>
-#include <vka/core/descriptor_set_layout.h>
-#include <vka/core/descriptor_set.h>
-#include <vka/core/offscreen_target.h>
-#include <vka/core/screen_target.h>
+#include <vka/core2/Semaphore.h>
+#include <vka/core2/DescriptorPool.h>
+#include <vka/core2/DescriptorLayoutSet.h>
+#include <vka/core2/DescriptorSet.h>
 #include <vulkan/vulkan.hpp>
 #include <vka/core/context_child.h>
 #include <vka/core/extensions.h>
@@ -28,12 +15,12 @@ namespace vka
 
 vk::Device          vka::context_child::get_device()
 {
-    return m_parent->get_device();
+    return m_parent->getDevice();
 }
 
 vk::PhysicalDevice  vka::context_child::get_physical_device()
 {
-    return m_parent->get_physical_device();
+    return m_parent->getPhysicalDevice();
 }
 vka::context*            vka::context_child::get_parent_context()
 {
@@ -104,7 +91,7 @@ void vka::context::init( )
 }
 
 
-void vka::context::create_device( vk::SurfaceKHR surface_to_use)
+void vka::context::createDevice( vk::SurfaceKHR surface_to_use)
 {
     m_surface = surface_to_use;
     if( !m_surface)
@@ -148,7 +135,7 @@ void vka::context::create_device( vk::SurfaceKHR surface_to_use)
                     m_physical_device            = device;
                     m_queue_family               = Qindex;
 
-                    create_logical_device(m_physical_device, m_queue_family);
+                    createLogicalDevice(m_physical_device, m_queue_family);
 
 
                     //m_image_available_smaphore  = m_device.createSemaphore( vk::SemaphoreCreateInfo() );
@@ -163,8 +150,7 @@ void vka::context::create_device( vk::SurfaceKHR surface_to_use)
                     {
                         throw std::runtime_error("Error creating fence");
                     }
-                    m_command_pool   = new_command_pool("context_command_pool");
-                    m_staging_buffer = new_staging_buffer("context_staging_buffer",1024*1024*10);
+
                     return;
                 }
             }
@@ -173,7 +159,7 @@ void vka::context::create_device( vk::SurfaceKHR surface_to_use)
 
 }
 
-void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device, const vka::queue_family_index_t & p_Qfamily)
+void vka::context::createLogicalDevice(vk::PhysicalDevice & p_physical_device, const vka::queue_family_index_t & p_Qfamily)
 {
     if(!p_physical_device)
     {
@@ -275,120 +261,17 @@ void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device,
 }
 
 
-vka::buffer_pool* vka::context::new_buffer_pool(const std::string & name)
+vka::Semaphore_p vka::context::createSemaphore()
 {
-    return _new<vka::buffer_pool>(name);
+    std::shared_ptr<vka::Semaphore> s(new vka::Semaphore(this));
+
+    return s;
 }
 
 
-vka::framebuffer* vka::context::new_framebuffer(const std::string & name)
+vk::Format vka::context::findDepthFormat()
 {
-    return _new<vka::framebuffer>(name);
-}
-
-
-vka::managed_buffer*   vka::context::new_managed_buffer(const std::string & name,
-                          size_t size,
-                          vk::MemoryPropertyFlags memory_properties,
-                          vk::BufferUsageFlags usage)
-{
-
-    auto * b = new_managed_buffer(name);
-    if( b )
-    {
-        b->set_memory_properties(memory_properties);
-        b->set_size(size);
-        b->set_usage(usage);
-        b->create();
-        return b;
-    }
-    return nullptr;
-}
-
-vka::buffer*   vka::context::new_buffer(const std::string & name,
-                          size_t size,
-                          vk::MemoryPropertyFlags memory_properties,
-                          vk::BufferUsageFlags usage)
-{
-
-    auto * b = new_buffer(name);
-    if( b )
-    {
-        b->set_memory_properties(memory_properties);
-        b->set_size(size);
-        b->set_usage(usage);
-        b->create();
-        return b;
-    }
-    return nullptr;
-}
-
-vka::buffer* vka::context::new_buffer(const std::string & name)
-{
-        return _new<vka::buffer>(name);
-}
-
-vka::managed_buffer* vka::context::new_managed_buffer(const std::string & name)
-{
-        return _new<vka::managed_buffer>(name);
-}
-
-vka::shader* vka::context::new_shader_module(const std::string &name)
-{
-    return _new<vka::shader>(name);
-}
-
-
-vka::pipeline* vka::context::new_pipeline(const std::string &name)
-{
-    auto * R =  _new<vka::pipeline>(name);
-    if( R )
-    {
-        R->set_scissor( vk::Rect2D({0,0}, m_extent) );
-        R->set_viewport( vk::Viewport(0,0, m_extent.width,m_extent.height,0,1));
-    }
-
-    return R;
-}
-
-vka::semaphore *vka::context::new_semaphore(const std::string &name)
-{
-    return _new<vka::semaphore>(name);
-}
-
-vka::texture *vka::context::new_texture(const std::string &name)
-{
-    return _new<vka::texture>(name);
-}
-
-vka::texture2d *vka::context::new_texture2d(const std::string &name)
-{
-    return _new<vka::texture2d>(name);
-}
-
-
-vka::texture2darray *vka::context::new_texture2darray(const std::string &name)
-{
-    return _new<vka::texture2darray>(name);
-}
-
-vka::texture * vka::context::new_depth_texture(const std::string & name, vk::ImageUsageFlags flags)
-{
-    auto * t = new_texture(name);
-
-    auto format = find_depth_format();
-
-    t->set_format( format );
-    t->set_usage( flags | vk::ImageUsageFlagBits::eDepthStencilAttachment );
-    t->set_memory_properties( vk::MemoryPropertyFlagBits::eDeviceLocal);
-    t->set_tiling( vk::ImageTiling::eOptimal);
-    t->set_view_type(vk::ImageViewType::e2D);
-    return t;
-}
-
-vk::Format vka::context::find_depth_format()
-{
-    return find_supported_format(
+    return findSupportedFormat(
     {vk::Format::eD32Sfloat      ,// VK_FORMAT_D32_SFLOAT,
      vk::Format::eD32SfloatS8Uint,// VK_FORMAT_D32_SFLOAT_S8_UINT,
      vk::Format::eD24UnormS8Uint},  //VK_FORMAT_D24_UNORM_S8_UINT},
@@ -398,13 +281,13 @@ vk::Format vka::context::find_depth_format()
                 );
 }
 
-vk::Format vka::context::find_supported_format(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
+vk::Format vka::context::findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
 {
 
     for (vk::Format format : candidates)
     {
 
-        vk::FormatProperties props = get_physical_device().getFormatProperties(format);
+        vk::FormatProperties props = getPhysicalDevice().getFormatProperties(format);
 
         if (tiling == vk::ImageTiling::eLinear
                 && (props.linearTilingFeatures & features) == features)
@@ -424,22 +307,7 @@ vk::Format vka::context::find_supported_format(const std::vector<vk::Format> &ca
 }
 
 
-
-vka::texture2d *vka::context::new_texture2d_host_visible(const std::string &name)
-{
-    auto * staging_texture = new_texture2d(name);
-    //staging_texture->set_size(512,512);
-    staging_texture->set_tiling(vk::ImageTiling::eLinear);
-    staging_texture->set_usage(  vk::ImageUsageFlagBits::eSampled  | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc );
-    staging_texture->set_memory_properties( vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-    staging_texture->set_format(vk::Format::eR8G8B8A8Unorm);
-    staging_texture->set_view_type(vk::ImageViewType::e2D);
-    staging_texture->set_mipmap_levels(1);
-    //staging_texture->create();
-    //staging_texture->create_image_view(vk::ImageAspectFlagBits::eColor);
-    return staging_texture;
-}
-vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, vk::DescriptorSetLayoutCreateFlags flags)
+std::shared_ptr<vka::DescriptorLayoutSet> vka::context::createDescriptorSetLayout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, vk::DescriptorSetLayoutCreateFlags flags)
 {
     auto it = m_DescriptorSetLayouts.find( bindings );
 
@@ -448,10 +316,12 @@ vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::v
     {
         static int i=0;
         std::string name = "descriptor_set_" + std::to_string(i++);
-        auto * ds = new_descriptor_set_layout(name);
 
-        ds->set_flags(flags);
-        ds->set_bindings( bindings );
+        auto ds = std::make_shared<vka::DescriptorLayoutSet>(this);
+        //auto * ds = new_descriptor_set_layout(name);
+
+        ds->setFlags(flags);
+        ds->setBindings( bindings );
         ds->create();
 
         m_DescriptorSetLayouts[bindings] = ds;
@@ -462,15 +332,25 @@ vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::v
     return it->second;
 }
 
-vka::command_pool* vka::context::get_command_pool()
+void vka::context::submitCommandBuffer(vk::CommandBuffer b)
 {
-    return m_command_pool;
+    vk::SubmitInfo submitInfo;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers    = &b;
+
+    //===========
+    if( m_graphics_queue.submit(1, &submitInfo, vk::Fence() ) != vk::Result::eSuccess)
+    {
+        throw std::runtime_error("Failed to submit Copy Buffer command");
+    }
+
+    m_graphics_queue.waitIdle();
 }
 
-void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
-                                         const vka::semaphore * wait_semaphore,
-                                         const vka::semaphore * signal_semaphore,
-                                         vk::PipelineStageFlags wait_stage)
+void vka::context::submitCommandBuffer(const vk::CommandBuffer &p_CmdBuffer,
+                                       const std::shared_ptr<vka::Semaphore> & wait_semaphore,
+                                       const std::shared_ptr<vka::Semaphore> & signal_semaphore,
+                                       vk::PipelineStageFlags wait_stage)
 {
     vk::SubmitInfo submitInfo;
 
@@ -509,97 +389,13 @@ void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
     m_device.resetFences( m_render_fence );
 }
 
-vka::screen* vka::context::new_screen(const std::string & name)
-{
-    return _new<vka::screen>(name);
-}
 
-vka::offscreen_target* vka::context::new_offscreen_target(const std::string & name)
-{
-    return _new<vka::offscreen_target>(name);
-}
-
-vka::renderpass* vka::context::new_renderpass(const std::string & name)
-{
-    return _new<vka::renderpass>(name);
-}
-
-vka::descriptor_pool* vka::context::new_descriptor_pool(const std::string & name)
-{
-    return _new<vka::descriptor_pool>(name);
-}
-
-vka::descriptor_set_layout *vka::context::new_descriptor_set_layout(const std::string &name)
-{
-    return _new<vka::descriptor_set_layout>(name);
-}
-
-vka::command_pool* vka::context::new_command_pool(const std::string & name)
-{
-    //vka::command_pool* new_command_pool(const std::string & name);
-    if( registry_t<command_pool>::get_object(name) == nullptr)
-    {
-        std::shared_ptr<vka::command_pool> R( new vka::command_pool(this), vka::deleter<vka::command_pool>() );
-
-        //====
-        vk::CommandPoolCreateInfo poolInfo;
-
-        poolInfo.queueFamilyIndex = m_queue_family.graphics;
-        poolInfo.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer; // Optional
-
-        R->m_command_pool = get_device().createCommandPool(poolInfo);
-
-        if( !R->m_command_pool )
-        {
-            throw std::runtime_error("Failed to create command pool!");
-        }
-        LOG << "Command Pool created" << ENDL;
-                //=====
-        registry_t<command_pool>::insert_object(name, R);
-
-        return R.get();
-    }
-
-    return nullptr;
-}
-
-//uint32_t vka::context::get_next_image_index(vka::semaphore *signal_semaphore)
-//{
-//    return  m_device.acquireNextImageKHR( m_swapchain,
-//                                          std::numeric_limits<uint64_t>::max(),
-//                                          *signal_semaphore,
-//                                          vk::Fence()).value;
-//}
-
-// void vka::context::present_image(uint32_t image_index,  vka::semaphore * wait_semaphore)
-// {
-//     ///vk::Semaphore signalSemaphores[] = { m_render_finished_smaphore};
-//
-//     // uint32_t nextIndex = GetNextImageIndex();
-//     //std::cout << "Next Image index: " << image_index << std::endl;
-//     //=== finally present the image ====
-//     vk::PresentInfoKHR presentInfo;
-//     if( wait_semaphore)
-//     {
-//         presentInfo.waitSemaphoreCount  = 1;
-//         presentInfo.pWaitSemaphores     = &wait_semaphore->get();
-//     }
-//
-//     vk::SwapchainKHR swapChains[] = { m_swapchain };
-//     presentInfo.swapchainCount    = 1;
-//     presentInfo.pSwapchains       = swapChains;
-//     presentInfo.pImageIndices     = &image_index;
-//     presentInfo.pResults = nullptr;
-//
-//     m_present_queue.presentKHR( presentInfo );
-// }
-
-void vka::context::present_image(const vk::PresentInfoKHR & info)
+void vka::context::presentImage(const vk::PresentInfoKHR & info)
 {
     m_present_queue.presentKHR( info );
 }
 
-std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Image> const & images, vk::Format image_format)
+std::vector<vk::ImageView>  vka::context::createImageViews( std::vector<vk::Image> const & images, vk::Format image_format)
 {
     std::vector<vk::ImageView>   m_ImageViews;
 
@@ -642,9 +438,11 @@ std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Im
 
 void vka::context::clean()
 {
-#define X_MACRO(A) registry_t<A>::clear();
-X_LIST
-#undef X_MACRO
+
+    for(auto & l : m_DescriptorSetLayouts)
+    {
+        l.second->clear();
+    }
 
     if( m_render_fence )
     {
@@ -827,15 +625,15 @@ void vka::context::setup_debug_callback()
 }
 
 
-void vka::context::enable_extension( const std::string & extension)
+void vka::context::enableExtension( const std::string & extension)
 {
     m_instance_extensions.push_back(extension);
 }
-void vka::context::enable_validation_layer( const std::string & layer_name)
+void vka::context::enableValidationLayer( const std::string & layer_name)
 {
     m_validation_layers.push_back(layer_name);
 }
-void vka::context::enable_device_extension(const std::string & extension)
+void vka::context::enableDeviceExtension(const std::string & extension)
 {
     m_device_extensions.push_back(extension);
 }

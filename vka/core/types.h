@@ -1,7 +1,13 @@
+#pragma once
+
+#ifndef VKA_TYPES_H
+#define VKA_TYPES_H
+
+
 #include <vulkan/vulkan.hpp>
 #include <exception>
 
-#include <vka/linalg.h>
+#include <vka/math/linalg.h>
 
 namespace vka
 {
@@ -216,3 +222,5 @@ vk::Format get_format()
 }
 
 }
+
+#endif

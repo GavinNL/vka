@@ -1,3 +1,4 @@
+#if 0
 /*
  * Example 8: Render Targets
  *
@@ -34,18 +35,18 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
-#include <vka/core/image.h>
+#include <vka/ext/HostImage.h>
 #include <vka/vka.h>
 
-#include <vka/linalg.h>
+#include <vka/math/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
 #define APP_TITLE "Tesellation"
 
-#include <vka/core/camera.h>
+#include <vka/utils/camera.h>
 #include <vka/core/transform.h>
-#include <vka/core/primatives.h>
+#include <vka/ext/Primatives.h>
 
 #include <vka/utils/buffer_memory_manager.h>
 #include <vka/core/managed_buffer.h>
@@ -168,8 +169,8 @@ public:
 
     FullScreenQuadRenderer_t(vka::command_buffer & cb ,
                              vka::pipeline * pipeline,
-                             vka::descriptor_set * texture_set,
-                             vka::descriptor_set * uniform_set) : m_pipeline(pipeline) , m_commandbuffer(cb)
+                             vka::DescriptorSet_p  texture_set,
+                             vka::DescriptorSet_p  uniform_set) : m_pipeline(pipeline) , m_commandbuffer(cb)
     {
         m_commandbuffer.bindPipeline( vk::PipelineBindPoint::eGraphics, *m_pipeline );
 
@@ -189,7 +190,7 @@ public:
     {
         static uint32_t i=1;
 
-        m_commandbuffer.pushConstants( m_pipeline->get_layout(),
+        m_commandbuffer.pushConstants( m_pipeline.getLayout(),
                                        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
                                        0,
                                        sizeof(compose_pipeline_push_consts),
@@ -228,10 +229,10 @@ struct App : public VulkanApp
       // Initialize the Command and Descriptor Pools
       //==========================================================================
       m_descriptor_pool = m_Context.new_descriptor_pool("main_desc_pool");
-      m_descriptor_pool->set_pool_size(vk::DescriptorType::eCombinedImageSampler, 25);
-      m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBuffer, 5);
-      m_descriptor_pool->set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
-      m_descriptor_pool->create();
+      m_descriptor_pool.set_pool_size(vk::DescriptorType::eCombinedImageSampler, 25);
+      m_descriptor_pool.set_pool_size(vk::DescriptorType::eUniformBuffer, 5);
+      m_descriptor_pool.set_pool_size(vk::DescriptorType::eUniformBufferDynamic, 1);
+      m_descriptor_pool.create();
 
       m_command_pool = m_Context.new_command_pool("main_command_pool");
       //==========================================================================
@@ -385,17 +386,17 @@ struct App : public VulkanApp
   void init_descriptor_sets()
   {
       //  // we want a descriptor set for set #0 in the pipeline.
-      //  m_dsets.texture_array = m_pipelines.gbuffer->create_new_descriptor_set(0, m_descriptor_pool);
+      //  m_dsets.texture_array = m_pipelines.gbuffer.createNewDescriptorSet(0, m_descriptor_pool);
       //  //  attach our texture to binding 0 in the set.
       //  m_dsets.texture_array->attach_sampler(0, m_texture_array);
       //  m_dsets.texture_array->update();
       //
-      //  m_dsets.uniform_buffer = m_pipelines.gbuffer->create_new_descriptor_set(1, m_descriptor_pool);
+      //  m_dsets.uniform_buffer = m_pipelines.gbuffer.createNewDescriptorSet(1, m_descriptor_pool);
       //  m_dsets.uniform_buffer->attach_uniform_buffer(0, m_ubuffer, sizeof(per_frame_uniform_t), m_ubuffer->offset());
       //  m_dsets.uniform_buffer->update();
 
 
-      m_dsets.light_uniform_buffer = m_pipelines.compose->create_new_descriptor_set(1, m_descriptor_pool);
+      m_dsets.light_uniform_buffer = m_pipelines.compose.createNewDescriptorSet(1, m_descriptor_pool);
       m_dsets.light_uniform_buffer->attach_uniform_buffer(0, m_ubuffer_lights, sizeof(light_uniform_t), m_ubuffer_lights->offset());
       m_dsets.light_uniform_buffer->update();
 
@@ -438,34 +439,34 @@ struct App : public VulkanApp
       //======================================================================
       m_pipelines.compose = m_Context.new_pipeline("compose_pipeline");
       m_pipelines.compose->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
-              ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
+              ->setScissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-              ->set_vertex_shader(   "resources/shaders/compose_multilights/compose_multilights.vert", "main" )   // the shaders we want to use
-              ->set_fragment_shader( "resources/shaders/compose_multilights/compose_multilights.frag", "main" ) // the shaders we want to use
+              ->setVertexShader(   "resources/shaders/compose_multilights/compose_multilights.vert", "main" )   // the shaders we want to use
+              ->setFragmentShader( "resources/shaders/compose_multilights/compose_multilights.frag", "main" ) // the shaders we want to use
 
-              ->set_toplogy(vk::PrimitiveTopology::eTriangleList)
-              ->set_line_width(1.0f)
+              ->setTopology(vk::PrimitiveTopology::eTriangleList)
+              ->setLineWidth(1.0f)
               // Triangle vertices are drawn in a counter clockwise manner
               // using the right hand rule which indicates which face is the
               // front
-              ->set_front_face(vk::FrontFace::eCounterClockwise)
+              ->setFrontFace(vk::FrontFace::eCounterClockwise)
 
               // Here are the 4 textures we are going to need
               // See the fragment shader code for more information.
-              ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
-              ->add_texture_layout_binding(0, 1, vk::ShaderStageFlagBits::eFragment)
-              ->add_texture_layout_binding(0, 2, vk::ShaderStageFlagBits::eFragment)
-              ->add_texture_layout_binding(0, 3, vk::ShaderStageFlagBits::eFragment)
+              ->addTextureLayoutBinding(0, 0, vk::ShaderStageFlagBits::eFragment)
+              ->addTextureLayoutBinding(0, 1, vk::ShaderStageFlagBits::eFragment)
+              ->addTextureLayoutBinding(0, 2, vk::ShaderStageFlagBits::eFragment)
+              ->addTextureLayoutBinding(0, 3, vk::ShaderStageFlagBits::eFragment)
 
               // Cull all back facing triangles.
-              ->set_cull_mode(vk::CullModeFlagBits::eBack)
+              ->setCullMode(vk::CullModeFlagBits::eBack)
 
               // Add a push constant to the layout. It is accessable in the vertex shader
               // stage only.
-              ->add_push_constant( sizeof(compose_pipeline_push_consts), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+              ->addPushConstant( sizeof(compose_pipeline_push_consts), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
 
               // Add a uniform for the fragment shader
-              ->add_uniform_layout_binding(1, 0, vk::ShaderStageFlagBits::eFragment)
+              ->addUniformLayoutBinding(1, 0, vk::ShaderStageFlagBits::eFragment)
 
               // Since we are drawing this to the screen, we need the screen's
               // renderpass.
@@ -482,7 +483,7 @@ struct App : public VulkanApp
 
       // Create a new descriptor set based on the descriptor information we
       // gave to the Compose pipeline
-      m_dsets.renderTargets = m_pipelines.compose->create_new_descriptor_set(0, m_descriptor_pool);
+      m_dsets.renderTargets = m_pipelines.compose.createNewDescriptorSet(0, m_descriptor_pool);
 
       m_dsets.renderTargets->attach_sampler(0, m_OffscreenTarget->get_image(0) );
       m_dsets.renderTargets->attach_sampler(1, m_OffscreenTarget->get_image(1) );
@@ -501,52 +502,52 @@ struct App : public VulkanApp
       m_pipelines.gbuffer = m_Context.new_pipeline("gbuffer_pipeline");
 
       m_pipelines.gbuffer->set_viewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
-              ->set_scissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
+              ->setScissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-              ->set_vertex_shader(                "resources/shaders/gbuffer_tesellation/gbuffer_tesellation.vert", "main" )   // the shaders we want to use
-              ->set_fragment_shader(              "resources/shaders/gbuffer_tesellation/gbuffer_tesellation.frag", "main" ) // the shaders we want to use
+              ->setVertexShader(                "resources/shaders/gbuffer_tesellation/gbuffer_tesellation.vert", "main" )   // the shaders we want to use
+              ->setFragmentShader(              "resources/shaders/gbuffer_tesellation/gbuffer_tesellation.frag", "main" ) // the shaders we want to use
               ->set_tesselation_control_shader(   "resources/shaders/gbuffer_tesellation/gbuffer_tesellation.tesc", "main" ) // the shaders we want to use
               ->set_tesselation_evaluation_shader("resources/shaders/gbuffer_tesellation/gbuffer_tesellation.tese", "main" ) // the shaders we want to use
 
               ->set_tesselation_patch_control_points(3)
-              ->set_toplogy( vk::PrimitiveTopology::ePatchList)
+              ->setTopology( vk::PrimitiveTopology::ePatchList)
 
               ->set_polygon_mode(vk::PolygonMode::eLine)
 
               // tell the pipeline that attribute 0 contains 3 floats
               // and the data starts at offset 0
-              ->set_vertex_attribute(0, 0 ,  0 , M.format( vka::VertexAttribute::ePosition) , sizeof(glm::vec3) )
+              ->setVertexAttribute(0, 0 ,  0 , M.format( vka::VertexAttribute::ePosition) , sizeof(glm::vec3) )
               // tell the pipeline that attribute 1 contains 3 floats
               // and the data starts at offset 12
-              ->set_vertex_attribute(1, 1 ,  0       , M.format( vka::VertexAttribute::eUV) , sizeof(glm::vec2) )
+              ->setVertexAttribute(1, 1 ,  0       , M.format( vka::VertexAttribute::eUV) , sizeof(glm::vec2) )
 
-              ->set_vertex_attribute(2, 2 ,  0   , M.format( vka::VertexAttribute::eNormal) , sizeof(glm::vec3) )
+              ->setVertexAttribute(2, 2 ,  0   , M.format( vka::VertexAttribute::eNormal) , sizeof(glm::vec3) )
 
               //===============================================================
               // Here we are going to set the number of color attachments.
               // We created 3 color attachments for our render target.
               //===============================================================
-              ->set_color_attachments( 3 )
+              ->setColorAttachments( 3 )
               //===============================================================
 
               // Triangle vertices are drawn in a counter clockwise manner
               // using the right hand rule which indicates which face is the
               // front
-              ->set_front_face(vk::FrontFace::eCounterClockwise)
+              ->setFrontFace(vk::FrontFace::eCounterClockwise)
 
               // Cull all back facing triangles.
-              ->set_cull_mode(vk::CullModeFlagBits::eFront)
+              ->setCullMode(vk::CullModeFlagBits::eFront)
 
               //====================================================================================================
               // When using Push Descriptors, we can only have one DescriptorSet enabled as a push descriptor
               //====================================================================================================
               // Tell the shader that we are going to use a texture
               // in Set #0 binding #0
-              ->add_texture_layout_binding(0, 0, vk::ShaderStageFlagBits::eFragment)
+              ->addTextureLayoutBinding(0, 0, vk::ShaderStageFlagBits::eFragment)
 
               // Tell teh shader that we are going to use a uniform buffer
               // in Set #0 binding #0
-              ->add_uniform_layout_binding(0, 1, vk::ShaderStageFlagBits::eTessellationControl| vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation)
+              ->addUniformLayoutBinding(0, 1, vk::ShaderStageFlagBits::eTessellationControl| vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation)
 
               // Enable Set #0 as the push descriptor.
               ->enable_push_descriptor(0)
@@ -554,7 +555,7 @@ struct App : public VulkanApp
 
               // Add a push constant to the layout. It is accessable in the vertex shader
               // stage only.
-              ->add_push_constant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eTessellationControl | vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation)
+              ->addPushConstant( sizeof(push_constants_t), 0, vk::ShaderStageFlagBits::eTessellationControl | vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation)
               //
               //===============================================================
               // Since we are no longer drawing to the main screen. we need
@@ -564,9 +565,9 @@ struct App : public VulkanApp
 
         //======================================================================
         // Tell the gbuffer pipeline to disable blending for the colours
-        m_pipelines.gbuffer->get_color_blend_attachment_state(0).blendEnable=VK_FALSE;
-        m_pipelines.gbuffer->get_color_blend_attachment_state(1).blendEnable=VK_FALSE;
-        m_pipelines.gbuffer->get_color_blend_attachment_state(2).blendEnable=VK_FALSE;
+        m_pipelines.gbuffer->getColorBlendAttachmentState(0).blendEnable=VK_FALSE;
+        m_pipelines.gbuffer->getColorBlendAttachmentState(1).blendEnable=VK_FALSE;
+        m_pipelines.gbuffer->getColorBlendAttachmentState(2).blendEnable=VK_FALSE;
 
         m_pipelines.gbuffer->create();
 
@@ -765,7 +766,7 @@ struct App : public VulkanApp
                   X.model = glm::scale( glm::mat4(1), glm::vec3(1.0,1.0,1));
 
 
-                  m_offscreen_cmd_buffer.pushConstants( obj->m_pipeline->get_layout(),
+                  m_offscreen_cmd_buffer.pushConstants( obj->m_pipeline.getLayout(),
                                                         vk::ShaderStageFlagBits::eTessellationControl |vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eTessellationEvaluation,
                                                         0,
                                                         sizeof(push_constants_t),
@@ -988,11 +989,11 @@ struct App : public VulkanApp
 
   struct
   {
-    //vka::descriptor_set * texture_array;
-    //vka::descriptor_set * uniform_buffer;
-    vka::descriptor_set * light_uniform_buffer;
+    //vka::DescriptorSet_p  texture_array;
+    //vka::DescriptorSet_p  uniform_buffer;
+    vka::DescriptorSet_p  light_uniform_buffer;
 
-    vka::descriptor_set * renderTargets;
+    vka::DescriptorSet_p  renderTargets;
   } m_dsets;
 
   struct
@@ -1045,3 +1046,9 @@ int main(int argc, char ** argv)
 #define STB_IMAGE_IMPLEMENTATION
 #include<stb/stb_image.h>
 
+#endif
+
+int main()
+{
+    return 0;
+}

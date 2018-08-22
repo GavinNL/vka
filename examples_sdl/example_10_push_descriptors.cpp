@@ -36,13 +36,9 @@
 
 #include <vka/ext/Primatives.h>
 
-#include <vka/core2/CommandPool.h>
-#include <vka/core2/Pipeline.h>
-#include <vka/core2/BufferMemoryPool.h>
-#include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
 
-#include <vka/utils/glfw_window_handler.h>
+#include <vka/utils/sdl_window_handler.h>
 #include <vka/utils/camera.h>
 
 #include <vka/core2/Screen.h>
@@ -215,19 +211,46 @@ vka::MeshObject HostToGPU( vka::host_mesh & host_mesh ,
     return CubeObj;
 }
 
+SDL_Window* initWindow()
+{
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS );
+
+    if(SDL_Vulkan_LoadLibrary(nullptr) == -1)
+    {
+        std::cout << "Error loading vulkan" << std::endl;
+        exit(1);
+    }
+    atexit(SDL_Quit);
+
+    auto window = SDL_CreateWindow("APPLICATION_NAME",
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        WIDTH,
+        HEIGHT,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+
+    if(window == nullptr)
+    {
+        std::cout << "Couldn\'t set video mode: " << SDL_GetError() << std::endl;
+        exit(1);
+    }
+    return window;
+}
+
 int main(int argc, char ** argv)
 {
     //==========================================================================
-    // 1. Initlize the library and create a GLFW window
+    // 1. Initlize the library and create a window
     //==========================================================================
-    glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
+    auto * window  = initWindow();
 
-    unsigned int glfwExtensionCount = 0;
-    const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
+    unsigned int count = 0;
+    SDL_Vulkan_GetInstanceExtensions(window, &count, nullptr);
+    const char **names = new const char *[count];
+    SDL_Vulkan_GetInstanceExtensions(window, &count, names);
+
+    vka::SDL_Window_Handler Window(window);
 
     // the context is the main class for the vka library. It is keeps track of
     // all the vulkan objects and releases them appropriately when it is destroyed
@@ -235,23 +258,26 @@ int main(int argc, char ** argv)
     // command pools, etc.
     vka::context C;
 
-    // Enable the required extensions for being able to draw
-    for(uint i=0;i<glfwExtensionCount;i++)  C.enableExtension( glfwExtensions[i] );
+    for(uint i=0;i<count;i++)  C.enableExtension( names[i] );
 
-    // Enable some extra extensions that we want.
-    C.enableExtension( VK_EXT_DEBUG_REPORT_EXTENSION_NAME );
-
-    // Enable the required device extension
+    C.enableExtension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     C.enableDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+    //===========================================================================
+    // Push Descriptors require the following extensions!
+    //===========================================================================
+    C.enableExtension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+    C.enableDeviceExtension(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+    //===========================================================================
 
     C.init();
 
     vk::SurfaceKHR surface;
-    if (glfwCreateWindowSurface( C.getInstance(), window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surface) ) != VK_SUCCESS)
+    if( !SDL_Vulkan_CreateSurface( window, C.getInstance(), reinterpret_cast<VkSurfaceKHR*>(&surface)  ) )
     {
-        ERROR << "Failed to create window surface!" << ENDL;
-        throw std::runtime_error("failed to create window surface!");
+        ERROR << "Failed to create surface" << ENDL;
     }
+
 
     C.createDevice(surface); // find the appropriate device
 
@@ -265,7 +291,7 @@ int main(int argc, char ** argv)
 
 
 
-    vka::GLFW_Window_Handler Window(window);
+
 
     //==========================================================================
     // Initialize the Command and Descriptor Pools
@@ -316,10 +342,10 @@ int main(int argc, char ** argv)
 
    // vka::host_mesh CubeMesh = vka::box_mesh(1,1,1);
     vka::host_mesh CubeMesh = vka::sphere_mesh(0.5,20,20);
-    auto CubeObj = HostToGPU( CubeMesh, BufferPool,StagingBufferPool, CP,C);
+    auto CubeObj = HostToGPU( CubeMesh, BufferPool,StagingBufferPool, CP, C);
 
     vka::host_mesh PlaneMesh = vka::plane_mesh(10,10,1);
-    auto PlaneObj = HostToGPU( PlaneMesh, BufferPool,StagingBufferPool, CP,C);
+    auto PlaneObj = HostToGPU( PlaneMesh, BufferPool,StagingBufferPool, CP, C);
 
 
     std::vector< RenderComponent_t > m_Objects(3);
@@ -425,12 +451,13 @@ int main(int argc, char ** argv)
 //
 //==============================================================================
 
+
         vka::Pipeline g_buffer_pipeline(&C);
         g_buffer_pipeline.setViewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                 ->setScissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                ->setVertexShader(   "resources/shaders/gbuffer/gbuffer.vert", "main" )   // the shaders we want to use
-                ->setFragmentShader( "resources/shaders/gbuffer/gbuffer.frag", "main" ) // the shaders we want to use
+                ->setVertexShader(   "resources/shaders/gbuffer_push_descriptors/gbuffer_push_descriptors.vert", "main" )   // the shaders we want to use
+                ->setFragmentShader( "resources/shaders/gbuffer_push_descriptors/gbuffer_push_descriptors.frag", "main" ) // the shaders we want to use
 
                 // tell the pipeline that attribute 0 contains 3 floats
                 // and the data starts at offset 0
@@ -456,13 +483,20 @@ int main(int argc, char ** argv)
                 // Cull all back facing triangles.
                 ->setCullMode(vk::CullModeFlagBits::eBack)
 
+                //====================================================================================================
+                // When using Push Descriptors, we can only have one DescriptorSet enabled as a push descriptor
+                //====================================================================================================
                 // Tell the shader that we are going to use a texture
                 // in Set #0 binding #0
                 ->addTextureLayoutBinding(0, 0, vk::ShaderStageFlagBits::eFragment)
 
                 // Tell teh shader that we are going to use a uniform buffer
                 // in Set #0 binding #0
-                ->addUniformLayoutBinding(1, 0, vk::ShaderStageFlagBits::eVertex)
+                ->addUniformLayoutBinding(0, 1, vk::ShaderStageFlagBits::eVertex)
+
+                // Enable Set #0 as the push descriptor.
+                ->enablePushDescriptor(0)
+                //====================================================================================================
 
                 // Add a push constant to the layout. It is accessable in the vertex shader
                 // stage only.
@@ -486,7 +520,6 @@ int main(int argc, char ** argv)
         // which can be displayed to the screen
         //======================================================================
         vka::Pipeline compose_pipeline(&C);
-
         compose_pipeline.setViewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                 ->setScissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
@@ -530,7 +563,7 @@ int main(int argc, char ** argv)
 
         // Create a new descriptor set based on the descriptor information we
         // gave to the Compose pipeline
-        vka::DescriptorSet_p renderTargets = compose_pipeline.createNewDescriptorSet(0, &descriptor_pool);
+        vka::DescriptorSet_p  renderTargets = compose_pipeline.createNewDescriptorSet(0, &descriptor_pool);
         renderTargets->AttachSampler(0, myRenderTarget.GetColorImage(0) );
         renderTargets->AttachSampler(1, myRenderTarget.GetColorImage(1) );
         renderTargets->AttachSampler(2, myRenderTarget.GetColorImage(2) );
@@ -547,14 +580,14 @@ int main(int argc, char ** argv)
 //   The pipline object can generate a descriptor set for you.
 //==============================================================================
     // we want a descriptor set for set #0 in the pipeline.
-    vka::DescriptorSet_p  texture_descriptor = g_buffer_pipeline.createNewDescriptorSet(0, &descriptor_pool);
-    //  attach our texture to binding 0 in the set.
-    texture_descriptor->AttachSampler(0, Tex);
-    texture_descriptor->update();
-
-    vka::DescriptorSet_p  ubuffer_descriptor = g_buffer_pipeline.createNewDescriptorSet(1, &descriptor_pool);
-    ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
-    ubuffer_descriptor->update();
+ //   vka::DescriptorSet_p  texture_descriptor = g_buffer_pipeline.createNewDescriptorSet(0, &descriptor_pool);
+ //   //  attach our texture to binding 0 in the set.
+ //   texture_descriptor->AttachSampler(0, Tex);
+ //   texture_descriptor->update();
+ //
+ //   vka::DescriptorSet_p  ubuffer_descriptor = g_buffer_pipeline.createNewDescriptorSet(1, &descriptor_pool);
+ //   ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
+ //   ubuffer_descriptor->update();
 
     vka::DescriptorSet_p  lights_buffer_descriptor = compose_pipeline.createNewDescriptorSet(1, &descriptor_pool);
     lights_buffer_descriptor->AttachUniformBuffer(0,L_buffer, 10);
@@ -588,9 +621,9 @@ int main(int argc, char ** argv)
     vka::CommandBuffer offscreen_cmd_buffer = CP.allocateCommandBuffer();
     vka::CommandBuffer compose_cmd_buffer = CP.allocateCommandBuffer();
 
-    vka::Semaphore_p image_available_semaphore  = C.createSemaphore();
-    vka::Semaphore_p gbuffer_complete_semaphore = C.createSemaphore();
-    vka::Semaphore_p render_complete_semaphore  = C.createSemaphore();
+    vka::Semaphore_p  image_available_semaphore  = C.createSemaphore();
+    vka::Semaphore_p  gbuffer_complete_semaphore = C.createSemaphore();
+    vka::Semaphore_p  render_complete_semaphore  = C.createSemaphore();
 
 
 
@@ -716,18 +749,6 @@ int main(int argc, char ** argv)
           {
               offscreen_cmd_buffer.bindPipeline( vk::PipelineBindPoint::eGraphics, g_buffer_pipeline);
 
-              offscreen_cmd_buffer.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                     g_buffer_pipeline.getLayout(),
-                                     0,
-                                     vk::ArrayProxy<const vk::DescriptorSet>( texture_descriptor->get()),
-                                     nullptr );
-
-              offscreen_cmd_buffer.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                     g_buffer_pipeline.getLayout(),
-                                     1,
-                                     vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
-                                     nullptr );
-
 
               vka::MeshObject * first = nullptr;
               for(auto & obj : m_Objects)
@@ -737,6 +758,13 @@ int main(int argc, char ** argv)
                       offscreen_cmd_buffer.bindMeshObject( *obj.mesh );
                       first = obj.mesh;
                   }
+
+                  offscreen_cmd_buffer.pushDescriptorSet( vk::PipelineBindPoint::eGraphics,
+                                                            g_buffer_pipeline,
+                                                            0,
+                                                            vka::PushDescriptorInfo().attach(0, 1, Tex)
+                                                                                     .attach(1, 1, U_buffer));
+
                   offscreen_cmd_buffer.pushConstants( g_buffer_pipeline.getLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(obj.push), &obj.push);
                   offscreen_cmd_buffer.drawMeshObject( *obj.mesh );
               }

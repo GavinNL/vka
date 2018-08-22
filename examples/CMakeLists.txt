@@ -5,7 +5,7 @@ find_package(Vulkan)
 #============================================
 # For GLFW3 examples
 #============================================
-find_package(glfw3 3.2 REQUIRED)
+#find_package(glfw3 3.2 REQUIRED)
 #============================================
 
 SET(CMAKE_SKIP_BUILD_RPATH  FALSE)

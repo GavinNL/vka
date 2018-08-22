@@ -34,43 +34,36 @@
 #include <vka/ext/HostImage.h>
 #include <vka/vka.h>
 
+#include <vka/ext/Primatives.h>
+#include <vka/core2/MeshObject.h>
+
+
 #include <vka/math/linalg.h>
 
 #define WIDTH 1024
 #define HEIGHT 768
-#define APP_TITLE "Example_05 - Mip Maps"
+#define APP_TITLE "Example_07 - Mesh Objects"
 
-// This is the vertex structure we are going to use
-// it contains a position and a UV coordates field
-struct Vertex
-{
-    glm::vec3 p; // position
-    glm::vec2 u; // uv coords
-    glm::vec3 n; // normal
-};
 
 // This is the structure of the uniform buffer we want.
 // it needs to match the structure in the shader.
-struct uniform_buffer_t
+struct per_frame_uniform_t
 {
     glm::mat4 view;
     glm::mat4 proj;
 };
+using uniform_buffer_t = per_frame_uniform_t;
 
-
-// Each object just needs the model matrix
-struct dynamic_uniform_buffer_t
-{
-    glm::mat4 model;
-};
 
 // This data will be written directly to the command buffer to
 // be passed to the shader as a push constant.
 struct push_constants_t
 {
+    glm::mat4 model;
     int index; // index into the texture array layer
     int miplevel; // mipmap level we want to use, -1 for shader chosen.
 };
+
 
 /**
  * @brief get_elapsed_time
@@ -89,21 +82,93 @@ float get_elapsed_time()
 
 }
 
+vka::MeshObject HostToGPU( vka::host_mesh & host_mesh ,
+                           vka::BufferMemoryPool & BufferPool,
+                           vka::BufferMemoryPool & StagingBufferPool,
+                           vka::CommandPool & CP,
+                           vka::context & C)
+{
 
-/**
- * @brief create_box_mesh
- * @param dx - dimension of the box
- * @param dy - dimension of the box
- * @param dz - dimension of the box
- * @param vertices
- * @param indices
- *
- * Create a box mesh and save the vertices and indices in the input vectors.
- * The vertices/indices will then be copied into the graphics's buffers
- */
-void create_box_mesh(float dx , float dy , float dz , std::vector<Vertex> & vertices, std::vector<uint16_t> & indices );
+    vka::host_mesh & CubeMesh = host_mesh;
+
+    assert(  CubeMesh.has_attribute( vka::VertexAttribute::ePosition ) );
+    assert(  CubeMesh.has_attribute( vka::VertexAttribute::eUV       ) );
+    assert(  CubeMesh.has_attribute( vka::VertexAttribute::eNormal   ) );
+    assert(  CubeMesh.has_attribute( vka::VertexAttribute::eIndex    ) );
+
+    //=====================================================================
+
+    // A MeshObject is essentially just a container that holde
+    // information about a Mesh. It contains multiple SubBuffers; one for
+    // each attribute in the mesh (eg: position, UV, normals)
+    // and an additional optional buffer for Indices.
+    //
+    // MeshObjects can be bound using a command buffer similarly to how
+    // a vertex or index buffer is bound. Under the hood, it simply
+    // binds the individual buffers to their appropriate bind index.
+    vka::MeshObject CubeObj;
+
+    vka::VertexAttribute Attr[] =
+    {
+        vka::VertexAttribute::ePosition ,
+        vka::VertexAttribute::eUV,
+        vka::VertexAttribute::eNormal,
+    };
+
+    // We're going to keep a vector of staging buffers so that
+    // they do not deallocate themselves until after we are
+    // done with them.
+    std::vector<vka::SubBuffer_p>    staging_buffers;
 
 
+    vka::CommandBuffer copy_cmd = CP.allocateCommandBuffer();
+    copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit ) );
+
+    for(uint32_t i =0; i < 3 ; i++)
+    {
+        auto & P = CubeMesh.get_attribute( Attr[i] );
+
+        const auto byte_size = P.data_size();
+
+        CubeObj.AddAttributeBuffer(i,  BufferPool.NewSubBuffer( byte_size) );
+
+
+        // Create a staging buffer for copying attribute i;
+        auto S = StagingBufferPool.NewSubBuffer( byte_size );
+
+        // copy data to staging buffer
+        S->CopyData( P.data(), byte_size );
+
+        // keep a reference to the staging buffer so it doesn't
+        // get erased.
+        staging_buffers.push_back(S);
+
+        copy_cmd.copySubBuffer( S, CubeObj.GetAttributeBuffer(i), vk::BufferCopy{ 0 , 0 , byte_size } );
+    }
+
+    {
+        auto & I = CubeMesh.get_attribute( vka::VertexAttribute::eIndex );
+
+        CubeObj.AddIndexBuffer( vk::IndexType::eUint16,  BufferPool.NewSubBuffer(I.data_size()) );
+
+        auto byte_size = I.data_size();
+        auto S = StagingBufferPool.NewSubBuffer( byte_size );
+
+        // copy data to staging buffer
+        S->CopyData( I.data(), byte_size );
+
+        // keep a reference to the staging buffer so it doesn't
+        // get erased when we exit the scope
+        staging_buffers.push_back(S);
+        copy_cmd.copySubBuffer( S, CubeObj.GetIndexBuffer(), vk::BufferCopy{ 0 , 0 , byte_size } );
+    }
+
+    copy_cmd.end();
+    C.submitCommandBuffer( copy_cmd );
+    CP.freeCommandBuffer( copy_cmd );
+
+    return CubeObj;
+}
 
 int main(int argc, char ** argv)
 {
@@ -148,8 +213,8 @@ int main(int argc, char ** argv)
     // and framebuffers.
     // in VKA we present images to the screen object.
     // This a simple initialization of creating a screen with depth testing
-    vka::Screen  Screen(&C);
-    Screen.create(surface,vk::Extent2D(WIDTH,HEIGHT) );
+    vka::Screen Screen(&C);
+    Screen.create(surface, vk::Extent2D(WIDTH,HEIGHT) );
 
     //==========================================================================
 
@@ -201,63 +266,101 @@ int main(int argc, char ** argv)
 
     //==============================================================================
 
-//==============================================================================
-// Create the Vertex and Index buffers
-//
-//  We are going to  create a vertex and index buffer. The vertex buffer will
-//  hold the positions and UV coordates of our triangle.
-//
-//  The steps to create the buffer are.
-//    1. Copy the vertex/index data from the host to a memory mappable device buffer
-//    2. copy the memory-mapped buffer to the vertex/index buffers
-//==============================================================================
+#if 1
+    vka::host_mesh CubeMesh = vka::box_mesh(1,1,1);
+    auto CubeObj = HostToGPU( CubeMesh, BufferPool,StagingBufferPool, CP, C);
+#else
+        //=====================================================================
+        // This is a host_mesh, it's a mesh of a Box stored in RAM.
+        // we are going to use this to copy build a Box mesh in GPU memory
+        //=====================================================================
+        vka::host_mesh CubeMesh = vka::box_mesh(1,1,1);
+        auto & P = CubeMesh.get_attribute( vka::VertexAttribute::ePosition );
+        auto & U = CubeMesh.get_attribute( vka::VertexAttribute::eUV);
+        auto & N = CubeMesh.get_attribute( vka::VertexAttribute::eNormal);
+        auto & I = CubeMesh.get_attribute( vka::VertexAttribute::eIndex);
+        //=====================================================================
 
-        std::vector<Vertex>   vertices;
-        std::vector<uint16_t> indices;
 
-        create_box_mesh( 1,1,1, vertices, indices);
 
+        // A MeshObject is essentially just a container that holde
+        // information about a Mesh. It contains multiple SubBuffers; one for
+        // each attribute in the mesh (eg: position, UV, normals)
+        // and an additional optional buffer for Indices.
+        //
+        // MeshObjects can be bound using a command buffer similarly to how
+        // a vertex or index buffer is bound. Under the hood, it simply
+        // binds the individual buffers to their appropriate bind index.
+        vka::MeshObject CubeObj;
+
+        // allocate a new buffer from teh buffer pool and add it as an attribute
+        // to the CubeObject.
+        CubeObj.AddAttributeBuffer(0,  BufferPool.NewSubBuffer(P.data_size()) );
+        CubeObj.AddAttributeBuffer(1,  BufferPool.NewSubBuffer(U.data_size()) );
+        CubeObj.AddAttributeBuffer(2,  BufferPool.NewSubBuffer(N.data_size()) );
+        // Also allocate an Index Buffer
+        CubeObj.AddIndexBuffer( vk::IndexType::eUint16,  BufferPool.NewSubBuffer(I.data_size()) );
+
+
+
+        // We're going to keep a vector of staging buffers so that
+        // they do not deallocate themselves until after we are
+        // done with them.
+        std::vector<vka::SubBuffer_p>    staging_buffers;
+
+        vka::command_buffer copy_cmd = CP.AllocateCommandBuffer();
+        copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
+
+
+            // First copy the Index buffer by allocating a StagingBuffer from the StagingBufferPool
+            // Copy the data from the host to the staging buffer
+            // write the command to copy from the staging buffer to the attribute buffer.
+            {
+                auto byte_size = I.data_size();
+                auto S = StagingBufferPool.NewSubBuffer( byte_size );
+
+                // copy data to staging buffer
+                S->CopyData( I.data(), byte_size );
+
+                // keep a reference to the staging buffer so it doesn't
+                // get erased when we exit the scope
+                staging_buffers.push_back(S);
+                copy_cmd.copySubBuffer( S, CubeObj.GetIndexBuffer(), vk::BufferCopy{ 0 , 0 , byte_size } );
+            }
+
+            // For each Attribute: do the same as we did for the index buffer
+            vka::host_mesh::AttributeInfo_t * A[] = {&P, &U, &N};
+            for(uint32_t i=0;i<3;i++)
+            {
+                auto byte_size = A[i]->data_size();
+
+                // Create a staging buffer for copying attribute i;
+                auto S = StagingBufferPool.NewSubBuffer( byte_size );
+
+                // copy data to staging buffer
+                S->CopyData( A[i]->data(), byte_size );
+
+                // keep a reference to the staging buffer so it doesn't
+                // get erased.
+                staging_buffers.push_back(S);
+
+                copy_cmd.copySubBuffer( S, CubeObj.GetAttributeBuffer(i), vk::BufferCopy{ 0 , 0 , byte_size } );
+
+            }
+
+
+        copy_cmd.end();
+        C.submit_cmd_buffer( copy_cmd );
+        CP.FreeCommandBuffer( copy_cmd );
+
+        // We no longer need the staging buffers, so we can
+        // clear this.
+        staging_buffers.clear();
+
+#endif
         // Create two buffers, one for vertices and one for indices. THey
         // will each be 1024 bytes long
-        auto V_buffer  = BufferPool.NewSubBuffer(5*1024);
-        auto I_buffer  = BufferPool.NewSubBuffer(5*1024);
         auto U_buffer  = BufferPool.NewSubBuffer(5*1024);
-        auto DU_buffer = BufferPool.NewSubBuffer(5*1024);
-
-        //auto StagingBuffer = StagingBufferPool.NewSubBuffer(5*1024*1024);
-
-        // using the map< > method, we can return an array_view into the
-        // memory. We are going to place them in their own scope so that
-        // the array_view is destroyed after exiting the scope. This is
-        // so we do not accidenty access the array_view after the
-        // staging_buffer has been unmapped.
-
-        // 1. Allocates 2 staging sub buffers to accept the transfer from the host
-        // These Subbuffers will
-        auto S_vertex = StagingBufferPool.NewSubBuffer( vertices.size()* sizeof(Vertex));
-        auto S_index  = StagingBufferPool.NewSubBuffer( indices.size()* sizeof(uint16_t));
-
-        // 2. Copy the data from the host to the staging buffers
-        S_vertex->CopyData( vertices.data(), vertices.size() * sizeof(Vertex)   );
-        S_index->CopyData( indices.data()  , indices .size() * sizeof(uint16_t) );
-
-        // 3. Copy the data from the host-visible buffer to the vertex/index buffers
-        {
-            vka::CommandBuffer copy_cmd = CP.allocateCommandBuffer();
-            copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
-
-                // write the commands to copy each of the buffer data
-                const vk::DeviceSize vertex_size     = vertices.size()*sizeof(Vertex);
-                const vk::DeviceSize index_size      = indices.size()*sizeof(uint16_t);
-
-                copy_cmd.copySubBuffer( S_vertex, V_buffer, vk::BufferCopy{ 0 , 0 , vertex_size } );
-                copy_cmd.copySubBuffer( S_index , I_buffer, vk::BufferCopy{ 0 , 0 , index_size  } );
-
-            copy_cmd.end();
-            C.submitCommandBuffer(copy_cmd);
-            CP.freeCommandBuffer(copy_cmd);
-        }
-
 //==============================================================================
 // Create a texture
 //
@@ -308,7 +411,7 @@ int main(int argc, char ** argv)
             // b. copy the data from the buffer to the texture
             vk::BufferImageCopy BIC;
             BIC.setBufferImageHeight(  D.height() )
-               .setBufferOffset(0) // the image data starts at the start of the buffer
+               .setBufferOffset(0) // the image data starts at the start of the SubBuffer
                .setImageExtent( vk::Extent3D(D.width(), D.height(), 1) ) // size of the image
                .setImageOffset( vk::Offset3D(0,0,0)) // where in the texture we want to paste the image
                .imageSubresource.setAspectMask(vk::ImageAspectFlagBits::eColor)
@@ -320,62 +423,8 @@ int main(int argc, char ** argv)
             //---------------------------------------------
             cb1.copySubBufferToTexture( StagingBuffer, Tex, vk::ImageLayout::eTransferDstOptimal, BIC);
 
-#define MANUAL_MIP_MAPS
 
-#if defined MANUAL_MIP_MAPS
-            // convert the first layer into transferSrc
-            cb1.convertTextureLayerMips( Tex,
-                                         0,2, // convert Layer's 0-1
-                                         0,1, // convert mip level i
-                                         vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal,
-                                         vk::PipelineStageFlagBits::eAllCommands,
-                                         vk::PipelineStageFlagBits::eAllCommands);
-
-            //==================================================================
-            // Generate the mipmaps manually for layer 0
-            //==================================================================
-            for(uint32_t i=1; i < Tex->getMipLevels() ; i++)
-            {
-                LOG << "Generating Mipmap Level: " << i+1 << ENDL;
-
-                // Convert Layer i to TransferDst
-                cb1.convertTextureLayerMips( Tex,
-                                             0,2, // layers 0-1
-                                             i,1, // mips level i+1
-                                             vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
-                                             vk::PipelineStageFlagBits::eTransfer,
-                                             vk::PipelineStageFlagBits::eHost);
-
-                // Blit from miplevel i-1 to i for layers 0 and 1
-                cb1.blitMipMap( Tex,
-                                0,2,
-                                i-1,i);
-
-
-                // convert layer i into src so it can be copied from in the next iteraation
-                cb1.convertTextureLayerMips( Tex,
-                                             0,2, // layers 0-1
-                                             i,1, // mips level i+1
-                                             vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferSrcOptimal,
-                                             vk::PipelineStageFlagBits::eHost,
-                                             vk::PipelineStageFlagBits::eTransfer);
-
-            }
-
-            //==================================================================
-
-            // c. convert the texture into eShaderReadOnlyOptimal
-            cb1.convertTextureLayerMips( Tex,
-                                         0,2, // layers 0-1
-                                         0,Tex->getMipLevels(), // mips level i+1
-                                         vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
-                                         vk::PipelineStageFlagBits::eHost,
-                                         vk::PipelineStageFlagBits::eTransfer);
-
-            // end and submit the command buffer
-#else
             cb1.generateMipMaps( Tex, 0, 2);
-#endif
 
             cb1.end();
             C.submitCommandBuffer(cb1);
@@ -395,17 +444,18 @@ int main(int argc, char ** argv)
           pipeline.setViewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                   ->setScissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                  ->setVertexShader(   "resources/shaders/mipmaps/mipmaps.vert", "main") // the shaders we want to use
-                  ->setFragmentShader( "resources/shaders/mipmaps/mipmaps.frag", "main") // the shaders we want to use
+                  ->setVertexShader(   "resources/shaders/push_consts_default/push_consts_default.vert" , "main")   // the shaders we want to use
+                  ->setFragmentShader( "resources/shaders/push_consts_default/push_consts_default.frag" , "main") // the shaders we want to use
 
                   // tell the pipeline that attribute 0 contains 3 floats
                   // and the data starts at offset 0
-                  ->setVertexAttribute(0, 0 ,  offsetof(Vertex,p),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
+                  ->setVertexAttribute(0, 0,  0 , vk::Format::eR32G32B32Sfloat, sizeof(glm::vec3) )
                   // tell the pipeline that attribute 1 contains 3 floats
                   // and the data starts at offset 12
-                  ->setVertexAttribute(0, 1 , offsetof(Vertex,u),  vk::Format::eR32G32Sfloat,  sizeof(Vertex) )
+                  ->setVertexAttribute(1, 1,  0 , vk::Format::eR32G32Sfloat , sizeof(glm::vec2) )
 
-                  ->setVertexAttribute(0, 2 , offsetof(Vertex,n),  vk::Format::eR32G32B32Sfloat,  sizeof(Vertex) )
+                  ->setVertexAttribute(2, 2,  0 , vk::Format::eR32G32B32Sfloat , sizeof(glm::vec3) )
+
 
                   // Triangle vertices are drawn in a counter clockwise manner
                   // using the right hand rule which indicates which face is the
@@ -423,9 +473,6 @@ int main(int argc, char ** argv)
                   // in Set #0 binding #0
                   ->addUniformLayoutBinding(1, 0, vk::ShaderStageFlagBits::eVertex)
 
-                  // Tell teh shader that we are going to use a uniform buffer
-                  // in Set #0 binding #0
-                  ->addDynamicUniformLayoutBinding(2, 0, vk::ShaderStageFlagBits::eVertex)
 
                   // Add a push constant to the layout. It is accessable in the vertex shader
                   // stage only.
@@ -453,12 +500,6 @@ int main(int argc, char ** argv)
     ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
     ubuffer_descriptor->update();
 
-    vka::DescriptorSet_p  dubuffer_descriptor = pipeline.createNewDescriptorSet(2, &descriptor_pool);
-    dubuffer_descriptor->AttachDynamicUniformBuffer(0,DU_buffer, DU_buffer->GetSize() );
-    dubuffer_descriptor->update();
-
-
-
     // We will allocate two Staging buffers to copy uniform data as well as dynamic uniform data
     // for each of the objects. Each of the Staging Buffers act like an individual buffer
     // But are simply an offset into the BufferPool it was allocated from.
@@ -476,16 +517,13 @@ int main(int argc, char ** argv)
     // | uniform_data |         | obj1 | obj2 |                         | StagingBufferPool
     // +--------------+---------+------+------+-------------------------+
     auto UniformStagingBuffer        = StagingBufferPool.NewSubBuffer(   sizeof(uniform_buffer_t ));
-    auto DynamicUniformStagingBuffer = StagingBufferPool.NewSubBuffer( 2*sizeof(dynamic_uniform_buffer_t ));
 
     // Get a MappedMemory object so that we can write data directly into it.
     vka::MappedMemory  UniformStagingBufferMap = UniformStagingBuffer->GetMappedMemory();
-    vka::MappedMemory  DynamicStagingBufferMap = DynamicUniformStagingBuffer->GetMappedMemory();
 
     // Cast the memory to a reference so we can access
     // aliased data.
     uniform_buffer_t & UniformStagingStruct               = *( (uniform_buffer_t*)UniformStagingBufferMap );
-    dynamic_uniform_buffer_t * DynamicUniformStagingArray = (dynamic_uniform_buffer_t*)DynamicStagingBufferMap;
 
     vka::CommandBuffer cb = CP.allocateCommandBuffer();
 
@@ -494,11 +532,6 @@ int main(int argc, char ** argv)
     vka::Semaphore_p  render_complete_semaphore = C.createSemaphore();
 
 
-
-    // Dynamic Uniform buffers have a set alignment, meaning the number of bytes
-    // bound to the pipeline must be a multiple of the alignment
-    // In most case the alignment is 256 bytes.
-    auto alignment = C.get_physical_device_limits().minUniformBufferOffsetAlignment;
 
     //==========================================================================
     // Perform the Rendering
@@ -525,13 +558,9 @@ int main(int argc, char ** argv)
       #define MAX_OBJECTS 2
       // Copy the uniform buffer data into the staging buffer
       const float AR = WIDTH / ( float )HEIGHT;
-      UniformStagingStruct.view        = glm::lookAt(  ( 5*cosf(0.1*t)*cosf(0.1*t) + 1 )*glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+      UniformStagingStruct.view        = glm::lookAt( glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
       UniformStagingStruct.proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 30.0f);
       UniformStagingStruct.proj[1][1] *= -1;
-
-      // Copy the dynamic uniform buffer data into the staging buffer
-      DynamicUniformStagingArray[0].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(-1,0,0) ) ;
-      DynamicUniformStagingArray[1].model   =  glm::rotate(glm::mat4(1.0), t * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::translate( glm::mat4(), glm::vec3(1,0,0));
       //--------------------------------------------------------------------------------------
 
       //--------------------------------------------------------------------------------------
@@ -539,24 +568,6 @@ int main(int argc, char ** argv)
       // once per rendering frame because it contains frame constant data.
       cb.copySubBuffer( UniformStagingBuffer ,  U_buffer , vk::BufferCopy{ 0,0, sizeof(uniform_buffer_t) } );
       //--------------------------------------------------------------------------------------
-
-      // Copy the dynamic uniform buffer data from the staging buffer
-      // to the appropriate offset in the Dynamic Uniform Buffer.
-      // +-------------+---------------------------------------+
-      // | obj1        | obj2         | obj3...                | Dynamic Uniform Buffer
-      // +-------------+---------------------------------------+
-      // |<-alignment->|
-      for(uint32_t j=0; j < MAX_OBJECTS; j++)
-      {
-          // byte offset within the staging buffer where teh data resides
-          auto srcOffset = j * sizeof(dynamic_uniform_buffer_t);
-          // byte offset within the dynamic uniform buffer where to copy the data
-          auto dstOffset = j * alignment;
-          // number of bytes to copy
-          auto size      = sizeof(dynamic_uniform_buffer_t);
-
-          cb.copySubBuffer( DynamicUniformStagingBuffer , DU_buffer , vk::BufferCopy{ srcOffset, dstOffset, size } );
-      }
 
       uint32_t frame_index = Screen.getNextFrameIndex(image_available_semaphore);
       cb.beginRender(Screen, frame_index);
@@ -578,9 +589,9 @@ int main(int argc, char ** argv)
                                                 vk::ArrayProxy<const vk::DescriptorSet>( ubuffer_descriptor->get()),
                                                 nullptr );
 
-    // bind the vertex/index buffers
-        cb.bindVertexSubBuffer(0, V_buffer, 0 );
-        cb.bindIndexSubBuffer(  I_buffer, vk::IndexType::eUint16, 0);
+        // Bind the MeshObject. That is, bind each of the buffers in the mesh object
+        // to their appropriate index.
+        cb.bindMeshObject( CubeObj );
 
       //========================================================================
       // Draw all the objects while binding the dynamic uniform buffer
@@ -590,7 +601,7 @@ int main(int argc, char ** argv)
       {
             // Here we write the data to the command buffer.
             push_constants_t push;
-            push.index    = 0;
+            push.index    = j%2;
 
             if(j==0)
             {
@@ -599,15 +610,9 @@ int main(int argc, char ** argv)
               push.miplevel = (int)fmod( t ,Tex->getMipLevels() );
             }
 
+            float x = j%2 ? -1 : 1;
+            push.model = glm::rotate(glm::mat4(1.0), t * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f )) * glm::translate( glm::mat4(), glm::vec3(x,0,0) );
             cb.pushConstants( pipeline.getLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(push_constants_t), &push);
-
-            cb.bindDescriptorSets( vk::PipelineBindPoint::eGraphics,
-                                                    pipeline.getLayout(),
-                                                    2,
-                                                    vk::ArrayProxy<const vk::DescriptorSet>( dubuffer_descriptor->get()),
-                                                    vk::ArrayProxy<const uint32_t>(j*alignment) );
-
-
 
             // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
             cb.drawIndexed(36, 1, 0 , 0, 0);
@@ -634,64 +639,3 @@ int main(int argc, char ** argv)
 
 #define STB_IMAGE_IMPLEMENTATION
 #include<stb/stb_image.h>
-
-
-
-void create_box_mesh(float dx , float dy , float dz , std::vector<Vertex> & vertices, std::vector<uint16_t> & indices )
-{
-
-    indices .clear();
-    vertices.clear();
-
-    using namespace glm;
-
-
-    std::vector<uint16_t> I;
-//       |       Position                           |   UV         |     Normal    |
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {0.0,0.0}  ,  { 0.0,  0.0,  1.0} } );   // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  { 0.0,  0.0,  1.0} } );   // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0,  0.0,  1.0} } );   // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {0.0,0.0}  ,  { 0.0,  0.0,  1.0} } );   // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0,  0.0,  1.0} } );   // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0,  0.0,  1.0} } );   // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 0.0,  0.0, -1.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {1.0,1.0}  ,  { 0.0,  0.0, -1.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0,  0.0, -1.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 0.0,  0.0, -1.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0,  0.0, -1.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0,  0.0, -1.0} } ); // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  {-1.0f, 0.0,  0.0} } );  // 0
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  {-1.0f, 0.0,  0.0} } );  // 1
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  {-1.0f, 0.0,  0.0} } );  // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  {-1.0f, 0.0,  0.0} } );  // 0
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  {-1.0f, 0.0,  0.0} } );  // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  {-1.0f, 0.0,  0.0} } );  // 3
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 1.0f, 0.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 1.0f, 0.0,  0.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  { 1.0f, 0.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,1.0}  ,  { 1.0f, 0.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,0.0}  ,  { 1.0f, 0.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 1.0f, 0.0,  0.0} } ); // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0f,-1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0f,-1.0,  0.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0f,-1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0f,-1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0f,-1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,0.0 - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0f,-1.0,  0.0} } ); // 3
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0f, 1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {1.0,1.0}  ,  { 0.0f, 1.0,  0.0} } ); // 1
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0f, 1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,dz -0.5*dz} , {0.0,1.0}  ,  { 0.0f, 1.0,  0.0} } ); // 0
-         vertices.push_back( Vertex{ {dx  - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {1.0,0.0}  ,  { 0.0f, 1.0,  0.0} } ); // 2
-         vertices.push_back( Vertex{ {0.0 - 0.5*dx  ,dy  - 0.5*dy  ,0.0-0.5*dz} , {0.0,0.0}  ,  { 0.0f, 1.0,  0.0} } ); // 3
-
-    //=========================
-    // Edges of the triangle : postion delta
-
-
-    //=========================
-    for(uint16_t i=0;i<36;i++)
-        indices.push_back(i);
-
-
-}

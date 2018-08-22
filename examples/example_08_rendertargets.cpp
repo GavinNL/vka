@@ -36,21 +36,12 @@
 
 #include <vka/ext/Primatives.h>
 
-#include <vka/core2/CommandPool.h>
-#include <vka/core2/Pipeline.h>
-#include <vka/core2/BufferMemoryPool.h>
-#include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
-
-#include <vka/utils/glfw_window_handler.h>
-#include <vka/utils/camera.h>
-
-#include <vka/core2/Screen.h>
 #include <vka/core2/RenderTarget.h>
 #include <vka/math/linalg.h>
 
-#define WIDTH 1920
-#define HEIGHT 1200
+#define WIDTH 1024
+#define HEIGHT 768
 #define APP_TITLE "Example_07 - Mesh Objects"
 
 
@@ -80,30 +71,6 @@ struct compose_pipeline_push_consts
     int layer;
 };
 
-
-struct light_data_t
-{
-    glm::vec4 position    = glm::vec4(0,2,0,1); // position.xyz, type [0 - omni, 1 - spot, 2 - directional
-                                                // if position.a == 2, then position.xyz -> direction.xyz
-    glm::vec4 color       = glm::vec4(100,0,0,1);
-    glm::vec4 attenuation = glm::vec4(1, 1.8 ,3.0, 7); //[constant, linear, quad, cutoff]
-
-    light_data_t()
-    {
-        color.x = rand()%20;
-        color.y = rand()%20;
-        color.z = rand()%20;
-    }
-};
-
-struct light_uniform_t
-{
-    glm::vec2    num_lights = glm::vec2(10,0);
-    glm::vec2    num_lights2 = glm::vec2(10,0);
-    light_data_t lights[10];
-};
-
-
 /**
  * @brief get_elapsed_time
  * @return
@@ -120,12 +87,6 @@ float get_elapsed_time()
     return time;
 
 }
-
-struct RenderComponent_t
-{
-    vka::MeshObject * mesh;
-    push_constants_t  push;
-};
 
 vka::MeshObject HostToGPU( vka::host_mesh & host_mesh ,
                            vka::BufferMemoryPool & BufferPool,
@@ -222,8 +183,7 @@ int main(int argc, char ** argv)
     //==========================================================================
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
+    glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE); GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, APP_TITLE, nullptr, nullptr);
 
     unsigned int glfwExtensionCount = 0;
     const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -265,7 +225,7 @@ int main(int argc, char ** argv)
 
 
 
-    vka::GLFW_Window_Handler Window(window);
+
 
     //==========================================================================
     // Initialize the Command and Descriptor Pools
@@ -284,7 +244,7 @@ int main(int argc, char ** argv)
 
 
     vka::RenderTarget myRenderTarget(&C);
-    myRenderTarget.SetExtent( vk::Extent2D(WIDTH,HEIGHT));
+    myRenderTarget.SetExtent( vk::Extent2D(1024,768));
     myRenderTarget.Create( { vk::Format::eR32G32B32A32Sfloat,
                              vk::Format::eR32G32B32A32Sfloat,
                              vk::Format::eR8G8B8A8Unorm },  vk::Format::eD32Sfloat);
@@ -314,39 +274,12 @@ int main(int argc, char ** argv)
                  | vk::ImageUsageFlagBits::eTransferSrc);
 
 
-   // vka::host_mesh CubeMesh = vka::box_mesh(1,1,1);
-    vka::host_mesh CubeMesh = vka::sphere_mesh(0.5,20,20);
-    auto CubeObj = HostToGPU( CubeMesh, BufferPool,StagingBufferPool, CP,C);
+    vka::host_mesh CubeMesh = vka::box_mesh(1,1,1);
+    auto CubeObj = HostToGPU( CubeMesh, BufferPool,StagingBufferPool, CP, C);
 
-    vka::host_mesh PlaneMesh = vka::plane_mesh(10,10,1);
-    auto PlaneObj = HostToGPU( PlaneMesh, BufferPool,StagingBufferPool, CP,C);
-
-
-    std::vector< RenderComponent_t > m_Objects(3);
-
-    m_Objects[0].mesh = &CubeObj;
-    m_Objects[0].push.index = 1;
-    m_Objects[0].push.model = glm::rotate(glm::mat4(1.0), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f )) * glm::translate( glm::mat4(), glm::vec3(0,0.5,0) );
-    m_Objects[0].push.miplevel = -1;
-
-    m_Objects[1].mesh = &CubeObj;
-    m_Objects[1].push.index = 1;
-    m_Objects[1].push.model = glm::rotate(glm::mat4(1.0), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f )) * glm::translate( glm::mat4(), glm::vec3(-0,0.5,0) );
-    m_Objects[1].push.miplevel = -1;
-
-    m_Objects[2].mesh = &PlaneObj;
-    m_Objects[2].push.index = 0;
-    m_Objects[2].push.model = glm::mat4(1.0);
-    m_Objects[2].push.miplevel = -1;
-
-    std::cout << m_Objects[2].mesh->GetIndexCount() << std::endl;
     // Create two buffers, one for vertices and one for indices. THey
     // will each be 1024 bytes long
     auto U_buffer  = BufferPool.NewSubBuffer(5*1024);
-
-
-    auto L_buffer = StagingBufferPool.NewSubBuffer( sizeof(light_uniform_t) );
-
 //==============================================================================
 // Create a texture
 //
@@ -486,12 +419,11 @@ int main(int argc, char ** argv)
         // which can be displayed to the screen
         //======================================================================
         vka::Pipeline compose_pipeline(&C);
-
-        compose_pipeline.setViewport( vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
+        compose_pipeline.setViewport(vk::Viewport( 0, 0, WIDTH, HEIGHT, 0, 1) )
                 ->setScissor( vk::Rect2D(vk::Offset2D(0,0), vk::Extent2D( WIDTH, HEIGHT ) ) )
 
-                ->setVertexShader(   "resources/shaders/compose_multilights/compose_multilights.vert", "main" )   // the shaders we want to use
-                ->setFragmentShader( "resources/shaders/compose_multilights/compose_multilights.frag", "main" ) // the shaders we want to use
+                ->setVertexShader(   "resources/shaders/compose_rendertargets/compose_rendertargets.vert", "main" )   // the shaders we want to use
+                ->setFragmentShader( "resources/shaders/compose_rendertargets/compose_rendertargets.frag", "main" ) // the shaders we want to use
 
                 ->setTopology(vk::PrimitiveTopology::eTriangleList)
                 ->setLineWidth(1.0f)
@@ -509,13 +441,10 @@ int main(int argc, char ** argv)
 
                 // Cull all back facing triangles.
                 ->setCullMode(vk::CullModeFlagBits::eNone)
+
                 // Add a push constant to the layout. It is accessable in the vertex shader
                 // stage only.
                 ->addPushConstant( sizeof(compose_pipeline_push_consts), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
-
-                // Add a uniform for the fragment shader
-                ->addUniformLayoutBinding(1, 0, vk::ShaderStageFlagBits::eFragment)
-
                 // Since we are drawing this to the screen, we need the screen's
                 // renderpass.
                 ->setRenderPass( Screen.getRenderPass() )
@@ -530,7 +459,7 @@ int main(int argc, char ** argv)
 
         // Create a new descriptor set based on the descriptor information we
         // gave to the Compose pipeline
-        vka::DescriptorSet_p renderTargets = compose_pipeline.createNewDescriptorSet(0, &descriptor_pool);
+        vka::DescriptorSet_p  renderTargets = compose_pipeline.createNewDescriptorSet(0, &descriptor_pool);
         renderTargets->AttachSampler(0, myRenderTarget.GetColorImage(0) );
         renderTargets->AttachSampler(1, myRenderTarget.GetColorImage(1) );
         renderTargets->AttachSampler(2, myRenderTarget.GetColorImage(2) );
@@ -556,9 +485,6 @@ int main(int argc, char ** argv)
     ubuffer_descriptor->AttachUniformBuffer(0,U_buffer, 10);
     ubuffer_descriptor->update();
 
-    vka::DescriptorSet_p  lights_buffer_descriptor = compose_pipeline.createNewDescriptorSet(1, &descriptor_pool);
-    lights_buffer_descriptor->AttachUniformBuffer(0,L_buffer, 10);
-    lights_buffer_descriptor->update();
     // We will allocate two Staging buffers to copy uniform data as well as dynamic uniform data
     // for each of the objects. Each of the Staging Buffers act like an individual buffer
     // But are simply an offset into the BufferPool it was allocated from.
@@ -588,9 +514,9 @@ int main(int argc, char ** argv)
     vka::CommandBuffer offscreen_cmd_buffer = CP.allocateCommandBuffer();
     vka::CommandBuffer compose_cmd_buffer = CP.allocateCommandBuffer();
 
-    vka::Semaphore_p image_available_semaphore  = C.createSemaphore();
-    vka::Semaphore_p gbuffer_complete_semaphore = C.createSemaphore();
-    vka::Semaphore_p render_complete_semaphore  = C.createSemaphore();
+    vka::Semaphore_p  image_available_semaphore  = C.createSemaphore();
+    vka::Semaphore_p  gbuffer_complete_semaphore = C.createSemaphore();
+    vka::Semaphore_p  render_complete_semaphore  = C.createSemaphore();
 
 
 
@@ -601,87 +527,12 @@ int main(int argc, char ** argv)
     // The steps required are:
     //    a. update the uniform buffer with the MVP matrices
     //
-    auto L_buffer_Map = L_buffer->GetMappedMemory();
-    light_uniform_t & L_uniform =  *((light_uniform_t*)(L_buffer_Map));
-    L_uniform = light_uniform_t();
-
-    L_uniform.num_lights.x  = 4;
-    L_uniform.num_lights2.x = 4;
-
-
-     L_uniform.lights[0].color    = glm::vec4(10.0 , 10.0, 10.0,1.0);
-     L_uniform.lights[1].color    = glm::vec4(10.0, 0.0 , 0.0 ,1.0);
-     L_uniform.lights[2].color    = glm::vec4(0.0 , 10.0, 0.0 ,1.0);
-     L_uniform.lights[3].color    = glm::vec4(0.0 , 0.0 , 10.0,1.0);
-     L_uniform.lights[0].position = glm::vec4(0.f,3.5f,0.0f,1.0f);
-
-     L_uniform.lights[0].attenuation  = glm::vec4(0,0.1, 1.0 ,10.0);
-     L_uniform.lights[1].attenuation  = glm::vec4(0,0,1.2,10.0);
-     L_uniform.lights[2].attenuation  = glm::vec4(0,0,1.2,10.0);
-     L_uniform.lights[3].attenuation  = glm::vec4(0,0,1.2,10.0);
-
-
-     vka::camera Camera;
-
-
-     float field_of_view = glm::radians(60.f);
-     float aspect_ratio  = WIDTH / (float)HEIGHT;
-     float near_plane    = 0.1f;
-     float far_plane     = 100.0f;
-     Camera.set_fov(  field_of_view );
-     Camera.set_aspect_ratio( aspect_ratio );
-     Camera.set_near_plane(near_plane); // default value
-     Camera.set_far_plane(far_plane);// default value
-     Camera.set_position(glm::vec3(3.0f, 3.0f, 3.0f));
-     Camera.lookat(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-     auto mouseslot =  Window.onMouseMove << [&] (vka::MouseMoveEvent E)
-     {
-       auto dx = E.dx;
-       auto dy = E.dy;
-
-       if( Window.is_pressed( vka::Button::RIGHT))
-       {
-           Window.show_cursor(false);
-           if( fabs(dx) < 10) Camera.yaw(   dx*0.001f);
-           if( fabs(dy) < 10) Camera.pitch( dy*0.001f);
-       }
-       else
-       {
-           Window.show_cursor(true);
-       }
-
-     };
-     auto keyslot = Window.onKey << [&] (vka::KeyEvent E)
-     {
-         float x=0;
-         float y=0;
-
-         float speed = Window.is_pressed(vka::Key::LEFT_SHIFT) ? 0.03 : 1;
-
-         if( Window.is_pressed(vka::Key::A    ) || Window.is_pressed(vka::Key::LEFT )) x += -speed;
-         if( Window.is_pressed(vka::Key::D    ) || Window.is_pressed(vka::Key::RIGHT)) x +=  speed;
-         if( Window.is_pressed(vka::Key::W    ) || Window.is_pressed(vka::Key::UP   )) y += -speed;
-         if( Window.is_pressed(vka::Key::S    ) || Window.is_pressed(vka::Key::DOWN )) y +=  speed;
-
-         Camera.set_acceleration( glm::vec3( x, 0, y ) );
-
-     };
-
-    while ( Window )
+    while (!glfwWindowShouldClose(window) )
     {
            float t = get_elapsed_time();
-           Camera.calculate();
           // Get the next available image in the swapchain
-           //float T = t * 2*3.14159;
-           #define T(A) ( 2*3.14159*(A+t*0.2) )
-           L_uniform.lights[0].position = glm::vec4(4.0f*cos( T(0.0)  ),1.5f,4.0f*sin(  T(0.0)   ),1.0f);
-           L_uniform.lights[1].position = glm::vec4(4.0f*cos( T(0.25) ),1.5f,4.0f*sin(  T(0.25)  ),1.0f);
-           L_uniform.lights[2].position = glm::vec4(4.0f*cos( T(0.5)  ),1.5f,4.0f*sin(  T(0.5)   ),1.0f);
-           L_uniform.lights[3].position = glm::vec4(4.0f*cos( T(0.75) ),1.5f,4.0f*sin(  T(0.75)  ),1.0f);
-          //L_uniform.lights[0].position = glm::vec4(4.0f*cos(t),4.0f*sin(t),0,1.0f);
 
-          Window.Poll();
+          glfwPollEvents();
 
       // reset the command buffer so that we can record from scratch again.
       offscreen_cmd_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
@@ -694,12 +545,8 @@ int main(int argc, char ** argv)
           #define MAX_OBJECTS 2
           // Copy the uniform buffer data into the staging buffer
           const float AR = WIDTH / ( float )HEIGHT;
-          UniformStagingStruct.view        = glm::lookAt( glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+          UniformStagingStruct.view        = glm::lookAt( glm::vec3(3.0f, 3.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
           UniformStagingStruct.proj        = glm::perspective(glm::radians(45.0f), AR, 0.1f, 30.0f);
-          UniformStagingStruct.proj[1][1] *= -1;
-
-          UniformStagingStruct.view = Camera.get_view_matrix();
-          UniformStagingStruct.proj = Camera.get_proj_matrix();
           UniformStagingStruct.proj[1][1] *= -1;
           //--------------------------------------------------------------------------------------
 
@@ -729,18 +576,28 @@ int main(int argc, char ** argv)
                                      nullptr );
 
 
-              vka::MeshObject * first = nullptr;
-              for(auto & obj : m_Objects)
-              {
-                  if(obj.mesh != first)
-                  {
-                      offscreen_cmd_buffer.bindMeshObject( *obj.mesh );
-                      first = obj.mesh;
-                  }
-                  offscreen_cmd_buffer.pushConstants( g_buffer_pipeline.getLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(obj.push), &obj.push);
-                  offscreen_cmd_buffer.drawMeshObject( *obj.mesh );
-              }
+              offscreen_cmd_buffer.bindMeshObject( CubeObj );
 
+              for(uint32_t j=0 ; j < MAX_OBJECTS; j++ )
+              {
+                    // Here we write the data to the command buffer.
+                    push_constants_t push;
+                    push.index    = j%2;
+
+                    if(j==0)
+                    {
+                      push.miplevel = -1;
+                    } else {
+                      push.miplevel = (int)fmod( t ,Tex->getMipLevels() );
+                    }
+
+                    float x = j%2 ? -1 : 1;
+                    push.model = glm::rotate(glm::mat4(1.0), t * glm::radians(30.0f), glm::vec3(0.0f, 0.0f, 1.0f )) * glm::translate( glm::mat4(), glm::vec3(x,0,0) );
+                    offscreen_cmd_buffer.pushConstants( g_buffer_pipeline.getLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(push_constants_t), &push);
+
+                    // draw 3 indices, 1 time, starting from index 0, using a vertex offset of 0
+                    offscreen_cmd_buffer.drawIndexed(36, 1, 0 , 0, 0);
+              }
           }
           offscreen_cmd_buffer.endRenderPass();
 
@@ -778,17 +635,12 @@ int main(int argc, char ** argv)
                                    0, // binding index
                                    renderTargets);
 
-              compose_cmd_buffer.bindDescriptorSet(vk::PipelineBindPoint::eGraphics,
-                                   compose_pipeline,
-                                   1, // binding index
-                                   lights_buffer_descriptor);
-
               //compose_pipeline_push_consts pc;
 
               std::array<compose_pipeline_push_consts, 4> Push_Consts =
               {
                   compose_pipeline_push_consts{ glm::vec2(-1,-1), glm::vec2(1,1), 0 },
-                  compose_pipeline_push_consts{ glm::vec2( 0, 0), glm::vec2(1,1), -1 },
+                  compose_pipeline_push_consts{ glm::vec2( 0, 0), glm::vec2(1,1), 1 },
                   compose_pipeline_push_consts{ glm::vec2( 0,-1), glm::vec2(1,1), 2 },
                   compose_pipeline_push_consts{ glm::vec2(-1, 0), glm::vec2(1,1), 3 }
               };

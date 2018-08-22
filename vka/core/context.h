@@ -4,7 +4,7 @@
 #include <vulkan/vulkan.hpp>
 #include <vka/core/log.h>
 #include "extensions.h"
-#include "deleter.h"
+
 #include "classes.h"
 #include <map>
 
@@ -14,63 +14,8 @@ struct GLFWwindow;
 namespace vka
 {
 
-template<typename T>
-class registry_t
-{
-public:
-    virtual ~registry_t()
-    {
-        LOG << "Destroying registr"    <<ENDL;
-        clear();
-    }
-
-    void clear()
-    {
-        LOG << "Registry cleared" << ENDL;
-        m_registry.clear();
-    }
-
-    std::string get_name( T const * p)
-    {
-        for(auto & f : m_registry)
-        {
-            if( f.second.get() == p)
-            {
-                return f.first;
-            }
-        }
-        return "";
-    }
-
-protected:
-    bool insert_object(std::string const & name, std::shared_ptr<T> obj)
-    {
-        auto i = m_registry.find( name );
-
-        if(i == m_registry.end() )
-        {
-            m_registry[name] = obj;
-            LOG << "Object[" << name << "] registered" << ENDL;
-            return true;
-        }
-
-        return false;
-    }
-public:
-    T* get_object( std::string const & name)
-    {
-        auto i = m_registry.find( name );
-
-        if(i != m_registry.end() )
-        {
-            return i->second.get();
-        }
-
-        return nullptr;
-    }
-    std::map<std::string, std::shared_ptr<T> > m_registry;
-};
-
+class DescriptorLayoutSet;
+class Semaphore;
 
 struct queue_family_index_t
 {
@@ -105,65 +50,41 @@ bool operator()(const std::vector<vk::DescriptorSetLayoutBinding> & lhs, const s
 
 };
 
-struct blank{};
-
-
-class context :
-                #define X_MACRO(A) public registry_t<A>,
-                X_LIST
-                public blank
+class context
 {
-#undef X_MACRO
-private:
-    vk::Instance       m_instance;
 
+private:
+    vk::Instance                 m_instance;
     vk::PhysicalDevice           m_physical_device;
     vk::PhysicalDeviceProperties m_physical_device_properties;
-
     queue_family_index_t         m_queue_family;
-
-    vk::Device         m_device;
-
-
-    //=========== Swap Chain stuff=============
-    // vk::SwapchainKHR                  m_swapchain;
-    // std::vector<vk::SurfaceFormatKHR> m_swapchain_available_formats;
-    // std::vector<vk::PresentModeKHR>   m_swapchain_available_present_modes;
-    //
-    // vk::SurfaceCapabilitiesKHR        m_swapchain_capabilities;
-    // vk::SurfaceFormatKHR              m_swapchain_format;
-    // vk::PresentModeKHR                m_swapchain_present_mode;
-    //
-     vk::Extent2D                      m_extent;
-    // vk::Format                        m_image_format;
-    // std::vector<vk::Image>            m_images;
-    // std::vector<vk::ImageView>        m_image_views;
-    // std::vector<vk::Framebuffer>      m_framebuffers;
-    //==========================================
+    vk::Device                   m_device;
+    vk::SurfaceKHR               m_surface;
 
 
-    vk::Queue                  m_graphics_queue;
-    vk::Queue                  m_present_queue;
+    vk::Extent2D                 m_extent;
+    vk::Queue                    m_graphics_queue;
+    vk::Queue                    m_present_queue;
+    vk::Fence                    m_render_fence;
 
-
-    vk::Fence     m_render_fence;
-
-    vk::DebugReportCallbackEXT  m_callback;
-
-
-    vk::SurfaceKHR     m_surface;
+    vk::DebugReportCallbackEXT   m_callback;
 
 
     std::map< std::vector<vk::DescriptorSetLayoutBinding>,
-              vka::descriptor_set_layout*,
+              std::shared_ptr<vka::DescriptorLayoutSet>,
               DescriptorSetLayoutBindingCmp> m_DescriptorSetLayouts;
 
+
+    std::vector< std::string > m_instance_extensions;
+    std::vector< std::string > m_device_extensions;
+    std::vector< std::string > m_validation_layers;
+
 public:
-    vk::Instance get_instance() { return m_instance; }
-    vk::Device get_device() { return m_device; }
-    vk::PhysicalDevice get_physical_device() { return m_physical_device; }
-    vk::SurfaceKHR  get_surface() { return m_surface; }
-    queue_family_index_t get_queue_family() { return m_queue_family; }
+    vk::Instance getInstance() { return m_instance; }
+    vk::Device getDevice() { return m_device; }
+    vk::PhysicalDevice getPhysicalDevice() { return m_physical_device; }
+    vk::SurfaceKHR  getSurface() { return m_surface; }
+    queue_family_index_t getQueueFamily() { return m_queue_family; }
 
     context() // default constructor
     {
@@ -175,24 +96,14 @@ public:
         clean();
     }
 
-    context(context const & other) // copy constructor
-    {
-        *this = other;
-    }
+    context(context const & other)  = delete;// copy constructor
 
     context(context && other) // move constructor
     {
         *this = std::move(other);
     }
 
-    context & operator=(context const & other) // copy operator
-    {
-        if( this != &other)
-        {
-
-        }
-        return *this;
-    }
+    context & operator=(context const & other) = delete; // copy operator
 
     context & operator=(context && other) // move operator
     {
@@ -220,222 +131,26 @@ public:
     void clean();
 
 
-    /**
-     * @brief set_window
-     * @param window
-     *
-     * Creates a window surface
-     */
-    vk::SurfaceKHR create_window_surface( GLFWwindow * window );
-
-    void set_window_surface( vk::SurfaceKHR & surface)
+    void setWindowSurface( vk::SurfaceKHR & surface)
     {
         m_surface = surface;
     }
 
-    template<typename T>
-    T * get(std::string const & name)
-    {
-        return registry_t<T>::get_object(name);
-    }
-    void create_device(vk::SurfaceKHR surface_to_use);
 
-    void create_logical_device(vk::PhysicalDevice &p_physical_device, const vka::queue_family_index_t &p_Qfamily);
+    void createDevice(vk::SurfaceKHR surface_to_use);
 
-    void create_swap_chain(vk::Extent2D extents);
-
-    std::vector<vk::ImageView> create_image_views(const std::vector<vk::Image> &images, vk::Format image_format);
+    void createLogicalDevice(vk::PhysicalDevice &p_physical_device, const vka::queue_family_index_t &p_Qfamily);
 
 
-    //============================================================
-    // Get Methods
-    //============================================================
-    //std::vector<vk::ImageView> & get_swapchain_imageviews() {
-    //    return m_image_views;
-    //}
-    //============================================================
-    // Object creation
-    //   All objects created with teh following funtions are stored
-    //   in an internal registry and can be retrived using the
-    //   get< > method.
-    //   Objects in here are automatically destroyed when the
-    //   context is destroyed.
-    //============================================================
-    vka::renderpass* new_renderpass(const std::string &name);
+    std::vector<vk::ImageView> createImageViews(const std::vector<vk::Image> &images, vk::Format image_format);
 
-    vka::framebuffer* new_framebuffer(const std::string & name);
-
-    vka::command_pool* new_command_pool(const std::string & name);
-
-    vka::descriptor_pool* new_descriptor_pool(const std::string & name);
-
-    // this one should be private
-    vka::descriptor_set_layout* new_descriptor_set_layout(const std::string & name);
+    uint32_t getNextImageIndex( vka::Semaphore * signal_semaphore);
 
 
-    uint32_t get_next_image_index( vka::semaphore * signal_semaphore);
+    void presentImage(uint32_t image_index, Semaphore *wait_semaphore);
+    void presentImage(const vk::PresentInfoKHR & info);
 
 
-    void present_image(uint32_t image_index, semaphore *wait_semaphore);
-    void present_image(const vk::PresentInfoKHR & info);
-    /**
-     * @brief new_buffer
-     * @param name
-     * @return
-     *
-     * Create an unconfigured,unallocated buffer
-     */
-    vka::buffer*   new_buffer(const std::string & name);
-
-
-    vka::managed_buffer*   new_managed_buffer(const std::string & name);
-    /**
-     * @brief new_buffer
-     * @param name - name of the buffer
-     * @param size - size of the buffer in bytes
-     * @param memory_properties - memory property
-     * @param usage - buffer usage
-     * @return
-     *
-     * Create a configured and allocated buffer.
-     */
-    vka::buffer*   new_buffer(const std::string & name,
-                              size_t size,
-                              vk::MemoryPropertyFlags memory_properties,
-                              vk::BufferUsageFlags usage);
-
-
-    vka::managed_buffer*   new_managed_buffer(const std::string & name,
-                                      size_t size,
-                                      vk::MemoryPropertyFlags memory_properties,
-                                      vk::BufferUsageFlags usage);
-
-    vka::buffer_pool* new_buffer_pool(const std::string & name);
-    /**
-     * @brief new_vertex_buffer
-     * @param name
-     * @param size
-     * @return
-     *
-     * Create a device local buffer used for vertices
-     */
-    vka::buffer* new_vertex_buffer(const std::string & name, size_t size)
-    {
-        return new_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
-    }
-
-    vka::managed_buffer* new_managed_vertex_buffer(const std::string & name, size_t size)
-    {
-        return new_managed_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer);
-    }
-    /**
-     * @brief new_index_buffer
-     * @param name
-     * @param size
-     * @return
-     *
-     * Create a device local buffer used for index values
-     */
-    vka::buffer* new_index_buffer(const std::string & name, size_t size)
-    {
-        return new_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
-    }
-    vka::managed_buffer* new_managed_index_buffer(const std::string & name, size_t size)
-    {
-        return new_managed_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer);
-    }
-
-    /**
-     * @brief new_uniform_buffer
-     * @param name
-     * @param size
-     * @return
-     *
-     * Crete a device local buffer used for uniform values
-     */
-    vka::buffer* new_uniform_buffer(const std::string & name, size_t size)
-    {
-        return new_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer);
-    }
-
-    vka::managed_buffer* new_managed_uniform_buffer(const std::string & name, size_t size)
-    {
-        return new_managed_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer);
-    }
-    /**
-     * @brief new_multi_buffer
-     * @param name
-     * @param size
-     * @return
-     *
-     * Create a device local buffer used vertices,indices and uniform
-     */
-    vka::buffer* new_multi_buffer(const std::string & name, size_t size)
-    {
-        return new_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eDeviceLocal,
-                          vk::BufferUsageFlagBits::eTransferDst
-                          | vk::BufferUsageFlagBits::eUniformBuffer
-                          | vk::BufferUsageFlagBits::eIndexBuffer
-                          | vk::BufferUsageFlagBits::eVertexBuffer);
-    }
-
-
-    /**
-     * @brief new_staging_buffer
-     * @param name
-     * @param size
-     * @return
-     *
-     * Create a staging buffer used for staging data and transfering to
-     * device local buffers
-     */
-    vka::buffer* new_staging_buffer(const std::string & name, size_t size, vk::MemoryPropertyFlags extraFlags = vk::MemoryPropertyFlagBits::eHostCoherent)
-    {
-        return new_buffer(name , size,
-                          vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible | extraFlags,
-                          vk::BufferUsageFlagBits::eTransferSrc);
-    }
-
-
-    vka::shader* new_shader_module(const std::string &name);
-
-
-    vka::pipeline* new_pipeline(const std::string & name);
-
-
-    vka::semaphore* new_semaphore(const std::string & name);
-
-    vka::texture* new_texture(const std::string &name);
-
-    vka::texture2d* new_texture2d(const std::string &name);
-
-    vka::texture2darray* new_texture2darray(const std::string &name);
-
-    /**
-     * @brief new_texture2d_host_visible
-     * @param name
-     * @return
-     *
-     * Sets up a host visible 2D texture. call ->create() to create
-     * the texture
-     */
-    vka::texture2d *new_texture2d_host_visible(const std::string &name);
-
-
-    vka::texture *new_depth_texture(const std::string &name, vk::ImageUsageFlags flags = vk::ImageUsageFlagBits::eDepthStencilAttachment);
     //============================================================
     /**
      * @brief new_descriptor_set_layout
@@ -445,82 +160,36 @@ public:
      * Creates a new descriptor set layout based on the binding information given.
      * or returns one that already exists which matches the binding
      */
-    vka::descriptor_set_layout* new_descriptor_set_layout( std::vector< vk::DescriptorSetLayoutBinding > const & bindings,
+    std::shared_ptr<vka::DescriptorLayoutSet> createDescriptorSetLayout( std::vector< vk::DescriptorSetLayoutBinding > const & bindings,
                                                            vk::DescriptorSetLayoutCreateFlags flags=vk::DescriptorSetLayoutCreateFlags());
 
 
     //============================================================
 
-    vka::offscreen_target *new_offscreen_target(const std::string &name);
-    vka::screen           *new_screen(const std::string &name);
+    void submitCommandBuffer(vk::CommandBuffer b);
 
-    vka::command_pool *get_command_pool();
-
-    void submit_cmd_buffer(vk::CommandBuffer b)
-    {
-        vk::SubmitInfo submitInfo;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers    = &b;
-
-        //===========
-        if( m_graphics_queue.submit(1, &submitInfo, vk::Fence() ) != vk::Result::eSuccess)
-        {
-            throw std::runtime_error("Failed to submit Copy Buffer command");
-        }
-
-        m_graphics_queue.waitIdle();
-    }
-
-    void submit_command_buffer(vk::CommandBuffer const & p_CmdBuffer ,
-                                const vka::semaphore *wait_semaphore,
-                                const vka::semaphore *signal_semaphore,
-                                vk::PipelineStageFlags wait_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput );
+    void submitCommandBuffer(vk::CommandBuffer const & p_CmdBuffer ,
+                             const std::shared_ptr<Semaphore> &wait_semaphore,
+                             const std::shared_ptr<Semaphore> &signal_semaphore,
+                             vk::PipelineStageFlags wait_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput );
 
 
 
 
 
-    vk::Format find_supported_format(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
-    vk::Format find_depth_format();
+    vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+    vk::Format findDepthFormat();
 
     vk::PhysicalDeviceLimits const & get_physical_device_limits() const
     {
         return m_physical_device_properties.limits;
     }
 
-    vka::buffer * get_staging_buffer()
-    {
-        return m_staging_buffer;
-    }
 
-    template<typename T>
-    std::string get_name( T const * obj)
-    {
-        return registry_t<T>::get_name(obj);
-    }
+    std::shared_ptr<Semaphore>   createSemaphore();
 
 private:
-
-
-
-    template<typename T>
-    T* _new(const std::string & name)
-    {
-        if( registry_t<T>::get_object(name) == nullptr)
-        {
-            std::shared_ptr<T> R( new T(this), vka::deleter<T>() );
-            registry_t<T>::insert_object(name, R);
-
-            return R.get();
-        }
-
-        throw std::runtime_error("An object of that name already exists");
-
-        return nullptr;
-    }
-
-    std::map< std::string, std::shared_ptr<vka::renderpass> > m_renderpasses;
-
+    std::vector<std::weak_ptr<Semaphore> > m_semaphores;
 
     bool m_enable_validation_layers = true;
 
@@ -551,17 +220,12 @@ private:
     void setup_debug_callback();
 
 public:
-    void enable_extension( const std::string & extension);
-    void enable_validation_layer( const std::string & layer_name);
-    void enable_device_extension(const std::string & extension);
+    void enableExtension( const std::string & extension);
+    void enableValidationLayer( const std::string & layer_name);
+    void enableDeviceExtension(const std::string & extension);
 
 private:
-    std::vector< std::string > m_instance_extensions;
-    std::vector< std::string > m_device_extensions;
-    std::vector< std::string > m_validation_layers;
 
-    vka::command_pool * m_command_pool = nullptr;
-    vka::buffer * m_staging_buffer = nullptr;
 
 };
 

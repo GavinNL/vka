@@ -1,0 +1,100 @@
+#include <vka/core/context.h>
+#include <vka/core2/Shader.h>
+#include <fstream>
+
+namespace vka
+{
+Shader::~Shader()
+{
+    if(m_shader)
+    {
+        get_device().destroyShaderModule(m_shader);
+    }
+}
+
+std::string Shader::readFile(const std::string &filename)
+{
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+    if ( !file.is_open() )
+    {
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
+
+    size_t fileSize = (size_t) file.tellg();
+    std::string buffer;
+    buffer.resize(fileSize);
+
+    file.seekg(0);
+    file.read(&buffer[0], fileSize);
+
+    file.close();
+
+    return buffer;
+}
+
+void Shader::loadFromFile(const std::string & path)
+{
+    const size_t pos = path.rfind('.');
+    auto ext = (pos == std::string::npos) ? "" : path.substr(path.rfind('.') + 1);
+
+    if( ext == "spv")
+    {
+        std::string source_code = readFile(path);
+        loadFromMemory(source_code);
+
+    }
+    else
+    {
+        std::string opath = "/tmp/sprv.spv";
+
+        std::string cmd = std::string("glslangValidator -V ") + path + " -o " + opath;
+
+
+        if( std::system( cmd.c_str() ) == 0)
+        {
+            loadFromFile(opath);
+        } else {
+            throw std::runtime_error("Failed to compile");
+        }
+
+
+
+    }
+
+
+}
+
+
+void Shader::loadFromMemory(const std::string  &SPIRV_code)
+{
+
+    // std::string code( SPIRV_code.begin(), SPIRV_code.end());
+    //
+    // auto it = ScreenData.m_Shaders.find(code);
+    // if( it != ScreenData.m_Shaders.end() )
+    // {
+    //     LOG << "Shader previously loaded. Using old reference" << ENDL;
+    //     reset( it->second);
+    //     return;
+    // }
+
+    vk::ShaderModuleCreateInfo createInfo;
+
+    createInfo.codeSize = SPIRV_code.size();
+
+    std::vector<uint32_t> codeAligned(SPIRV_code.size() / sizeof(uint32_t)+1 );
+
+    memcpy( codeAligned.data(), SPIRV_code.data(), SPIRV_code.size() );
+    createInfo.pCode = codeAligned.data();
+
+    m_shader = get_device().createShaderModule( createInfo );
+
+    if( !m_shader)
+    {
+        throw std::runtime_error("Failed to create shader modeule");
+    }
+
+//    ScreenData.m_Shaders[code] = get_shared();
+}
+}

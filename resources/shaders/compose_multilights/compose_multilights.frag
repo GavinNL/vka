@@ -96,7 +96,7 @@ void main()
 
     //out_Color =  vec4(surface_color*0.1 , 1);
 
-    vec3 color = surface_color * 0.01;
+    vec3 color = surface_color * 0.1;
     int num =  int(u_lights.num_lights[0]);
     for(int i=0; i < num ; i++)
     {

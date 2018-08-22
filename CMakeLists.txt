@@ -9,6 +9,9 @@ SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
 # this to be defined.
 add_definitions(-DGLM_FORCE_CTOR_INIT)
 
+#add_definitions(-DOLD_SHADER)
+#add_definitions(-DOLD_PIPELINE)
+
 #FILE(GLOB_RECURSE SourceFiles
 #                                "vka/*.h"
 #                                "vka/*.hpp"
@@ -53,7 +56,7 @@ add_definitions(
                 )
 
 
-file(GLOB_RECURSE core_files "src/core/*.cpp")
+file(GLOB_RECURSE core_files "src/core/*.cpp" "src/core2/*.cpp")
 
 add_library(vkacore SHARED ${core_files} )
 
