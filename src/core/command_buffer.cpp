@@ -153,7 +153,7 @@ void command_buffer::copySubBufferToTexture( const std::shared_ptr<SubBuffer> & 
 
     vk::CommandBuffer::copyBufferToImage(
                 buffer->GetParentBufferHandle(),
-                tex->GetImage(),
+                tex->getImage(),
                 imageLayout,
                 lC
                 );
@@ -168,12 +168,12 @@ void command_buffer::convertTextureLayer(std::shared_ptr<vka::Texture> & tex,
 {
     vk::ImageSubresourceRange R;
     R.baseMipLevel = 0;
-    R.levelCount = tex->GetMipLevels();
+    R.levelCount = tex->getMipLevels();
     R.baseArrayLayer = layer;
     R.layerCount = layer_count;
     R.aspectMask = vk::ImageAspectFlagBits::eColor;
     convertTexture( tex,
-                    tex->GetLayout(0,layer), // old layout, all mips must be the same
+                    tex->getLayout(0,layer), // old layout, all mips must be the same
                     new_layout,
                     R,
                     srcStageMask,
@@ -227,7 +227,7 @@ void command_buffer::convertTexture( std::shared_ptr<vka::Texture> & tex,
 
     barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image                           = tex->GetImage();
+    barrier.image                           = tex->getImage();
 
     barrier.subresourceRange = range;
 
@@ -346,7 +346,7 @@ void command_buffer::blitMipMap( std::shared_ptr<vka::Texture> & tex,
                                 uint32_t src_miplevel,
                                 uint32_t dst_miplevel)
 {
-    auto & extents = tex->GetExtents();
+    auto & extents = tex->getExtents();
     vk::ImageBlit imgBlit;
 
     // Source
@@ -372,8 +372,8 @@ void command_buffer::blitMipMap( std::shared_ptr<vka::Texture> & tex,
 
 
 
-    blitImage( tex->GetImage(), vk::ImageLayout::eTransferSrcOptimal,
-               tex->GetImage(), vk::ImageLayout::eTransferDstOptimal,
+    blitImage( tex->getImage(), vk::ImageLayout::eTransferSrcOptimal,
+               tex->getImage(), vk::ImageLayout::eTransferDstOptimal,
                imgBlit, vk::Filter::eLinear);
 }
 
@@ -386,17 +386,17 @@ void command_buffer::generateMipMaps( std::shared_ptr<vka::Texture> & Tex,
     convertTextureLayerMips( Tex,
                              Layer,LayerCount, // layers 0-1
                              0,1, // mips level i+1
-                             Tex->GetLayout(0,Layer), vk::ImageLayout::eTransferSrcOptimal,
+                             Tex->getLayout(0,Layer), vk::ImageLayout::eTransferSrcOptimal,
                              vk::PipelineStageFlagBits::eTransfer,
                              vk::PipelineStageFlagBits::eHost);
 
-    for(uint32_t i=1; i < Tex->GetMipLevels() ; i++)
+    for(uint32_t i=1; i < Tex->getMipLevels() ; i++)
     {
         // Convert Layer i to TransferDst
         convertTextureLayerMips( Tex,
                                  Layer,LayerCount, // layers 0-1
                                  i,1, // mips level i+1
-                                 Tex->GetLayout(i,Layer), vk::ImageLayout::eTransferDstOptimal,
+                                 Tex->getLayout(i,Layer), vk::ImageLayout::eTransferDstOptimal,
                                  vk::PipelineStageFlagBits::eTransfer,
                                  vk::PipelineStageFlagBits::eHost);
 
@@ -417,7 +417,7 @@ void command_buffer::generateMipMaps( std::shared_ptr<vka::Texture> & Tex,
     }
     convertTextureLayerMips( Tex,
                              Layer,LayerCount, // layers 0-1
-                             0,Tex->GetMipLevels(), // mips level i+1
+                             0,Tex->getMipLevels(), // mips level i+1
                              vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
                              vk::PipelineStageFlagBits::eHost,
                              vk::PipelineStageFlagBits::eTransfer);
@@ -441,11 +441,11 @@ void command_buffer::beginRender(Screen & target, uint32_t frame_buffer_index)
 {
     vk::RenderPassBeginInfo m_renderpass_info;
 
-    m_renderpass_info.renderPass        = target.GetRenderPass();// *get_renderpass();
-    m_renderpass_info.framebuffer       = target.GetFramebuffer(frame_buffer_index);// *get_framebuffer();
-    m_renderpass_info.clearValueCount   = target.GetClearValues().size();
-    m_renderpass_info.pClearValues      = target.GetClearValues().data();//m_clear_values.data();
-    m_renderpass_info.renderArea.extent = target.GetExtent();
+    m_renderpass_info.renderPass        = target.getRenderPass();// *get_renderpass();
+    m_renderpass_info.framebuffer       = target.getFramebuffer(frame_buffer_index);// *get_framebuffer();
+    m_renderpass_info.clearValueCount   = target.getClearValues().size();
+    m_renderpass_info.pClearValues      = target.getClearValues().data();//m_clear_values.data();
+    m_renderpass_info.renderArea.extent = target.getExtent();
 
     beginRenderPass(m_renderpass_info, vk::SubpassContents::eInline);
 }
@@ -485,9 +485,9 @@ vka::PushDescriptorInfo &PushDescriptorInfo::attach(uint32_t binding, uint32_t c
 
 
     auto bi = std::make_shared<vk::DescriptorImageInfo>();
-    bi->sampler = texture->GetSampler();
-    bi->imageView = texture->GetImageView();
-    bi->imageLayout =  texture->GetLayout();
+    bi->sampler = texture->getSampler();
+    bi->imageView = texture->getImageView();
+    bi->imageLayout =  texture->getLayout();
 
     m_TextureInfo.push_back(bi);
 

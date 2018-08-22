@@ -19,7 +19,7 @@ void vka::descriptor_set_layout::clear()
     }
 }
 
-vka::descriptor_set_layout *vka::descriptor_set_layout::add_texture_layout_binding(uint32_t binding, vk::ShaderStageFlags stages)
+vka::descriptor_set_layout *vka::descriptor_set_layout::addTextureLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages)
 {
     vk::DescriptorSetLayoutBinding samplerLayoutBinding;
     samplerLayoutBinding.binding            = binding;
@@ -33,7 +33,7 @@ vka::descriptor_set_layout *vka::descriptor_set_layout::add_texture_layout_bindi
     return this;
 }
 
-vka::descriptor_set_layout *vka::descriptor_set_layout::add_uniform_layout_binding(uint32_t binding, vk::ShaderStageFlags stages)
+vka::descriptor_set_layout *vka::descriptor_set_layout::addUniformLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages)
 {
     vk::DescriptorSetLayoutBinding uboLayoutBinding;
     uboLayoutBinding.binding            = binding;
@@ -47,7 +47,7 @@ vka::descriptor_set_layout *vka::descriptor_set_layout::add_uniform_layout_bindi
     return this;
 }
 
-vka::descriptor_set_layout *vka::descriptor_set_layout::add_dynamic_uniform_layout_binding(uint32_t binding, vk::ShaderStageFlags stages)
+vka::descriptor_set_layout *vka::descriptor_set_layout::addDynamicUniformLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages)
 {
     vk::DescriptorSetLayoutBinding duboLayoutBinding;
 

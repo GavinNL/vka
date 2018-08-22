@@ -80,11 +80,11 @@ private:
     std::vector< std::string > m_validation_layers;
 
 public:
-    vk::Instance get_instance() { return m_instance; }
-    vk::Device get_device() { return m_device; }
-    vk::PhysicalDevice get_physical_device() { return m_physical_device; }
-    vk::SurfaceKHR  get_surface() { return m_surface; }
-    queue_family_index_t get_queue_family() { return m_queue_family; }
+    vk::Instance getInstance() { return m_instance; }
+    vk::Device getDevice() { return m_device; }
+    vk::PhysicalDevice getPhysicalDevice() { return m_physical_device; }
+    vk::SurfaceKHR  getSurface() { return m_surface; }
+    queue_family_index_t getQueueFamily() { return m_queue_family; }
 
     context() // default constructor
     {
@@ -131,33 +131,24 @@ public:
     void clean();
 
 
-    /**
-     * @brief set_window
-     * @param window
-     *
-     * Creates a window surface
-     */
-    vk::SurfaceKHR create_window_surface( GLFWwindow * window );
-
-    void set_window_surface( vk::SurfaceKHR & surface)
+    void setWindowSurface( vk::SurfaceKHR & surface)
     {
         m_surface = surface;
     }
 
 
-    void create_device(vk::SurfaceKHR surface_to_use);
+    void createDevice(vk::SurfaceKHR surface_to_use);
 
-    void create_logical_device(vk::PhysicalDevice &p_physical_device, const vka::queue_family_index_t &p_Qfamily);
-
-    void create_swap_chain(vk::Extent2D extents);
-
-    std::vector<vk::ImageView> create_image_views(const std::vector<vk::Image> &images, vk::Format image_format);
-
-    uint32_t get_next_image_index( vka::Semaphore * signal_semaphore);
+    void createLogicalDevice(vk::PhysicalDevice &p_physical_device, const vka::queue_family_index_t &p_Qfamily);
 
 
-    void present_image(uint32_t image_index, Semaphore *wait_semaphore);
-    void present_image(const vk::PresentInfoKHR & info);
+    std::vector<vk::ImageView> createImageViews(const std::vector<vk::Image> &images, vk::Format image_format);
+
+    uint32_t getNextImageIndex( vka::Semaphore * signal_semaphore);
+
+
+    void presentImage(uint32_t image_index, Semaphore *wait_semaphore);
+    void presentImage(const vk::PresentInfoKHR & info);
 
 
     //============================================================
@@ -169,38 +160,25 @@ public:
      * Creates a new descriptor set layout based on the binding information given.
      * or returns one that already exists which matches the binding
      */
-    std::shared_ptr<vka::descriptor_set_layout> create_descriptor_set_layout( std::vector< vk::DescriptorSetLayoutBinding > const & bindings,
+    std::shared_ptr<vka::descriptor_set_layout> createDescriptorSetLayout( std::vector< vk::DescriptorSetLayoutBinding > const & bindings,
                                                            vk::DescriptorSetLayoutCreateFlags flags=vk::DescriptorSetLayoutCreateFlags());
 
 
     //============================================================
 
-    void submit_cmd_buffer(vk::CommandBuffer b)
-    {
-        vk::SubmitInfo submitInfo;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers    = &b;
+    void submitCommandBuffer(vk::CommandBuffer b);
 
-        //===========
-        if( m_graphics_queue.submit(1, &submitInfo, vk::Fence() ) != vk::Result::eSuccess)
-        {
-            throw std::runtime_error("Failed to submit Copy Buffer command");
-        }
-
-        m_graphics_queue.waitIdle();
-    }
-
-    void submit_command_buffer(vk::CommandBuffer const & p_CmdBuffer ,
-                                const std::shared_ptr<Semaphore> &wait_semaphore,
-                                const std::shared_ptr<Semaphore> &signal_semaphore,
-                                vk::PipelineStageFlags wait_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput );
+    void submitCommandBuffer(vk::CommandBuffer const & p_CmdBuffer ,
+                             const std::shared_ptr<Semaphore> &wait_semaphore,
+                             const std::shared_ptr<Semaphore> &signal_semaphore,
+                             vk::PipelineStageFlags wait_stage = vk::PipelineStageFlagBits::eColorAttachmentOutput );
 
 
 
 
 
-    vk::Format find_supported_format(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
-    vk::Format find_depth_format();
+    vk::Format findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+    vk::Format findDepthFormat();
 
     vk::PhysicalDeviceLimits const & get_physical_device_limits() const
     {
@@ -209,9 +187,9 @@ public:
 
 
     std::shared_ptr<Semaphore>   createSemaphore();
-    std::vector<std::weak_ptr<Semaphore> > m_semaphores;
 
 private:
+    std::vector<std::weak_ptr<Semaphore> > m_semaphores;
 
     bool m_enable_validation_layers = true;
 
@@ -242,9 +220,9 @@ private:
     void setup_debug_callback();
 
 public:
-    void enable_extension( const std::string & extension);
-    void enable_validation_layer( const std::string & layer_name);
-    void enable_device_extension(const std::string & extension);
+    void enableExtension( const std::string & extension);
+    void enableValidationLayer( const std::string & layer_name);
+    void enableDeviceExtension(const std::string & extension);
 
 private:
 

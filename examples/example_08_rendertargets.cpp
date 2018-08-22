@@ -127,7 +127,7 @@ vka::MeshObject HostToGPU( vka::host_mesh & host_mesh ,
     std::vector<vka::SubBuffer_p>    staging_buffers;
 
 
-    vka::command_buffer copy_cmd = CP.AllocateCommandBuffer();
+    vka::command_buffer copy_cmd = CP.allocateCommandBuffer();
     copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit ) );
 
     for(uint32_t i =0; i < 3 ; i++)
@@ -170,8 +170,8 @@ vka::MeshObject HostToGPU( vka::host_mesh & host_mesh ,
     }
 
     copy_cmd.end();
-    C.submit_cmd_buffer( copy_cmd );
-    CP.FreeCommandBuffer( copy_cmd );
+    C.submitCommandBuffer( copy_cmd );
+    CP.freeCommandBuffer( copy_cmd );
 
     return CubeObj;
 }
@@ -196,31 +196,31 @@ int main(int argc, char ** argv)
     vka::context C;
 
     // Enable the required extensions for being able to draw
-    for(uint i=0;i<glfwExtensionCount;i++)  C.enable_extension( glfwExtensions[i] );
+    for(uint i=0;i<glfwExtensionCount;i++)  C.enableExtension( glfwExtensions[i] );
 
     // Enable some extra extensions that we want.
-    C.enable_extension( VK_EXT_DEBUG_REPORT_EXTENSION_NAME );
+    C.enableExtension( VK_EXT_DEBUG_REPORT_EXTENSION_NAME );
 
     // Enable the required device extension
-    C.enable_device_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    C.enableDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
     C.init();
 
     vk::SurfaceKHR surface;
-    if (glfwCreateWindowSurface( C.get_instance(), window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surface) ) != VK_SUCCESS)
+    if (glfwCreateWindowSurface( C.getInstance(), window, nullptr, reinterpret_cast<VkSurfaceKHR*>(&surface) ) != VK_SUCCESS)
     {
         ERROR << "Failed to create window surface!" << ENDL;
         throw std::runtime_error("failed to create window surface!");
     }
 
-    C.create_device(surface); // find the appropriate device
+    C.createDevice(surface); // find the appropriate device
 
     // The Screen is essentially a wrapper around the Swapchain, a default Renderpass
     // and framebuffers.
     // in VKA we present images to the screen object.
     // This a simple initialization of creating a screen with depth testing
     vka::Screen Screen(&C);
-    Screen.Create(surface, vk::Extent2D(WIDTH,HEIGHT));
+    Screen.create(surface, vk::Extent2D(WIDTH,HEIGHT));
     //==========================================================================
 
 
@@ -286,13 +286,13 @@ int main(int argc, char ** argv)
 //==============================================================================
 
     // 1. First load host_image into memory, and specifcy we want 4 channels.
-        vka::host_image D("resources/textures/Brick-2852a.jpg",4);
-        vka::host_image D2("resources/textures/noise.jpg",4);
+        vka::HostImage D("resources/textures/Brick-2852a.jpg",4);
+        vka::HostImage D2("resources/textures/noise.jpg",4);
 
     // 2. Use the context's helper function to create a device local texture
     //    We will be using a texture2d which is a case specific version of the
     //    generic texture
-        auto Tex = TexturePool.AllocateTexture2D( vk::Format::eR8G8B8A8Unorm,
+        auto Tex = TexturePool.allocateTexture2D( vk::Format::eR8G8B8A8Unorm,
                                          vk::Extent2D(D.width(), D.height() ),
                                          2,5
                                          );
@@ -316,7 +316,7 @@ int main(int argc, char ** argv)
         //         c. convert the texture2d into a layout which is good for shader use
 
             // allocate the command buffer
-            vka::command_buffer cb1 = CP.AllocateCommandBuffer();
+            vka::command_buffer cb1 = CP.allocateCommandBuffer();
             cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
             // a. convert the texture to eTransferDstOptimal
@@ -346,9 +346,9 @@ int main(int argc, char ** argv)
             cb1.generateMipMaps( Tex, 0, 2);
 
             cb1.end();
-            C.submit_cmd_buffer(cb1);
+            C.submitCommandBuffer(cb1);
             // free the command buffer
-            CP.FreeCommandBuffer(cb1);
+            CP.freeCommandBuffer(cb1);
         }
 //==============================================================================
 
@@ -447,7 +447,7 @@ int main(int argc, char ** argv)
                 ->addPushConstant( sizeof(compose_pipeline_push_consts), 0, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
                 // Since we are drawing this to the screen, we need the screen's
                 // renderpass.
-                ->setRenderPass( Screen.GetRenderPass() )
+                ->setRenderPass( Screen.getRenderPass() )
                 ->create();
         //======================================================================
 
@@ -511,8 +511,8 @@ int main(int argc, char ** argv)
     uniform_buffer_t & UniformStagingStruct               = *( (uniform_buffer_t*)UniformStagingBufferMap );
 
     //vka::command_buffer cb = CP.AllocateCommandBuffer();
-    vka::command_buffer offscreen_cmd_buffer = CP.AllocateCommandBuffer();
-    vka::command_buffer compose_cmd_buffer = CP.AllocateCommandBuffer();
+    vka::command_buffer offscreen_cmd_buffer = CP.allocateCommandBuffer();
+    vka::command_buffer compose_cmd_buffer = CP.allocateCommandBuffer();
 
     vka::Semaphore_p  image_available_semaphore  = C.createSemaphore();
     vka::Semaphore_p  gbuffer_complete_semaphore = C.createSemaphore();
@@ -588,7 +588,7 @@ int main(int argc, char ** argv)
                     {
                       push.miplevel = -1;
                     } else {
-                      push.miplevel = (int)fmod( t ,Tex->GetMipLevels() );
+                      push.miplevel = (int)fmod( t ,Tex->getMipLevels() );
                     }
 
                     float x = j%2 ? -1 : 1;
@@ -620,7 +620,7 @@ int main(int argc, char ** argv)
       // that we will be drawing to.
       //    - The semaphore we pass into it will be signaled when the frame is
       //      ready
-      uint32_t frame_index = Screen.GetNextFrameIndex(image_available_semaphore);
+      uint32_t frame_index = Screen.getNextFrameIndex(image_available_semaphore);
 
       compose_cmd_buffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
       compose_cmd_buffer.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse) );
@@ -664,19 +664,19 @@ int main(int argc, char ** argv)
 
       // Submit the command buffers, but wait until the image_available_semaphore
       // is flagged. Once the commands have been executed, flag the render_complete_semaphore
-      C.submit_command_buffer( offscreen_cmd_buffer,        // submit this command buffer
+      C.submitCommandBuffer( offscreen_cmd_buffer,        // submit this command buffer
                                image_available_semaphore,   // // Wait for this semaphore before we start writing
                                gbuffer_complete_semaphore); // Signal this semaphore when the commands have been executed
 
 
-      C.submit_command_buffer( compose_cmd_buffer,        // Execute this command buffer
+      C.submitCommandBuffer( compose_cmd_buffer,        // Execute this command buffer
                                gbuffer_complete_semaphore, // but wait until this semaphore has been signaled
                                render_complete_semaphore);// signal this semaphore when it is done
 
 
       // present the image to the surface, but wait for the render_complete_semaphore
       // to be flagged by the submit_command_buffer
-      Screen.PresentFrame(frame_index, render_complete_semaphore);
+      Screen.presentFrame(frame_index, render_complete_semaphore);
 
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );
     }

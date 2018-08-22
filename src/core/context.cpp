@@ -15,12 +15,12 @@ namespace vka
 
 vk::Device          vka::context_child::get_device()
 {
-    return m_parent->get_device();
+    return m_parent->getDevice();
 }
 
 vk::PhysicalDevice  vka::context_child::get_physical_device()
 {
-    return m_parent->get_physical_device();
+    return m_parent->getPhysicalDevice();
 }
 vka::context*            vka::context_child::get_parent_context()
 {
@@ -91,7 +91,7 @@ void vka::context::init( )
 }
 
 
-void vka::context::create_device( vk::SurfaceKHR surface_to_use)
+void vka::context::createDevice( vk::SurfaceKHR surface_to_use)
 {
     m_surface = surface_to_use;
     if( !m_surface)
@@ -135,7 +135,7 @@ void vka::context::create_device( vk::SurfaceKHR surface_to_use)
                     m_physical_device            = device;
                     m_queue_family               = Qindex;
 
-                    create_logical_device(m_physical_device, m_queue_family);
+                    createLogicalDevice(m_physical_device, m_queue_family);
 
 
                     //m_image_available_smaphore  = m_device.createSemaphore( vk::SemaphoreCreateInfo() );
@@ -159,7 +159,7 @@ void vka::context::create_device( vk::SurfaceKHR surface_to_use)
 
 }
 
-void vka::context::create_logical_device(vk::PhysicalDevice & p_physical_device, const vka::queue_family_index_t & p_Qfamily)
+void vka::context::createLogicalDevice(vk::PhysicalDevice & p_physical_device, const vka::queue_family_index_t & p_Qfamily)
 {
     if(!p_physical_device)
     {
@@ -269,9 +269,9 @@ vka::Semaphore_p vka::context::createSemaphore()
 }
 
 
-vk::Format vka::context::find_depth_format()
+vk::Format vka::context::findDepthFormat()
 {
-    return find_supported_format(
+    return findSupportedFormat(
     {vk::Format::eD32Sfloat      ,// VK_FORMAT_D32_SFLOAT,
      vk::Format::eD32SfloatS8Uint,// VK_FORMAT_D32_SFLOAT_S8_UINT,
      vk::Format::eD24UnormS8Uint},  //VK_FORMAT_D24_UNORM_S8_UINT},
@@ -281,13 +281,13 @@ vk::Format vka::context::find_depth_format()
                 );
 }
 
-vk::Format vka::context::find_supported_format(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
+vk::Format vka::context::findSupportedFormat(const std::vector<vk::Format> &candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
 {
 
     for (vk::Format format : candidates)
     {
 
-        vk::FormatProperties props = get_physical_device().getFormatProperties(format);
+        vk::FormatProperties props = getPhysicalDevice().getFormatProperties(format);
 
         if (tiling == vk::ImageTiling::eLinear
                 && (props.linearTilingFeatures & features) == features)
@@ -307,7 +307,7 @@ vk::Format vka::context::find_supported_format(const std::vector<vk::Format> &ca
 }
 
 
-std::shared_ptr<vka::descriptor_set_layout> vka::context::create_descriptor_set_layout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, vk::DescriptorSetLayoutCreateFlags flags)
+std::shared_ptr<vka::descriptor_set_layout> vka::context::createDescriptorSetLayout(const std::vector<vk::DescriptorSetLayoutBinding> &bindings, vk::DescriptorSetLayoutCreateFlags flags)
 {
     auto it = m_DescriptorSetLayouts.find( bindings );
 
@@ -320,8 +320,8 @@ std::shared_ptr<vka::descriptor_set_layout> vka::context::create_descriptor_set_
         auto ds = std::make_shared<vka::descriptor_set_layout>(this);
         //auto * ds = new_descriptor_set_layout(name);
 
-        ds->set_flags(flags);
-        ds->set_bindings( bindings );
+        ds->setFlags(flags);
+        ds->setBindings( bindings );
         ds->create();
 
         m_DescriptorSetLayouts[bindings] = ds;
@@ -332,10 +332,25 @@ std::shared_ptr<vka::descriptor_set_layout> vka::context::create_descriptor_set_
     return it->second;
 }
 
-void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
-                                         const std::shared_ptr<vka::Semaphore> & wait_semaphore,
-                                         const std::shared_ptr<vka::Semaphore> & signal_semaphore,
-                                         vk::PipelineStageFlags wait_stage)
+void vka::context::submitCommandBuffer(vk::CommandBuffer b)
+{
+    vk::SubmitInfo submitInfo;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers    = &b;
+
+    //===========
+    if( m_graphics_queue.submit(1, &submitInfo, vk::Fence() ) != vk::Result::eSuccess)
+    {
+        throw std::runtime_error("Failed to submit Copy Buffer command");
+    }
+
+    m_graphics_queue.waitIdle();
+}
+
+void vka::context::submitCommandBuffer(const vk::CommandBuffer &p_CmdBuffer,
+                                       const std::shared_ptr<vka::Semaphore> & wait_semaphore,
+                                       const std::shared_ptr<vka::Semaphore> & signal_semaphore,
+                                       vk::PipelineStageFlags wait_stage)
 {
     vk::SubmitInfo submitInfo;
 
@@ -375,12 +390,12 @@ void vka::context::submit_command_buffer(const vk::CommandBuffer &p_CmdBuffer,
 }
 
 
-void vka::context::present_image(const vk::PresentInfoKHR & info)
+void vka::context::presentImage(const vk::PresentInfoKHR & info)
 {
     m_present_queue.presentKHR( info );
 }
 
-std::vector<vk::ImageView>  vka::context::create_image_views( std::vector<vk::Image> const & images, vk::Format image_format)
+std::vector<vk::ImageView>  vka::context::createImageViews( std::vector<vk::Image> const & images, vk::Format image_format)
 {
     std::vector<vk::ImageView>   m_ImageViews;
 
@@ -610,15 +625,15 @@ void vka::context::setup_debug_callback()
 }
 
 
-void vka::context::enable_extension( const std::string & extension)
+void vka::context::enableExtension( const std::string & extension)
 {
     m_instance_extensions.push_back(extension);
 }
-void vka::context::enable_validation_layer( const std::string & layer_name)
+void vka::context::enableValidationLayer( const std::string & layer_name)
 {
     m_validation_layers.push_back(layer_name);
 }
-void vka::context::enable_device_extension(const std::string & extension)
+void vka::context::enableDeviceExtension(const std::string & extension)
 {
     m_device_extensions.push_back(extension);
 }

@@ -46,19 +46,19 @@ class Screen : public context_child
 
         void SetClearColorValue( float r, float g, float b, float a )
         {
-            set_clear_color_value( vk::ClearColorValue( std::array<float,4>({r,g,b,a}) ));
+            setClearColorValue( vk::ClearColorValue( std::array<float,4>({r,g,b,a}) ));
         }
-        void set_clear_color_value( vk::ClearColorValue C);
-        void set_clear_depth_value( vk::ClearDepthStencilValue C);
+        void setClearColorValue( vk::ClearColorValue C);
+        void setClearDepthValue( vk::ClearDepthStencilValue C);
 
-       std::array<vk::ClearValue, 2> const & GetClearValues() const;
+       std::array<vk::ClearValue, 2> const & getClearValues() const;
 
-        vk::Extent2D GetExtent() const;
+        vk::Extent2D getExtent() const;
 
 
-        vk::RenderPass GetRenderPass() const;
+        vk::RenderPass getRenderPass() const;
 
-        vk::Framebuffer GetFramebuffer(uint32_t index) const;
+        vk::Framebuffer getFramebuffer(uint32_t index) const;
 
         /**
          * @brief Create
@@ -68,7 +68,7 @@ class Screen : public context_child
          *
          * Creates the Screen object.
          */
-        void Create( vk::SurfaceKHR surface,
+        void create( vk::SurfaceKHR surface,
                      vk::Extent2D const & extent,
                      vk::Format depth_format = vk::Format::eD32Sfloat );
 
@@ -83,7 +83,7 @@ class Screen : public context_child
          *
          * The signal semaphore
          */
-        uint32_t GetNextFrameIndex( vka::Semaphore_p & signal_semaphore);
+        uint32_t getNextFrameIndex( vka::Semaphore_p & signal_semaphore);
 
         /**
          * @brief PresentFrame
@@ -91,15 +91,15 @@ class Screen : public context_child
          * @param wait_semaphore - the semaphore that must be waited on before
          *                         the frame is presented to the screen
          */
-        void PresentFrame(uint32_t frame_index, vka::Semaphore_p &wait_semaphore);
+        void presentFrame(uint32_t frame_index, vka::Semaphore_p &wait_semaphore);
 protected:
 
-        static void                         CreateSwapchain(   vk::PhysicalDevice pd, vk::Device device, SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync = false);
-        static vk::RenderPass               CreateRenderPass(  vk::Device device, vk::Format swapchain_format, vk::Format depth_format);
-        static std::vector<vk::Framebuffer> CreateFrameBuffers(vk::Device device, const vk::Extent2D &extent, vk::RenderPass renderpass, const std::vector<vk::ImageView> &swapchain_views, vk::ImageView depth_view);
+        static void                         createSwapchain(   vk::PhysicalDevice pd, vk::Device device, SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync = false);
+        static vk::RenderPass               createRenderPass(  vk::Device device, vk::Format swapchain_format, vk::Format depth_format);
+        static std::vector<vk::Framebuffer> createFrameBuffers(vk::Device device, const vk::Extent2D &extent, vk::RenderPass renderpass, const std::vector<vk::ImageView> &swapchain_views, vk::ImageView depth_view);
 
 
-        static vk::SurfaceFormatKHR         GetSurfaceFormats(vk::PhysicalDevice physical_device, vk::Device device, vk::SurfaceKHR surface);
+        static vk::SurfaceFormatKHR         getSurfaceFormats(vk::PhysicalDevice physical_device, vk::Device device, vk::SurfaceKHR surface);
 };
 
 }

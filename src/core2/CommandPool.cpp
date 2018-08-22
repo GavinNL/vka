@@ -8,7 +8,7 @@ void vka::CommandPool::create()
 {
     vk::CommandPoolCreateInfo poolInfo;
 
-    poolInfo.queueFamilyIndex = get_parent_context()->get_queue_family().graphics;
+    poolInfo.queueFamilyIndex = get_parent_context()->getQueueFamily().graphics;
     poolInfo.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer; // Optional
 
     m_command_pool = get_device().createCommandPool(poolInfo);
@@ -20,7 +20,7 @@ void vka::CommandPool::create()
     LOG << "Command Pool created" << ENDL;
 }
 
-command_buffer CommandPool::AllocateCommandBuffer(vk::CommandBufferLevel level)
+command_buffer CommandPool::allocateCommandBuffer(vk::CommandBufferLevel level)
 {
     vk::CommandBufferAllocateInfo allocInfo;
 
@@ -37,7 +37,7 @@ command_buffer CommandPool::AllocateCommandBuffer(vk::CommandBufferLevel level)
     return commandBuffer_v[0];
 }
 
-void CommandPool::FreeCommandBuffer(vka::command_buffer cmd)
+void CommandPool::freeCommandBuffer(vka::command_buffer cmd)
 {
      get_device().freeCommandBuffers( m_command_pool, 1, &cmd);
 }

@@ -17,7 +17,7 @@ vka::DescriptorSet::~DescriptorSet()
 void vka::DescriptorSet::create(std::vector< vk::DescriptorSetLayoutBinding > const & bindings)
 {
     m_bindings = bindings;
-    auto dsl = get_parent_context()->create_descriptor_set_layout(m_bindings);
+    auto dsl = get_parent_context()->createDescriptorSetLayout(m_bindings);
 
 
     vk::DescriptorSetAllocateInfo         info;
@@ -121,7 +121,7 @@ vka::DescriptorSet * vka::DescriptorSet::AttachSampler( uint32_t index,
     vka::DescriptorInfo imageInfo;
 
     imageInfo.type              = DescriptorInfo::Image;
-    imageInfo.image.imageLayout = texture->GetLayout();//->get_layout();// texture.get().m_CreateInfo.initialLayout;
+    imageInfo.image.imageLayout = texture->getLayout();//->get_layout();// texture.get().m_CreateInfo.initialLayout;
     imageInfo.image.imageView   = view;// texture.get().m_View;
     imageInfo.image.sampler     = sampler;// texture.get().m_Sampler;
 
@@ -135,5 +135,5 @@ vka::DescriptorSet * vka::DescriptorSet::AttachSampler(uint32_t index,
                                                          std::string const & view_name,
                                                          std::string const & sampler_name)
 {
-    return AttachSampler(index, texture, texture->GetImageView(view_name), texture->GetSampler(sampler_name));
+    return AttachSampler(index, texture, texture->getImageView(view_name), texture->getSampler(sampler_name));
 }

@@ -39,54 +39,54 @@ private:
 
     ~Texture()
     {
-        Destroy();
+        destroy();
     }
 
     Texture(Texture & other) = delete;
     Texture & operator=(Texture & other) = delete;
 
-    vk::DeviceSize GetOffset() const
+    vk::DeviceSize getOffset() const
     {
         return m_offset;
     }
 
-    vk::DeviceSize GetSize() const
+    vk::DeviceSize getSize() const
     {
         return m_size;
     }
 
-    vk::Image GetImage() const
+    vk::Image getImage() const
     {
         return m_Image;
     }
 
-    vk::Extent3D const & GetExtents() const
+    vk::Extent3D const & getExtents() const
     {
         return m_create_info.extent;
     }
 
-    vk::DeviceSize GetArrayLayers() const
+    vk::DeviceSize getArrayLayers() const
     {
         return m_create_info.arrayLayers;
     }
 
-    vk::DeviceSize GetMipLevels() const
+    vk::DeviceSize getMipLevels() const
     {
         return m_create_info.mipLevels;
     }
 
-    vk::ImageLayout GetLayout(uint32_t MipLevel = 0, uint32_t ArrayLayer = 0)
+    vk::ImageLayout getLayout(uint32_t MipLevel = 0, uint32_t ArrayLayer = 0)
     {
         return m_LayoutsA.at(ArrayLayer).at(MipLevel);
     }
 
 
-    void Destroy();
+    void destroy();
 
 
 
 
-    vk::Format GetFormat() const
+    vk::Format getFormat() const
     {
         return m_create_info.format;
     }
@@ -98,12 +98,12 @@ private:
      *
      * Returns the image view with the given name.
      */
-    vk::ImageView GetImageView(const std::string & name = "default") const
+    vk::ImageView getImageView(const std::string & name = "default") const
     {
         return m_Views.at(name);
     }
 
-    void CreateImageView( std::string const & name,
+    void createImageView( std::string const & name,
                           vk::ImageViewType view_type,
                           vk::ImageAspectFlags flags,
                           uint32_t base_array_layer, uint32_t num_array_layers,
@@ -112,18 +112,18 @@ private:
         vk::ImageViewCreateInfo C;
         C.image                           = m_Image;
         C.viewType                        = view_type;
-        C.format                          = GetFormat();
+        C.format                          = getFormat();
         C.subresourceRange.aspectMask     = flags;
         C.subresourceRange.baseMipLevel   = base_mip_level;
         C.subresourceRange.levelCount     = num_mip_levels;
         C.subresourceRange.baseArrayLayer = base_array_layer;
         C.subresourceRange.layerCount     = num_array_layers;
 
-        CreateImageView(name, C);
+        createImageView(name, C);
     }
 
 
-    vk::SamplerCreateInfo GetDefaultSamplerCreateInfo() const
+    vk::SamplerCreateInfo getDefaultSamplerCreateInfo() const
     {
         vk::SamplerCreateInfo SamplerInfo;
         SamplerInfo.magFilter        = vk::Filter::eLinear;// VK_FILTER_LINEAR;
@@ -140,41 +140,41 @@ private:
         SamplerInfo.mipmapMode       = vk::SamplerMipmapMode::eLinear;// VK_SAMPLER_MIPMAP_MODE_LINEAR;
         SamplerInfo.mipLodBias       = 0.0f;
         SamplerInfo.minLod           = 0.0f;
-        SamplerInfo.maxLod           = GetMipLevels();
+        SamplerInfo.maxLod           = getMipLevels();
         return SamplerInfo;
     }
     /**
-     * @brief CreateImageView
+     * @brief createImageView
      * @param name - name to give the view
      * @param CreateInfo
      *
      * Create an ImageView using the CreateInfo struct. The View can be
      * retrieved by using the GetImageView(name)
      */
-    void CreateImageView(const std::string & name, vk::ImageViewCreateInfo CreateInfo);
+    void createImageView(const std::string & name, vk::ImageViewCreateInfo CreateInfo);
 
 
 
 
-    vk::Sampler GetSampler( const std::string & name = "default") const
+    vk::Sampler getSampler( const std::string & name = "default") const
     {
         return m_Samplers.at(name);
     }
 
     /**
-     * @brief CreateSampler
+     * @brief createSampler
      * @param name
      * @param CreateInfo
      *
      * Create a sampler with a given name
      */
-    void CreateSampler(const std::string & name, vk::SamplerCreateInfo const & CreateInfo);
+    void createSampler(const std::string & name, vk::SamplerCreateInfo const & CreateInfo);
 
 
-    void DestroyImageView(vk::ImageView V);
-    void DestroySampler(vk::Sampler S);
-    void DestroyImageView(const std::string & name = "default");
-    void DestroySampler(const std::string & name = "default");
+    void destroyImageView(vk::ImageView V);
+    void destroySampler(vk::Sampler S);
+    void destroyImageView(const std::string & name = "default");
+    void destroySampler(const std::string & name = "default");
 
     protected:
         TextureMemoryPool *   m_parent = nullptr;
@@ -273,7 +273,7 @@ public:
             auto p = w.lock();
             if(p)
             {
-                p->Destroy();
+                p->destroy();
             }
 
         }
@@ -297,7 +297,7 @@ public:
      * An ImageView and a Sampler are NOT created using these functions.
      *
      */
-    Texture_p AllocateTexture( vk::Format   format,
+    Texture_p allocateTexture( vk::Format   format,
                                               vk::Extent3D extent,
                                               uint32_t     arrayLayers,
                                               uint32_t     mipLevels,
@@ -420,7 +420,7 @@ public:
      * Allocate a 2D texture or a 2D Array. A "default" ImageView is created
      * with is a view into the entire texture as well as a "default" sampler.
      */
-    Texture_p AllocateTexture2D( vk::Format format,
+    Texture_p allocateTexture2D( vk::Format format,
                                                 vk::Extent2D extent,
                                                 uint32_t     arrayLayers=1,
                                                 uint32_t     mipLevels=std::numeric_limits<uint32_t>::max(),
@@ -431,42 +431,42 @@ public:
             mipLevels = std::min( std::log2( extent.height), std::log2( extent.width) );
         }
 
-        auto T = AllocateTexture( format,
+        auto T = allocateTexture( format,
                                   vk::Extent3D{extent.width,extent.height,1},
                                   arrayLayers,
                                   mipLevels,
                                   vk::ImageTiling::eOptimal,
                                   sharingMode);
 
-        T->CreateImageView( "default",
+        T->createImageView( "default",
                             arrayLayers==1?vk::ImageViewType::e2D : vk::ImageViewType::e2DArray,
                             vk::ImageAspectFlagBits::eColor,
                             0, arrayLayers,
                             0, mipLevels);
 
-        T->CreateSampler("default", T->GetDefaultSamplerCreateInfo() );
+        T->createSampler("default", T->getDefaultSamplerCreateInfo() );
 
         m_textures.push_back(T);
         return T;
     }
 
-    Texture_p AllocateColorAttachment( vk::Format format,
+    Texture_p allocateColorAttachment( vk::Format format,
                                                       vk::Extent2D extent)
     {
-        auto T = AllocateTexture( format,
+        auto T = allocateTexture( format,
                                   vk::Extent3D{extent.width,extent.height,1},
                                   1,
                                   1,
                                   vk::ImageTiling::eOptimal,
                                   vk::SharingMode::eExclusive);
 
-        T->CreateImageView( "default",
+        T->createImageView( "default",
                             vk::ImageViewType::e2D,
                             vk::ImageAspectFlagBits::eColor,
                             0, 1,
                             0, 1);
 
-        auto SCI = T->GetDefaultSamplerCreateInfo();
+        auto SCI = T->getDefaultSamplerCreateInfo();
         SCI.magFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
         SCI.minFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
         SCI.addressModeU     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -482,7 +482,7 @@ public:
         SCI.mipLodBias       = 0.0f;
         SCI.minLod           = 0.0f;
         SCI.maxLod           = 1.0;
-        T->CreateSampler("default", SCI );
+        T->createSampler("default", SCI );
 
         m_textures.push_back(T);
         return T;
@@ -497,20 +497,20 @@ public:
          ( format  == vk::Format::eD24UnormS8Uint  ) );
 
 
-        auto T = AllocateTexture( format,
+        auto T = allocateTexture( format,
                                   vk::Extent3D{extent.width,extent.height,1},
                                   1,
                                   1,
                                   vk::ImageTiling::eOptimal,
                                   vk::SharingMode::eExclusive);
 
-        T->CreateImageView( "default",
+        T->createImageView( "default",
                             vk::ImageViewType::e2D,
                               vk::ImageAspectFlagBits::eDepth,
                             0, 1,
                             0, 1);
 
-        auto SCI = T->GetDefaultSamplerCreateInfo();
+        auto SCI = T->getDefaultSamplerCreateInfo();
         SCI.magFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
         SCI.minFilter        = vk::Filter::eNearest;// VK_FILTER_LINEAR;
         SCI.addressModeU     = vk::SamplerAddressMode::eClampToEdge;//VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -526,7 +526,7 @@ public:
         SCI.mipLodBias       = 0.0f;
         SCI.minLod           = 0.0f;
         SCI.maxLod           = 1.0;
-        T->CreateSampler("default", SCI );
+        T->createSampler("default", SCI );
 
         m_textures.push_back(T);
         return T;
@@ -541,7 +541,7 @@ protected:
 
 };
 
-inline void Texture::CreateImageView(const std::string & name, vk::ImageViewCreateInfo CreateInfo)
+inline void Texture::createImageView(const std::string & name, vk::ImageViewCreateInfo CreateInfo)
 {
     if( m_Views.count(name) )
     {
@@ -557,7 +557,7 @@ inline void Texture::CreateImageView(const std::string & name, vk::ImageViewCrea
     throw std::runtime_error("Error Creating Image View");
 }
 
-inline void Texture::CreateSampler(const std::string &name, const vk::SamplerCreateInfo &CreateInfo)
+inline void Texture::createSampler(const std::string &name, const vk::SamplerCreateInfo &CreateInfo)
 {
     if( m_Samplers.count(name) )
     {
@@ -573,28 +573,28 @@ inline void Texture::CreateSampler(const std::string &name, const vk::SamplerCre
 }
 
 
-inline void Texture::DestroyImageView(vk::ImageView V)
+inline void Texture::destroyImageView(vk::ImageView V)
 {
     for(auto & s : m_Views)
         if(s.second == V)
-            DestroyImageView(s.first);
+            destroyImageView(s.first);
 }
 
-inline void Texture::DestroySampler(vk::Sampler S)
+inline void Texture::destroySampler(vk::Sampler S)
 {
     for(auto & s : m_Samplers)
         if(s.second == S)
-            DestroySampler(s.first);
+            destroySampler(s.first);
 }
 
-inline void Texture::DestroyImageView(const std::string & name)
+inline void Texture::destroyImageView(const std::string & name)
 {
     auto v = m_Views.at(name);
     m_parent->get_device().destroyImageView(v);
     m_Views.erase(name);
 }
 
-inline void Texture::DestroySampler(const std::string & name )
+inline void Texture::destroySampler(const std::string & name )
 {
     auto v = m_Samplers.at(name);
     m_parent->get_device().destroySampler(v);
@@ -603,7 +603,7 @@ inline void Texture::DestroySampler(const std::string & name )
 
 
 
-inline void Texture::Destroy()
+inline void Texture::destroy()
 {
     if(m_Image)
     {

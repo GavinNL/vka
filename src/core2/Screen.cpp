@@ -33,37 +33,37 @@ Screen::~Screen()
     if( m_Swapchain.swapchain) device.destroySwapchainKHR(m_Swapchain.swapchain);
 }
 
-void Screen::set_clear_color_value(vk::ClearColorValue C)
+void Screen::setClearColorValue(vk::ClearColorValue C)
 {
     m_clear_values[0] = C;
 }
 
-void Screen::set_clear_depth_value(vk::ClearDepthStencilValue C)
+void Screen::setClearDepthValue(vk::ClearDepthStencilValue C)
 {
     m_clear_values[1] = C;
 }
 
-vk::Extent2D Screen::GetExtent() const
+vk::Extent2D Screen::getExtent() const
 {
     return m_extent;
 }
 
-vk::RenderPass Screen::GetRenderPass() const
+vk::RenderPass Screen::getRenderPass() const
 {
     return m_renderpass;
 }
 
-vk::Framebuffer Screen::GetFramebuffer(uint32_t index) const
+vk::Framebuffer Screen::getFramebuffer(uint32_t index) const
 {
     return m_Swapchain.framebuffer.at(index);
 }
 
-const std::array<vk::ClearValue, 2> &Screen::GetClearValues() const
+const std::array<vk::ClearValue, 2> &Screen::getClearValues() const
 {
     return m_clear_values;
 }
 
-void Screen::Create(vk::SurfaceKHR surface, const vk::Extent2D &extent, vk::Format depth_format)
+void Screen::create(vk::SurfaceKHR surface, const vk::Extent2D &extent, vk::Format depth_format)
 {
 
     auto physical_device = get_physical_device();
@@ -72,8 +72,8 @@ void Screen::Create(vk::SurfaceKHR surface, const vk::Extent2D &extent, vk::Form
     //set_surface(surface);
     m_extent = extent;
 
-    CreateSwapchain( physical_device, device, m_Swapchain, surface, extent,true);
-    m_renderpass = CreateRenderPass(device, m_Swapchain.format.format, depth_format);
+    createSwapchain( physical_device, device, m_Swapchain, surface, extent,true);
+    m_renderpass = createRenderPass(device, m_Swapchain.format.format, depth_format);
 
     //--------
     auto size = format_size(depth_format) * extent.width * extent.height;
@@ -83,13 +83,13 @@ void Screen::Create(vk::SurfaceKHR surface, const vk::Extent2D &extent, vk::Form
     m_DepthPool.SetSize( size + 1024 );
     m_DepthImage = m_DepthPool.AllocateDepthAttachment( m_extent , depth_format);
 
-    depth_format = m_DepthImage->GetFormat();
+    depth_format = m_DepthImage->getFormat();
     //----------
-    m_Swapchain.framebuffer = CreateFrameBuffers(device, extent, m_renderpass, m_Swapchain.view, m_DepthImage->GetImageView());
+    m_Swapchain.framebuffer = createFrameBuffers(device, extent, m_renderpass, m_Swapchain.view, m_DepthImage->getImageView());
 }
 
 
-vk::RenderPass Screen::CreateRenderPass(vk::Device device, vk::Format swapchain_format, vk::Format depth_format)
+vk::RenderPass Screen::createRenderPass(vk::Device device, vk::Format swapchain_format, vk::Format depth_format)
 {
     // This example will use a single render pass with one subpass
 
@@ -193,11 +193,11 @@ vk::RenderPass Screen::CreateRenderPass(vk::Device device, vk::Format swapchain_
     return Render_Pass;
 }
 
-void Screen::CreateSwapchain(vk::PhysicalDevice physicalDevice, vk::Device device, SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync)
+void Screen::createSwapchain(vk::PhysicalDevice physicalDevice, vk::Device device, SwapChainData & SC, vk::SurfaceKHR surface, const vk::Extent2D &extent, bool vsync)
 {
     vk::SwapchainKHR oldSwapchain = SC.swapchain;
 
-    SC.format = GetSurfaceFormats(physicalDevice, device, surface);
+    SC.format = getSurfaceFormats(physicalDevice, device, surface);
 
     // Get physical device surface properties and formats
     //VkSurfaceCapabilitiesKHR surfCaps;
@@ -382,11 +382,11 @@ void Screen::CreateSwapchain(vk::PhysicalDevice physicalDevice, vk::Device devic
         auto view = device.createImageView(colorAttachmentView);
         assert(view);
         SC.view.push_back(view);
-        //VK_CHECK_RESULT(vkCreateImageView(device, &colorAttachmentView, nullptr, &buffers[i].view));
+        //VK_CHECK_RESULT(vkcreateImageView(device, &colorAttachmentView, nullptr, &buffers[i].view));
     }
 }
 
-vk::SurfaceFormatKHR Screen::GetSurfaceFormats(vk::PhysicalDevice physical_device, vk::Device device, vk::SurfaceKHR surface)
+vk::SurfaceFormatKHR Screen::getSurfaceFormats(vk::PhysicalDevice physical_device, vk::Device device, vk::SurfaceKHR surface)
 {
     vk::SurfaceFormatKHR srfFormat;
 
@@ -438,7 +438,7 @@ vk::SurfaceFormatKHR Screen::GetSurfaceFormats(vk::PhysicalDevice physical_devic
 
 // Create a frame buffer for each swap chain image
 // Note: Override of virtual function in the base class and called from within VulkanExampleBase::prepare
-std::vector<vk::Framebuffer> Screen::CreateFrameBuffers( vk::Device device,
+std::vector<vk::Framebuffer> Screen::createFrameBuffers( vk::Device device,
                                                       vk::Extent2D const & extent,
                                                       vk::RenderPass renderpass,
                                                       std::vector<vk::ImageView> const & swapchain_views,
@@ -477,7 +477,7 @@ std::vector<vk::Framebuffer> Screen::CreateFrameBuffers( vk::Device device,
 
 
 
-uint32_t Screen::GetNextFrameIndex(vka::Semaphore_p &signal_semaphore)
+uint32_t Screen::getNextFrameIndex(vka::Semaphore_p &signal_semaphore)
 {
     auto
     m_next_frame_index  = get_device().acquireNextImageKHR( m_Swapchain.swapchain,
@@ -488,7 +488,7 @@ uint32_t Screen::GetNextFrameIndex(vka::Semaphore_p &signal_semaphore)
 }
 
 
-void Screen::PresentFrame(uint32_t frame_index, vka::Semaphore_p & wait_semaphore)
+void Screen::presentFrame(uint32_t frame_index, vka::Semaphore_p & wait_semaphore)
 {
     vk::PresentInfoKHR presentInfo;
     if( wait_semaphore)
@@ -503,7 +503,7 @@ void Screen::PresentFrame(uint32_t frame_index, vka::Semaphore_p & wait_semaphor
     presentInfo.pImageIndices     = &frame_index;
     presentInfo.pResults = nullptr;
 
-    get_parent_context()->present_image( presentInfo );
+    get_parent_context()->presentImage( presentInfo );
 }
 
 

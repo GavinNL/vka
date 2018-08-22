@@ -114,19 +114,19 @@ int main(int argc, char ** argv)
     // command pools, etc.
     vka::context C;
 
-    for(uint i=0;i<count;i++)  C.enable_extension( names[i] );
-    C.enable_extension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+    for(uint i=0;i<count;i++)  C.enableExtension( names[i] );
+    C.enableExtension(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 
-    C.enable_device_extension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    C.enableDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     C.init();
 
     vk::SurfaceKHR surface;
-    if( !SDL_Vulkan_CreateSurface( window, C.get_instance(), reinterpret_cast<VkSurfaceKHR*>(&surface)  ) )
+    if( !SDL_Vulkan_CreateSurface( window, C.getInstance(), reinterpret_cast<VkSurfaceKHR*>(&surface)  ) )
     {
         ERROR << "Failed to create surface" << ENDL;
     }
 
-    C.create_device(surface); // find the appropriate device which can draw to that surface.
+    C.createDevice(surface); // find the appropriate device which can draw to that surface.
 
 
     // The Screen is essentially a wrapper around the Swapchain, a default Renderpass
@@ -134,7 +134,7 @@ int main(int argc, char ** argv)
     // in VKA we present images to the screen object.
     // This a simple initialization of creating a screen with depth testing
     vka::Screen Screen(&C);//= C.new_screen("screen");
-    Screen.Create(surface, vk::Extent2D(WIDTH,HEIGHT));
+    Screen.create(surface, vk::Extent2D(WIDTH,HEIGHT));
 
     //==========================================================================
 
@@ -238,7 +238,7 @@ int main(int argc, char ** argv)
         // 2. Copy the data from the host-visible buffer to the vertex/index buffers
 
         // allocate a comand buffer
-        vka::command_buffer copy_cmd = CP.AllocateCommandBuffer();
+        vka::command_buffer copy_cmd = CP.allocateCommandBuffer();
         copy_cmd.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
         // write the commands to copy each of the buffer data
@@ -254,10 +254,10 @@ int main(int argc, char ** argv)
 
 
         copy_cmd.end();
-        C.submit_cmd_buffer(copy_cmd);
+        C.submitCommandBuffer(copy_cmd);
         ////===============
         //
-        CP.FreeCommandBuffer(copy_cmd);
+        CP.freeCommandBuffer(copy_cmd);
 
 
 //==============================================================================
@@ -276,7 +276,7 @@ int main(int argc, char ** argv)
 
 
     // 1. First load host_image into memory, and specifcy we want 4 channels.
-        vka::host_image D("resources/textures/Brick-2852a.jpg",4);
+        vka::HostImage D("resources/textures/Brick-2852a.jpg",4);
 
 
 
@@ -286,7 +286,7 @@ int main(int argc, char ** argv)
         //    We will be using a texture2d which is a case specific version of the
         //    generic texture
 
-        auto Tex = TP.AllocateTexture2D( vk::Format::eR8G8B8A8Unorm,
+        auto Tex = TP.allocateTexture2D( vk::Format::eR8G8B8A8Unorm,
                                          vk::Extent2D(D.width(), D.height() ),
                                          1,1
                                          );
@@ -310,7 +310,7 @@ int main(int argc, char ** argv)
     //         c. convert the texture2d into a layout which is good for shader use
 
         // allocate the command buffer
-        vka::command_buffer cb1 = CP.AllocateCommandBuffer();
+        vka::command_buffer cb1 = CP.allocateCommandBuffer();
         cb1.begin( vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit) );
 
             // a. convert the texture to eTransferDstOptimal
@@ -346,9 +346,9 @@ int main(int argc, char ** argv)
 
         // end and submit the command buffer
         cb1.end();
-        C.submit_cmd_buffer(cb1);
+        C.submitCommandBuffer(cb1);
         // free the command buffer
-        CP.FreeCommandBuffer(cb1);
+        CP.freeCommandBuffer(cb1);
 //==============================================================================
 
 
@@ -388,7 +388,7 @@ int main(int argc, char ** argv)
                   // in Set #0 binding #0
                   ->addUniformLayoutBinding(1, 0, vk::ShaderStageFlagBits::eVertex)
                   //
-                  ->setRenderPass( Screen.GetRenderPass())
+                  ->setRenderPass( Screen.getRenderPass())
                   ->create();
 
 
@@ -426,7 +426,7 @@ int main(int argc, char ** argv)
     vka::MappedMemory StagingBufferMap   = StagingBuffer->GetMappedMemory();
 
 
-    vka::command_buffer cb = CP.AllocateCommandBuffer();
+    vka::command_buffer cb = CP.allocateCommandBuffer();
 
 
     vka::Semaphore_p  image_available_semaphore = C.createSemaphore();
@@ -491,7 +491,7 @@ int main(int argc, char ** argv)
 
 
 
-      uint32_t frame_index = Screen.GetNextFrameIndex(image_available_semaphore);
+      uint32_t frame_index = Screen.getNextFrameIndex(image_available_semaphore);
       cb.beginRender(Screen, frame_index);
 
 
@@ -522,11 +522,11 @@ int main(int argc, char ** argv)
 
       // Submit the command buffers, but wait until the image_available_semaphore
       // is flagged. Once the commands have been executed, flag the render_complete_semaphore
-      C.submit_command_buffer(cb, image_available_semaphore, render_complete_semaphore);
+      C.submitCommandBuffer(cb, image_available_semaphore, render_complete_semaphore);
 
       // present the image to the surface, but wait for the render_complete_semaphore
       // to be flagged by the submit_command_buffer
-      Screen.PresentFrame(frame_index, render_complete_semaphore);
+      Screen.presentFrame(frame_index, render_complete_semaphore);
 
       std::this_thread::sleep_for( std::chrono::milliseconds(3) );
     }

@@ -36,22 +36,22 @@ public:
     }
 
 
-    descriptor_set_layout* clear_bindings() { m_DescriptorSetLayoutBindings.clear(); return this;}
+    descriptor_set_layout* clearBindings() { m_DescriptorSetLayoutBindings.clear(); return this;}
 
 
-    descriptor_set_layout* set_bindings(std::vector<vk::DescriptorSetLayoutBinding> const & bindings)
+    descriptor_set_layout* setBindings(std::vector<vk::DescriptorSetLayoutBinding> const & bindings)
     {
         m_DescriptorSetLayoutBindings = bindings;
         return this;
     }
 
-    descriptor_set_layout*  add_texture_layout_binding(uint32_t binding, vk::ShaderStageFlags stages);
+    descriptor_set_layout*  addTextureLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages);
 
-    descriptor_set_layout*  add_uniform_layout_binding(uint32_t binding, vk::ShaderStageFlags stages);
+    descriptor_set_layout*  addUniformLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages);
 
-    descriptor_set_layout*  add_dynamic_uniform_layout_binding(uint32_t binding, vk::ShaderStageFlags stages);
+    descriptor_set_layout*  addDynamicUniformLayoutBinding(uint32_t binding, vk::ShaderStageFlags stages);
 
-    descriptor_set_layout*  set_flags(vk::DescriptorSetLayoutCreateFlags flags)
+    descriptor_set_layout*  setFlags(vk::DescriptorSetLayoutCreateFlags flags)
     {
         m_Flags = flags;
         return this;

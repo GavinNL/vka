@@ -127,7 +127,7 @@ public:
 
         for(auto & format : color_formats)
         {
-            auto image = m_ColorPool.AllocateColorAttachment( format, m_Extent );
+            auto image = m_ColorPool.allocateColorAttachment( format, m_Extent );
             m_images.push_back(image);
         }
 
@@ -151,11 +151,11 @@ public:
             attachmentDescs[i].initialLayout = vk::ImageLayout::eUndefined;             //VK_IMAGE_LAYOUT_UNDEFINED;
             attachmentDescs[i].finalLayout   = vk::ImageLayout::eShaderReadOnlyOptimal; //VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-            attachmentDescs[i].format = m_images[i]->GetFormat();  // offScreenFrameBuf.position.format;
+            attachmentDescs[i].format = m_images[i]->getFormat();  // offScreenFrameBuf.position.format;
 
             colorReferences.push_back({ i, vk::ImageLayout::eColorAttachmentOptimal });
 
-            attachments.push_back( m_images[i]->GetImageView() );  //offScreenFrameBuf.position.view;
+            attachments.push_back( m_images[i]->getImageView() );  //offScreenFrameBuf.position.view;
 
 
             m_ClearValues.push_back( vk::ClearColorValue{ std::array<float,4>{ 0.0f, 0.0f, 0.0f, 0.0f } } );
@@ -171,10 +171,10 @@ public:
         attachmentDescs.back().finalLayout   = vk::ImageLayout::eShaderReadOnlyOptimal; //VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         attachmentDescs.back().initialLayout = vk::ImageLayout::eUndefined;// VK_IMAGE_LAYOUT_UNDEFINED;
         attachmentDescs.back().finalLayout   = vk::ImageLayout::eDepthStencilAttachmentOptimal;//  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        attachmentDescs.back().format = m_depth_image->GetFormat();// offScreenFrameBuf.depth.format;
+        attachmentDescs.back().format = m_depth_image->getFormat();// offScreenFrameBuf.depth.format;
 
         m_depth_idex = attachments.size();
-        attachments.push_back( m_depth_image->GetImageView() );  //offScreenFrameBuf.depth.view;
+        attachments.push_back( m_depth_image->getImageView() );  //offScreenFrameBuf.depth.view;
 
         m_ClearValues.push_back( vk::ClearDepthStencilValue{ 1.0f, 0 } );
 
@@ -287,10 +287,10 @@ public:
         }
 
         // Formats
-        attachmentDescs[0].format = m_images[0]->GetFormat();  // offScreenFrameBuf.position.format;
-        attachmentDescs[1].format = m_images[1]->GetFormat();  //offScreenFrameBuf.normal.format;
-        attachmentDescs[2].format = m_images[2]->GetFormat();  //offScreenFrameBuf.albedo.format;
-        attachmentDescs[3].format = m_depth_image->GetFormat();// offScreenFrameBuf.depth.format;
+        attachmentDescs[0].format = m_images[0]->getFormat();  // offScreenFrameBuf.position.format;
+        attachmentDescs[1].format = m_images[1]->getFormat();  //offScreenFrameBuf.normal.format;
+        attachmentDescs[2].format = m_images[2]->getFormat();  //offScreenFrameBuf.albedo.format;
+        attachmentDescs[3].format = m_depth_image->getFormat();// offScreenFrameBuf.depth.format;
 
         std::vector<vk::AttachmentReference> colorReferences;
         colorReferences.push_back({ 0, vk::ImageLayout::eColorAttachmentOptimal });
