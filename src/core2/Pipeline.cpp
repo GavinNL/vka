@@ -1,7 +1,7 @@
 #include <vka/core/log.h>
 #include <vka/core/context.h>
 #include <vka/core2/DescriptorPool.h>
-#include <vka/core/descriptor_set_layout.h>
+#include <vka/core2/DescriptorLayoutSet.h>
 #include <vka/core2/DescriptorSet.h>
 
 

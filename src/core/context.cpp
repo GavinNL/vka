@@ -1,7 +1,7 @@
 #include <vka/core/context.h>
 #include <vka/core/Semaphore.h>
 #include <vka/core2/DescriptorPool.h>
-#include <vka/core/descriptor_set_layout.h>
+#include <vka/core2/DescriptorLayoutSet.h>
 #include <vka/core2/DescriptorSet.h>
 #include <vulkan/vulkan.hpp>
 #include <vka/core/context_child.h>
