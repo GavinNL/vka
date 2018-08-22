@@ -42,7 +42,7 @@
 #include <vka/utils/camera.h>
 
 #include <vka/core2/Screen.h>
-#include <vka/core2/RenderTarget2.h>
+#include <vka/core2/RenderTarget.h>
 #include <vka/math/linalg.h>
 
 #define WIDTH 1920
@@ -309,7 +309,7 @@ int main(int argc, char ** argv)
     //==========================================================================
 
 
-    vka::RenderTarget2 myRenderTarget(&C);
+    vka::RenderTarget myRenderTarget(&C);
     myRenderTarget.SetExtent( vk::Extent2D(WIDTH,HEIGHT));
     myRenderTarget.Create( { vk::Format::eR32G32B32A32Sfloat,
                              vk::Format::eR32G32B32A32Sfloat,

@@ -37,7 +37,7 @@
 #include <vka/core/primatives.h>
 
 #include <vka/core2/MeshObject.h>
-#include <vka/core2/RenderTarget2.h>
+#include <vka/core2/RenderTarget.h>
 #include <vka/math/linalg.h>
 
 #define WIDTH 1024
@@ -243,7 +243,7 @@ int main(int argc, char ** argv)
     //==========================================================================
 
 
-    vka::RenderTarget2 myRenderTarget(&C);
+    vka::RenderTarget myRenderTarget(&C);
     myRenderTarget.SetExtent( vk::Extent2D(1024,768));
     myRenderTarget.Create( { vk::Format::eR32G32B32A32Sfloat,
                              vk::Format::eR32G32B32A32Sfloat,

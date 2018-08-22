@@ -17,7 +17,7 @@ class SubBuffer;
 class Texture;
 class MeshObject;
 class RenderTarget;
-class RenderTarget2;
+class RenderTarget;
 class Screen;
 class Pipeline;
 class DescriptorSet;
@@ -221,7 +221,7 @@ class command_buffer : public vk::CommandBuffer
                          uint32_t Layer, uint32_t LayerCount);
 
 
-    void beginRender(RenderTarget2 &cb);
+    void beginRender(RenderTarget &cb);
 
 
     void beginRender(Screen & target, uint32_t frame_buffer_index);

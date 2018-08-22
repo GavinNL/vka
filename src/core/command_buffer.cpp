@@ -5,7 +5,7 @@
 
 #include <vka/core2/TextureMemoryPool.h>
 #include <vka/core2/MeshObject.h>
-#include <vka/core2/RenderTarget2.h>
+#include <vka/core2/RenderTarget.h>
 #include <vka/core2/Screen.h>
 #include <vka/core2/Pipeline.h>
 
@@ -424,7 +424,7 @@ void command_buffer::generateMipMaps( std::shared_ptr<vka::Texture> & Tex,
 }
 
 
-void command_buffer::beginRender(RenderTarget2 & target)
+void command_buffer::beginRender(RenderTarget & target)
 {
     vk::RenderPassBeginInfo m_renderpass_info;
 
