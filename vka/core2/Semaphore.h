@@ -2,7 +2,7 @@
 #define VKA_SEMAPHORE_H
 
 #include <vulkan/vulkan.hpp>
-#include "deleter.h"
+//#include "deleter.h"
 #include <vka/core/context_child.h>
 
 namespace vka

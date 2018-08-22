@@ -1,5 +1,5 @@
 #include <vka/core/context.h>
-#include <vka/core/Semaphore.h>
+#include <vka/core2/Semaphore.h>
 #include <vka/core2/DescriptorPool.h>
 #include <vka/core2/DescriptorLayoutSet.h>
 #include <vka/core2/DescriptorSet.h>

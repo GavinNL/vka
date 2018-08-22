@@ -1,4 +1,4 @@
-#include <vka/core/Semaphore.h>
+#include <vka/core2/Semaphore.h>
 #include <vka/core/context.h>
 
 vka::Semaphore::Semaphore(vka::context * parent) : context_child(parent)

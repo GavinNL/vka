@@ -1,5 +1,5 @@
 #include <vka/core2/RenderTarget.h>
-#include <vka/core/Semaphore.h>
+#include <vka/core2/Semaphore.h>
 #include <vka/core/context.h>
 #include <vka/core/types.h>
 
